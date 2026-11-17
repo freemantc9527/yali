@@ -1,0 +1,12 @@
+[package]
+name = "yali-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Yali 内核：Profile / Pipeline / EngineRegistry（无 UI 依赖）"
+
+[dependencies]
+serde.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

@@ -1,0 +1,19 @@
+[package]
+name = "yali-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "鸭梨 GUI 壳（Tauri 2）"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+yali-core = { path = "../crates/yali-core" }
+serde.workspace = true
+serde_json.workspace = true
+
+[lib]
+name = "yali_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]

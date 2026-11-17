@@ -1,0 +1,28 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# Node / Vite
+node_modules/
+dist/
+.vite/
+
+# Tauri
+src-tauri/gen/
+*.app
+*.dmg
+
+# 本地数据与密钥
+.env
+.env.*
+*.key
+benchkit/tmp/
+benchkit/local-samples/
+
+# macOS
+.DS_Store
+
+# 编辑器
+.idea/
+.vscode/
+*.swp
