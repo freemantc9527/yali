@@ -38,11 +38,20 @@ pub fn pngquant_speed(level: u8) -> u8 {
     raw.clamp(1, 11) as u8
 }
 
-/// PNG 无损档（oxipng）：level 1 → -o 2，level 2 → -o 4
-pub fn oxipng_optimization(level: u8) -> u8 {
-    match level {
-        1 => 2,
-        _ => 4,
+/// PNG 无损优化级别（oxipng -o）：
+/// - 无损档 / level 1-2：深度优化（-o 4，慢但省得多）
+/// - level ≥3 却落到 oxipng（例如已经是调色板的 PNG，不做二次量化）：
+///   走快速档 -o 1 —— 实测 900KB 调色板样张 -o 1 是 353ms/800966B，
+///   -o 4 是 1100ms/800276B，多花 750ms 只多省 690 字节，不值
+pub fn oxipng_optimization(level: u8, lossless: bool) -> u8 {
+    if lossless {
+        4 // 无损归档：深度
+    } else if level <= 1 {
+        2 // level 1：轻量无损
+    } else if level == 2 {
+        4 // level 2：深度无损
+    } else {
+        1 // 被强制路由到无损引擎的有损档（调色板 PNG）：快速档
     }
 }
 
@@ -89,7 +98,9 @@ mod tests {
 
     #[test]
     fn engine_oxipng_optimization_map() {
-        assert_eq!(oxipng_optimization(1), 2);
-        assert_eq!(oxipng_optimization(2), 4);
+        assert_eq!(oxipng_optimization(1, false), 2);
+        assert_eq!(oxipng_optimization(2, false), 4);
+        assert_eq!(oxipng_optimization(4, false), 1, "调色板 PNG 等有损档位落到无损引擎时走快速档");
+        assert_eq!(oxipng_optimization(4, true), 4, "无损档始终深度优化");
     }
 }

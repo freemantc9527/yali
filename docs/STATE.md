@@ -59,6 +59,11 @@
 - **debug 与 release 对 `frontendDist` 的校验不同**：debug 因 `dev_url` 有值直接短路，release/codegen 会 panic「frontendDist doesn't exist」。`ui/dist` 是构建产物不入库 → 已由 `src-tauri/build.rs` 兜占位页；验证仓库可复现性时必须跑 `--release`
 - gh 2.104 无 `-g` 短参；`gh repo create` 远端新建用 `--add-readme --license --clone` 组合
 - 迁移后 `target/` 缓存带着旧绝对路径，指纹脏；换路径后建议 `cargo clean` 重建一次
+- **`vips flatten` 对无 alpha 的 PNG（尤其 Type:Palette）会输出 graya 灰白图**（实测 PSNR 0.6，
+  整图报废）：PNG→JPEG 必须先读 IHDR color type（+调色板看 tRNS）**确认有透明才压平**；
+  flatten 产物还要校验 color type==2，否则回落 sips
+- **pngquant 对已量化的调色板 PNG 退出码 99**（达不到最低质量）：调色板 PNG→PNG 强制走
+  oxipng 无损优化（有损档位下用 -o 1：353ms/800966B，-o 4 多花 750ms 只多省 690B）
 - **cjpeg 与 libvips 都把 RGBA PNG 的 alpha 合成到黑底**（实测 PSNR 2.2dB）：PNG→JPEG 必须先
   `vips flatten --background 65535` 无损压平到白底（libvips background 是 16 位标度，255 无效）；
   sips 直出虽正确但体积大 2.6 倍，只作回落

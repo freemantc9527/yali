@@ -164,15 +164,34 @@ pub async fn compress_file(
     // 原因：cjpeg 与 libvips 直吃 RGBA 都合成到**黑底**（本机实测 PSNR 2.2dB），
     // 而 sips 直出虽正确但体积比 mozjpeg 大 2.6 倍；分享截图既要白底又要小。
     // libvips flatten 的 background 用 16 位标度，65535 才是白。
+    // PNG → JPEG：只有真的带透明才需要压平 alpha（vips flatten 对无 alpha 的
+    // 调色板 PNG 会输出 graya 灰白图——实测毁掉整张截图，所以必须条件化）。
+    // 压平失败（vips 缺失/报错）时回落 sips 直出，绝不回落「cjpeg 直吃 RGBA」（黑底）。
     let mut aux_file: Option<PathBuf> = None;
+    let mut forced_encoder: Option<crate::engines::EngineKind> = None;
     if base_fmt == InputFormat::Png && target_fmt == crate::profile::OutputFormat::Jpeg {
-        if let Some(flat) = flatten_alpha_to_white(&base_input, &out_dir).await? {
-            aux_file = Some(flat);
-            base_input = aux_file.clone().unwrap();
+        if png_has_alpha(&base_input) {
+            match flatten_alpha_to_white(&base_input, &out_dir).await {
+                Ok(Some(flat)) => {
+                    aux_file = Some(flat);
+                    base_input = aux_file.clone().unwrap();
+                }
+                _ => forced_encoder = Some(crate::engines::EngineKind::Sips),
+            }
         }
     }
 
-    let encoder = registry.pick(base_fmt, target_fmt)?;
+    // 调色板 PNG → PNG：强制无损引擎（oxipng），不做二次量化
+    if base_fmt == InputFormat::Png && target_fmt == crate::profile::OutputFormat::Png {
+        if png_png_engine_choice(png_color_type(&base_input)) == crate::engines::EngineKind::Oxipng {
+            forced_encoder = Some(crate::engines::EngineKind::Oxipng);
+        }
+    }
+
+    let encoder = match forced_encoder.and_then(|k| registry.encoder_of(k)) {
+        Some(e) => e,
+        None => registry.pick(base_fmt, target_fmt)?,
+    };
 
     // 预缩放（照片类）：maxWidth/maxHeight 且 mode != none → vipsthumbnail 中转
     let encode_input: PathBuf = match pre_scaled_copy(&base_input, base_fmt, profile, registry).await? {
@@ -388,6 +407,59 @@ async fn pre_scaled_copy(
     Ok(Some(tmp))
 }
 
+/// PNG 头部（tRNS/PLTE/IHDR 都在 IDAT 之前，读前 64KB 足够）
+fn png_head(path: &Path) -> Option<Vec<u8>> {
+    let mut head = Vec::new();
+    std::fs::File::open(path)
+        .ok()?
+        .take(64 * 1024)
+        .read_to_end(&mut head)
+        .ok()?;
+    if head.len() < 26 || &head[0..8] != [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A] {
+        return None;
+    }
+    Some(head)
+}
+
+/// PNG→PNG 用哪个引擎：已经是调色板（type 3）就别二次量化——pngquant 会因
+/// 「达不到最低质量」直接退出 99（实测），而且二次量化纯掉质量。改走 oxipng 无损。
+fn png_png_engine_choice(color_type: Option<u8>) -> crate::engines::EngineKind {
+    match color_type {
+        Some(3) => crate::engines::EngineKind::Oxipng,
+        _ => crate::engines::EngineKind::Mozjpeg, // 占位：非调色板仍由 registry 按 level 选
+    }
+}
+
+/// PNG IHDR 的 color type：0=灰度 2=RGB 3=调色板 4=灰度+alpha 6=RGBA
+fn png_color_type(path: &Path) -> Option<u8> {
+    png_head(path).map(|head| head[25])
+}
+
+/// PNG 是否真的带透明：color type 4/6 直接算；type 3（调色板）要看有没有 tRNS
+/// chunk（pngquant 无 alpha 的输出就是纯 type 3，对它做 flatten 会毁图）
+fn png_has_alpha(path: &Path) -> bool {
+    let Some(head) = png_head(path) else { return false };
+    let color_type = head[25];
+    if matches!(color_type, 4 | 6) {
+        return true;
+    }
+    if color_type != 3 {
+        return false;
+    }
+    let mut off = 8;
+    while off + 12 <= head.len() {
+        let len =
+            u32::from_be_bytes([head[off], head[off + 1], head[off + 2], head[off + 3]]) as usize;
+        match &head[off + 4..off + 8] {
+            b"tRNS" => return true,
+            b"IDAT" => return false, // tRNS 一定排在 IDAT 之前
+            _ => {}
+        }
+        off += 12 + len;
+    }
+    false
+}
+
 /// 用 vips 把 alpha 压平到白底（无损）；vips 不可用时返回 None，由调用方回落
 async fn flatten_alpha_to_white(input: &Path, dir: &Path) -> Result<Option<PathBuf>> {
     let Some(vips_cli) = crate::engines::EngineKind::Vips.sibling_binary("vips") else {
@@ -406,6 +478,12 @@ async fn flatten_alpha_to_white(input: &Path, dir: &Path) -> Result<Option<PathB
         ],
     };
     if run_plan(&plan).await.is_err() || !flat.exists() {
+        let _ = std::fs::remove_file(&flat);
+        return Ok(None);
+    }
+    // 结构校验（零成本）：flatten 产物必须是 RGB。libvips 对无 alpha 的调色板 PNG
+    // 会输出 graya 灰白图（实测毁图），这里当场判失败让调用方回落 sips。
+    if png_color_type(&flat) != Some(2) {
         let _ = std::fs::remove_file(&flat);
         return Ok(None);
     }
@@ -614,6 +692,64 @@ mod tests {
     use std::sync::Mutex;
 
     static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    /// 造一个只含 chunk 结构的假 PNG 头（解析只看结构，不校验 CRC）
+    fn fake_png(color_type: u8, with_trns: bool) -> Vec<u8> {
+        let mut out: Vec<u8> = vec![0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
+        // IHDR: width(4) height(4) bit_depth(1) color_type(1) compress(1) filter(1) interlace(1)
+        let mut ihdr = vec![0u8; 13];
+        ihdr[0..4].copy_from_slice(&[0, 0, 0, 2]); // width
+        ihdr[4..8].copy_from_slice(&[0, 0, 0, 2]); // height
+        ihdr[8] = 8; // bit depth
+        ihdr[9] = color_type;
+        out.extend_from_slice(&[0, 0, 0, 13]);
+        out.extend_from_slice(b"IHDR");
+        out.extend_from_slice(&ihdr);
+        out.extend_from_slice(&[0u8; 4]); // crc
+        if with_trns {
+            out.extend_from_slice(&[0, 0, 0, 2]);
+            out.extend_from_slice(b"tRNS");
+            out.extend_from_slice(&[255, 0]);
+            out.extend_from_slice(&[0u8; 4]);
+        }
+        out.extend_from_slice(&[0, 0, 0, 1]);
+        out.extend_from_slice(b"IDAT");
+        out.extend_from_slice(&[0]);
+        out.extend_from_slice(&[0u8; 4]);
+        out
+    }
+
+    fn write_fake(name: &str, bytes: &[u8]) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("yali-pnghdr-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join(name);
+        std::fs::write(&path, bytes).unwrap();
+        path
+    }
+
+    #[test]
+    fn pipeline_palette_png_chooses_lossless_engine() {
+        use crate::engines::EngineKind;
+        assert_eq!(png_png_engine_choice(Some(3)), EngineKind::Oxipng, "调色板 PNG 不该二次量化");
+        assert_eq!(png_png_engine_choice(Some(2)), EngineKind::Mozjpeg);
+        assert_eq!(png_png_engine_choice(Some(6)), EngineKind::Mozjpeg);
+        assert_eq!(png_png_engine_choice(None), EngineKind::Mozjpeg);
+    }
+
+    #[test]
+    fn pipeline_png_alpha_detection() {
+        // type 6 RGBA / type 4 灰度+alpha → 有透明
+        assert!(png_has_alpha(&write_fake("t6.png", &fake_png(6, false))));
+        assert!(png_has_alpha(&write_fake("t4.png", &fake_png(4, false))));
+        // type 3 调色板：有 tRNS 才算透明；没有就不该 flatten
+        assert!(png_has_alpha(&write_fake("t3trns.png", &fake_png(3, true))));
+        assert!(!png_has_alpha(&write_fake("t3.png", &fake_png(3, false))));
+        // type 2 RGB / type 0 灰度 → 无透明
+        assert!(!png_has_alpha(&write_fake("t2.png", &fake_png(2, false))));
+        assert!(!png_has_alpha(&write_fake("t0.png", &fake_png(0, false))));
+        assert_eq!(png_color_type(&write_fake("t2b.png", &fake_png(2, false))), Some(2));
+        assert_eq!(png_color_type(Path::new("/nonexistent.png")), None);
+    }
 
     #[test]
     fn pipeline_sniff_common_formats() {

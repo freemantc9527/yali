@@ -36,10 +36,14 @@ benchkit/bench.sh --update-baseline  # 有意的质量变更后重写基线
    ffmpeg 的 `ssim` 滤镜语义正确（同图=1.0），且在 jpeg/png/webp/gif/avif 上可直解。
 2. **含 alpha 的图先压平到白底再比**：直接比 RGBA 会把 alpha 通道差异计入，实测一个
    PSNR 51.8dB（视觉无损）的透明件 SSIM 只有 0.33，属伪影。
-3. **绝对质量门只对单代照片类生效**：平涂图形/动图的 SSIM 对边缘 ringing 极敏感
+3. **`vips flatten` 不能对无 alpha 的 PNG 调用**：会把 Type:Palette 图输出成 graya 灰白图
+   （实测 PSNR 0.6，整图报废）。管道改为先读 IHDR color type / tRNS，只有真带透明才压平。
+   `palette.png` 样张就是为这条而加。同理 pngquant 对已量化的调色板 PNG 会退出码 99
+   （达不到最低质量），管道强制这类输入走 oxipng 无损优化。
+4. **绝对质量门只对单代照片类生效**：平涂图形/动图的 SSIM 对边缘 ringing 极敏感
    （q75 webp 在透明图形上仅 0.86~0.92，而视觉与 PSNR 均正常）；HEIC 样张源本身有损、
    再编码属二代生成，绝对值无意义。这两类由 baseline 的 3% 漂移比守护。
-4. **HEIC 输入在管道内用 sips 解码**（不走 vips）：libvips 的 heif loader 会返回内嵌
+5. **HEIC 输入在管道内用 sips 解码**（不走 vips）：libvips 的 heif loader 会返回内嵌
    缩略图（1920×1280 只解出 128×85），管道另有输出尺寸守卫兜底。
 
 ## 基线策略

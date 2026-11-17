@@ -14,7 +14,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$ROOT/.." && pwd)"
 SAMPLES="$ROOT/samples"
-BASELINE="$ROOT/baseline.json"
+BASELINE=""  # 解析参数后按档位定为 baseline-<profile>.json
 YALI_BIN="${YALI_BIN:-$REPO/target/debug/yali}"
 
 PROFILE="default"
@@ -32,7 +32,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-SAMPLES_LIST=(photo.jpg ui.png anim.gif transparent.png photo_heic.heic)
+SAMPLES_LIST=(photo.jpg ui.png palette.png anim.gif transparent.png photo_heic.heic)
 for s in "${SAMPLES_LIST[@]}"; do
   [ -f "$SAMPLES/$s" ] || { echo "✗ 缺样张 benchkit/samples/$s（先跑 benchkit/generate.sh）"; exit 2; }
 done
@@ -112,7 +112,8 @@ ssim_between() {
   [[ "$v" =~ ^[0-9]*\.?[0-9]+$ ]] && echo "$v" || echo ""
 }
 
-echo "▸ bench：profile=$USED_PROFILE runs=$RUNS level=$LEVEL"
+BASELINE="$ROOT/baseline-$PROFILE.json"
+echo "▸ bench：profile=$USED_PROFILE runs=$RUNS level=$LEVEL baseline=$(basename "$BASELINE")"
 printf "%-18s %-10s %12s %12s %8s %8s %8s\n" "sample" "engine" "in" "out" "ratio" "ssim" "ms(med)"
 printf '%.0s─' {1..80}; echo
 

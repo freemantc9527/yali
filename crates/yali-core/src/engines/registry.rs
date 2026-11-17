@@ -229,14 +229,13 @@ impl Encoder for OxipngEncoder {
         input == InputFormat::Png && output == OutputFormat::Png
     }
     fn plan(&self, req: &EncodeRequest) -> Result<SubprocessPlan> {
+        // level 1-2 本来就是无损档；管道另有强制路由——已经是调色板的 PNG
+        // 走这里做无损优化（pngquant 二次量化会退出 99 且纯掉质量）
         let level = if req.lossless { 2 } else { need_level(req)? };
-        if !req.lossless && level >= 3 {
-            bail!("level {level} 属于有损档，应走 pngquant");
-        }
         Ok(SubprocessPlan {
             program: self.oxipng.clone(),
             args: vec![
-                "-o".into(), mapping::oxipng_optimization(level).to_string(),
+                "-o".into(), mapping::oxipng_optimization(level, req.lossless).to_string(),
                 "--strip".into(), "safe".into(),
                 "--out".into(), req.output.to_string_lossy().into(),
                 req.input.to_string_lossy().into(),

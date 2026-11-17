@@ -18,14 +18,20 @@ REPO="$(cd "$ROOT/.." && pwd)"
 TEMPLATE="$ROOT/templates/quick-action.template"
 SERVICES_DIR="$HOME/Library/Services"
 
-# 动作表：标题 | bundle id | yali 子命令参数
+# 全部支持的图片 UTI。Finder 在正常目录不做抽象类型（public.image）向上匹配，
+# 必须逐个列具体 UTI（实测：只写 public.image 时普通文件夹里不显示）
+ALL_TYPES="public.jpeg,public.png,com.compuserve.gif,org.webmproject.webp,public.avif,public.heic,public.heif,public.tiff,com.microsoft.bmp,public.jpeg-xl,public.svg-image"
+# 转 JPG 不声明 public.jpeg——JPEG 转 JPEG 是二次有损，右键里出现这条没意义
+JPG_TARGET_TYPES="public.png,com.compuserve.gif,org.webmproject.webp,public.avif,public.heic,public.heif,public.tiff,com.microsoft.bmp,public.jpeg-xl,public.svg-image"
+
+# 动作表：标题 | bundle id | yali 子命令参数 | NSSendFileTypes（逗号分隔）
 ACTIONS=(
-  "鸭梨 · 压一下|app.yali.quick-action.compress|compress \"\$@\" --profile default --quiet --notify"
-  "鸭梨 · 转 JPG|app.yali.quick-action.to-jpg|compress \"\$@\" --profile jpg --quiet --notify"
-  "鸭梨 · 压到 500K|app.yali.quick-action.shrink-500k|compress \"\$@\" --profile mail --quiet --notify"
+  "鸭梨 · 压一下|app.yali.quick-action.compress|compress \"\$@\" --profile default --quiet --notify|$ALL_TYPES"
+  "鸭梨 · 转 JPG|app.yali.quick-action.to-jpg|compress \"\$@\" --profile jpg --quiet --notify|$JPG_TARGET_TYPES"
 )
-# 历史遗留 bid（早期单动作版本），卸载与清理时一并处理
-LEGACY_BIDS=("app.yali.quick-action")
+# 历史遗留：早期单动作版 + 已下线的「压到 500K」，卸载与清理时一并处理
+LEGACY_BIDS=("app.yali.quick-action" "app.yali.quick-action.shrink-500k")
+LEGACY_TITLES=("鸭梨 · 压到 500K")
 
 flush_services() {
   /System/Library/CoreServices/pbs -flush 2>/dev/null || true
@@ -88,7 +94,7 @@ if [ "${1:-}" = "--uninstall" ]; then
   done
   # bundle 名里带「 · 」，按标题精确删
   for title in "${TITLES[@]}"; do rm -rf "$SERVICES_DIR/$title.workflow"; done
-  rm -rf "$SERVICES_DIR/鸭梨 · 压一下.workflow" # 早期单动作版本
+  for title in "${LEGACY_TITLES[@]}"; do rm -rf "$SERVICES_DIR/$title.workflow"; done
   pbs_edit remove "${BIDS[@]}" "${LEGACY_BIDS[@]}"
   flush_services
   echo "已卸载全部鸭梨右键动作"
@@ -114,25 +120,36 @@ BIN="$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")"
 # 动作依赖的档案必须存在（default/jpg/mail 都在出厂六档里）
 TMP_HOME="$(mktemp -d)"
 YALI_HOME="$TMP_HOME" "$BIN" profiles list >/dev/null
-for p in default jpg mail; do
+for p in default jpg; do
   YALI_HOME="$TMP_HOME" "$BIN" profiles show "$p" >/dev/null || {
     echo "✗ 出厂档案 '$p' 缺失，中止安装"; rm -rf "$TMP_HOME"; exit 1;
   }
 done
 rm -rf "$TMP_HOME"
 
+# 已下线的历史动作（如「压到 500K」）安装时一并清掉，避免菜单里留尸体
+for title in "${LEGACY_TITLES[@]}"; do
+  if [ -d "$SERVICES_DIR/$title.workflow" ]; then
+    rm -rf "$SERVICES_DIR/$title.workflow"
+    echo "↻ 已移除下线的历史动作：$title"
+  fi
+done
+
 BIDS_FOR_PBS=()
 for entry in "${ACTIONS[@]}"; do
-  IFS='|' read -r TITLE BID COMMAND <<< "$entry"
+  IFS='|' read -r TITLE BID COMMAND TYPES <<< "$entry"
   DEST="$SERVICES_DIR/$TITLE.workflow"
   rm -rf "$DEST"
   mkdir -p "$(dirname "$DEST")"
   cp -R "$TEMPLATE" "$DEST"
-  python3 - "$DEST" "$BIN" "$TITLE" "$BID" "$COMMAND" <<'PY'
+  python3 - "$DEST" "$BIN" "$TITLE" "$BID" "$COMMAND" "$TYPES" <<'PY'
 import os, sys
-dest, bin_path, title, bid, command = sys.argv[1:6]
+dest, bin_path, title, bid, command, types = sys.argv[1:7]
+send_types = "\n".join(
+    f"\t\t\t\t<string>{t.strip()}</string>" for t in types.split(",") if t.strip()
+)
 pairs = {
-    "Contents/Info.plist": {"__BID__": bid, "__TITLE__": title},
+    "Contents/Info.plist": {"__BID__": bid, "__TITLE__": title, "__SEND_TYPES__": send_types},
     "Contents/document.wflow": {"__YALI_BIN__": bin_path, "__COMMAND__": command},
 }
 for rel, subs in pairs.items():
@@ -160,8 +177,13 @@ pbs_edit register "${REGISTER_ARGS[@]}"
 flush_services
 echo
 echo "  yali 二进制：$BIN"
-echo "  动作：压一下（default）/ 转 JPG（jpg）/ 压到 500K（mail）"
+SUMMARY=""
+for entry in "${ACTIONS[@]}"; do
+  IFS='|' read -r TITLE _BID _CMD _TYPES <<< "$entry"
+  SUMMARY="${SUMMARY:+$SUMMARY / }${TITLE#鸭梨 · }"
+done
+echo "  动作：$SUMMARY"
 echo
-echo "人工验收：Finder 选中图片 → 右键 → 快速操作 → 三条鸭梨"
+echo "人工验收：Finder 选中图片 → 右键 → 快速操作 → ${#ACTIONS[@]} 条鸭梨（JPEG 文件上看不到「转 JPG」）"
 echo "  · 没出现就去 系统设置 → 键盘 → 键盘快捷键 → 服务 勾选"
 echo "  · 撤销：yali undo <目录>"

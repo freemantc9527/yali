@@ -54,6 +54,13 @@ magick -size 1000x1000 xc:none \
   -fill '#ffd166' -draw 'circle 760,300 760,210' \
   "$OUT/transparent.png"
 
+echo "▸ 调色板 PNG 类：pngquant 产出的 Type:Palette（无 alpha，照片尺寸）"
+# 这类文件是 libvips flatten 的雷区（无 alpha 还 flatten 会输出 graya 灰白图），
+# 必须有样张守着「PNG → JPG」路径
+# pngquant 只吃 PNG，先无损转一层中间图
+magick "$OUT/photo.jpg" "$TMP/photo-src.png"
+pngquant --quality 60-90 --speed 1 --force --output "$OUT/palette.png" "$TMP/photo-src.png"
+
 echo "▸ HEIC 类：sips 编自照片样张（macOS 硬编）"
 sips -s format heic "$OUT/photo.jpg" --out "$OUT/photo_heic.heic" >/dev/null
 
