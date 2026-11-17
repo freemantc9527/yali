@@ -379,20 +379,16 @@ impl Encoder for VipsEncoder {
             bail!("vips 兜底转换不支持无损档（无损组合请用专用引擎）");
         }
         let q = mapping::webp_quality(need_level(req)?);
-        let ext = match req.output_fmt {
-            OutputFormat::Jpeg => "jpg",
-            OutputFormat::Png => "png",
-            OutputFormat::Webp => "webp",
-            OutputFormat::Avif => "avif",
-            OutputFormat::Heic => "heic",
-            OutputFormat::Jxl => "jxl",
+        // vipsthumbnail 按 req.output 的扩展名定目标格式（管道保证临时名带正确扩展），
+        // 质量用文件名选项语法 out.jpg[Q=80]。不得另起文件名——管道按 req.output 取产物。
+        let _ = match req.output_fmt {
+            OutputFormat::Jpeg | OutputFormat::Png | OutputFormat::Webp | OutputFormat::Avif
+            | OutputFormat::Heic | OutputFormat::Jxl => (),
             OutputFormat::Auto | OutputFormat::Gif | OutputFormat::Svg => {
                 bail!("vips 兜底不处理 {:?}/{:?}", req.input_fmt, req.output_fmt)
             }
         };
-        // vipsthumbnail 按输出扩展名定目标格式；质量用文件名选项语法 out.jpg[Q=80]
-        let out_path = req.output.with_extension(ext);
-        let out = format!("{}[Q={q}]", out_path.to_string_lossy());
+        let out = format!("{}[Q={q}]", req.output.to_string_lossy());
         Ok(SubprocessPlan {
             program: self.vips.clone(),
             args: vec![req.input.to_string_lossy().into(), "-o".into(), out],

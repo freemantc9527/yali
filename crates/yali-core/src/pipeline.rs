@@ -137,15 +137,30 @@ pub async fn compress_file(
         target_fmt
     };
 
-    let encoder = registry.pick(input_fmt, target_fmt)?;
-
     // 输出落点：sibling 目录 + 后缀模板（其他 dir 策略 M1 GUI 落地）
     let out_path = final_path(input, profile, target_fmt)?;
+    let out_dir = out_path.parent().unwrap_or(Path::new(".")).to_path_buf();
+
+    // 容器解码：HEIC/AVIF/JXL → 其他格式时先用 sips（macOS 原生）解成 PNG。
+    // 不能走 vips：libvips 的 heif loader 会拿到内嵌缩略图（实测 1920×1280 只解出
+    // 128×85），属数据损坏级问题。
+    let mut decoded: Option<PathBuf> = None;
+    let (mut base_input, mut base_fmt) = (input.to_path_buf(), input_fmt);
+    if matches!(input_fmt, InputFormat::Heic | InputFormat::Avif | InputFormat::Jxl)
+        && target_fmt != Registry::auto_of(input_fmt)
+    {
+        let png = decode_to_png_via_sips(input, &out_dir, registry).await?;
+        base_input = png.clone();
+        base_fmt = InputFormat::Png;
+        decoded = Some(png);
+    }
+
+    let encoder = registry.pick(base_fmt, target_fmt)?;
 
     // 预缩放（照片类）：maxWidth/maxHeight 且 mode != none → vipsthumbnail 中转
-    let encode_input: PathBuf = match pre_scaled_copy(input, input_fmt, profile, registry).await? {
+    let encode_input: PathBuf = match pre_scaled_copy(&base_input, base_fmt, profile, registry).await? {
         Some(tmp) => tmp,
-        None => input.to_path_buf(),
+        None => base_input.clone(),
     };
 
     // 编码：level 档单次；targetBytes 走 ≤5 轮 level 二分（收敛 [target-10KB, target]，
@@ -155,14 +170,18 @@ pub async fn compress_file(
         let plan = encoder.plan(&EncodeRequest {
             input: encode_input.clone(),
             output: tmp.clone(),
-            input_fmt,
+            input_fmt: base_fmt,
             output_fmt: target_fmt,
             level,
             lossless,
         });
+        let cleanup = tmp.clone();
         async move {
             let plan = plan?;
-            run_plan(&plan).await?;
+            if let Err(e) = run_plan(&plan).await {
+                let _ = std::fs::remove_file(&cleanup); // 失败不残留临时文件
+                return Err(e);
+            }
             Ok::<(), anyhow::Error>(())
         }
     };
@@ -218,6 +237,17 @@ pub async fn compress_file(
     }
     let output_size = std::fs::metadata(&tmp)?.len();
 
+    // 尺寸守卫：编码器悄悄降采样（如 vips 解码容器只拿到缩略图）必须当场拦下
+    if let (Some((iw, ih)), Some((ow, oh))) = (probe_dims(&encode_input).await, probe_dims(&tmp).await) {
+        if (iw, ih) != (ow, oh) {
+            let _ = std::fs::remove_file(&tmp);
+            bail!(
+                "输出尺寸异常：{}×{} → {}×{}（编码器疑似降采样，已拒绝落盘）",
+                iw, ih, ow, oh
+            );
+        }
+    }
+
     // 负优化拦截：同格式且输出 ≥ 输入 → 不落盘（DESIGN §3）
     let same_format = target_fmt == Registry::auto_of(input_fmt);
     let mut status = "done";
@@ -226,9 +256,14 @@ pub async fn compress_file(
         status = "larger_output";
     }
 
-    // 清理预缩放中转
+    // 清理中转（预缩放 PNG / 容器解码 PNG）
     if encode_input != input {
         let _ = std::fs::remove_file(&encode_input);
+    }
+    if let Some(png) = decoded {
+        if png != encode_input {
+            let _ = std::fs::remove_file(&png);
+        }
     }
 
     let mut report_output: Option<PathBuf> = None;
@@ -314,6 +349,61 @@ async fn pre_scaled_copy(
     Ok(Some(tmp))
 }
 
+/// 容器解码：sips 把 HEIC/AVIF/JXL 解成 PNG（macOS 原生全分辨率解码）。
+/// 不用 vips：libvips heif loader 会返回内嵌缩略图（128×85 事故，已入库坑账本）。
+async fn decode_to_png_via_sips(
+    input: &Path,
+    dir: &Path,
+    registry: &Registry,
+) -> Result<PathBuf> {
+    let sips = registry
+        .path_of(crate::engines::EngineKind::Sips)
+        .unwrap_or_else(|| PathBuf::from("/usr/bin/sips"));
+    let stem = input
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("img");
+    let png = dir.join(format!("{stem}.yali-{}.decode.png", std::process::id()));
+    let plan = crate::engines::registry::SubprocessPlan {
+        program: sips,
+        args: vec![
+            "-s".into(),
+            "format".into(),
+            "png".into(),
+            input.to_string_lossy().into(),
+            "--out".into(),
+            png.to_string_lossy().into(),
+        ],
+    };
+    run_plan(&plan).await?;
+    if !png.exists() {
+        bail!("sips 容器解码失败: {}", input.display());
+    }
+    Ok(png)
+}
+
+/// 像素尺寸探测（sips -g；失败返回 None，尺寸守卫降级为跳过）
+async fn probe_dims(path: &Path) -> Option<(u32, u32)> {
+    let out = tokio::process::Command::new("sips")
+        .args(["-g", "pixelWidth", "-g", "pixelHeight"])
+        .arg(path)
+        .output()
+        .await
+        .ok()?;
+    let text = String::from_utf8_lossy(&out.stdout);
+    let mut w = None;
+    let mut h = None;
+    for line in text.lines() {
+        if let Some(v) = line.trim().strip_prefix("pixelWidth:") {
+            w = v.trim().parse().ok();
+        }
+        if let Some(v) = line.trim().strip_prefix("pixelHeight:") {
+            h = v.trim().parse().ok();
+        }
+    }
+    Some((w?, h?))
+}
+
 /// 最终输出路径：sibling + 后缀模板（{profile}/{date}/{size}）
 fn final_path(input: &Path, profile: &Profile, target_fmt: crate::profile::OutputFormat) -> Result<PathBuf> {
     let dir = input.parent().unwrap_or(Path::new("."));
@@ -380,14 +470,17 @@ fn civil_from_days(day_index: i64) -> (i64, u32, u32) {
     (year, (month + 1) as u32, (days + 1) as u32)
 }
 
-/// 同目录临时文件名（保 rename 原子性）
+/// 同目录临时文件名（保 rename 原子性）。
+/// 注意两点引擎约束：①vipsthumbnail 不认 dotfile 输出路径，故不用隐藏名；
+/// ②vipsthumbnail 按扩展名推断输出格式，故保留目标扩展名在末尾。
 fn temp_sibling(target: &Path) -> PathBuf {
     let pid = std::process::id();
-    let name = target
-        .file_name()
+    let stem = target
+        .file_stem()
         .and_then(|s| s.to_str())
-        .unwrap_or("out.tmp");
-    target.with_file_name(format!(".yali-{pid}-{name}.tmp"))
+        .unwrap_or("out");
+    let ext = target.extension().and_then(|s| s.to_str()).unwrap_or("bin");
+    target.with_file_name(format!("{stem}.yali-{pid}.tmp.{ext}"))
 }
 
 #[cfg(test)]
