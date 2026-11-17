@@ -1,7 +1,7 @@
 # STATE · 项目状态接力（跨 session 冷启动先读本文件）
 
 > 更新规则：每张任务卡完成时更新；本文件是 Agent 的「记忆外置盘」，只保留**当前真相**，
-> 历史细节进 `docs/tasks/` 卡片与 git log。最后更新：2026-11-17 16:25（M2 开工：T-013 真 .app + open-file、T-014 settings）。
+> 历史细节进 `docs/tasks/` 卡片与 git log。最后更新：2026-11-17 16:36（M2：T-013/T-014/T-015 落地）。
 
 ## 0. 冷启动清单（新会话第一件事）
 
@@ -25,7 +25,7 @@ env -u CI cargo tauri build --bundles app && ./scripts/bundle-check.sh   # 整�
 | M0 内核+CLI | ✅ | 出口四条全过（见下表） |
 | M0.5 右键闭环 | 🔶 | 自动部分完成并实测；**Finder 菜单人工复核待办** |
 | M1 GUI | 🔶 | 五卡落地 + open-file（T-013）；**真机拖拽/滑杆/内存峰值/「打开方式」待复核** |
-| M2 入口全量 | 🔶 | T-013/T-014 落地；余下 剪贴板/watch/托盘/队列库/统计页 5 卡 |
+| M2 入口全量 | 🔶 | T-013/T-014/T-015 落地；余下 剪贴板/watch/队列库/统计页 4 卡 |
 
 ### M0 出口核验（2026-11-17 收口，全部通过）
 
@@ -51,12 +51,13 @@ env -u CI cargo tauri build --bundles app && ./scripts/bundle-check.sh   # 整�
 | T-012 | 右键动作取舍 | 两条动作（压一下 / 转 JPG）、逐动作 UTI 声明、出厂档 `jpg`、`.seed` 补种 |
 | T-013 | 真 .app + open-file 入队 | bundle.active + 精确 UTI（Info.plist 覆盖）+ `RunEvent::Opened` + 冷启动缓冲 + capabilities（事件监听修复） |
 | T-014 | 应用设置 settings.json | 入口开关/ watch 目录/防抖，语法坏→备份回落、字段错→报错，CLI `settings show/path/reset` |
+| T-015 | 菜单栏托盘 + 关窗常驻 | `tray-icon` feature、`RuntimeSettings` 即时生效、关闭按钮 → 窗口 0 进程仍在（自动验证） |
 
 ## 3. 待人工复核（Agent 无法自验，`manual-check`）
 
 - [x] Finder 右键「快速操作」里有且仅有两条鸭梨；**JPEG 文件上看不到「转 JPG」**（用户核验 2026-11-17）
 - [x] 多选只弹**一条**聚合通知，文案含「N 张省了 X」（用户核验 2026-11-17）
-- [ ] Finder「打开方式」里出现 Yali；Dock 拖到图标上能入队（T-013，UTI 已由脚本验证）
+- [x] Finder「打开方式」里出现 Yali；Dock 拖到图标上能入队（用户核验 2026-11-17）
 - [ ] 真机 `cargo tauri dev`：拖入 → 任务行 → 结果 → 对比滑杆手感
 - [ ] 10 图批处理内存峰值 < 300MB（Instruments 抽验，DESIGN §8）
 - [ ] 产物在微信 / 浏览器 / Preview 显示抽验（每里程碑一次）
@@ -71,6 +72,7 @@ env -u CI cargo tauri build --bundles app && ./scripts/bundle-check.sh   # 整�
    T-018 失败件队列库（SQLite 断点续）→ T-019 统计页（metrics.sqlite）
    - 新增依赖要用户批：`tauri/tray-icon`、`arboard`、`notify`、`rusqlite`
 3. M2 出口验收：20 图右键 → 通知 p50 < 8s（CLI 可先跑基线）
+   - 托盘菜单展开/唤回窗口属人工（AX 点 status item 拿不到菜单层级）
 4. 技术债（有卡再做）：`helpers/` vision helper、`crates/yali-integration`、
    M3 标定表 `calibration.json`（替换 level→参数 v1 公式）
 
@@ -126,6 +128,8 @@ env -u CI cargo tauri build --bundles app && ./scripts/bundle-check.sh   # 整�
 - `bundle.macOS.infoPlist` 路径按 **src-tauri** 解析（写 `Info.plist`）；顶层键**整键覆盖** bundler 结果
 - tauri-bundler 对不认识的扩展名（avif/jxl）会兜底塞抽象 `public.image` → 会把「打开方式」
   扩大到所有图片格式；用 `src-tauri/Info.plist` 覆盖，`scripts/bundle-check.sh` 守漂移
+- 托盘验收技巧：`System Events` 里第三方状态项是 `menu bar 2` 的 `status menu`；
+  关窗常驻可用 AX 点 `AXCloseButton` + `pgrep` 自动验证（T-015 已用）
 - `tauri::generate_context!` **编译期**要求 `src-tauri/icons/icon.png` 存在
 - 图标必须是 RGBA8：gray+alpha 会让应用启动 panic「pixel count mismatch」
 - **debug 不校验 `frontendDist`、release 校验**（缺失 panic）：`src-tauri/build.rs` 已兜占位页；

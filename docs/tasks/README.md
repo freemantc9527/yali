@@ -18,6 +18,7 @@
 | [T-012-quick-action-set.md](T-012-quick-action-set.md) | ✅ 完成（2026-11-17，manual 待复核） | 右键动作取舍（两条）+ 出厂档 jpg | automator 实测；PNG→JPG 调色板/透明两条路径正确；bench default/jpg 双基线 |
 | [T-013-app-bundle-open-file.md](T-013-app-bundle-open-file.md) | ✅ 完成（2026-11-17，manual 待复核） | 真 .app + CFBundleDocumentTypes + open-file 入队 | `cargo tauri build` 出 Yali.app；`bundle-check.sh` 10 类 UTI 无抽象类型；`open -a` 冷启动/运行中/多文件均自动压出产物 |
 | [T-014-settings-store.md](T-014-settings-store.md) | ✅ 完成（2026-11-17） | 应用设置 settings.json + CLI + Tauri commands | settings 11 测；语法坏→备份回落、字段拼错→报错、未来版本→拒绝；CLI show/path/reset 实测 |
+| [T-015-tray.md](T-015-tray.md) | ✅ 完成（2026-11-17，manual 待复核） | 菜单栏托盘 + 关窗常驻 | 6 passed；status menu 存在；AX 点关闭按钮后窗口 0/进程在 |
 
 T-002 落地物：`schema/profile.schema.json`（文档事实源）、`fixtures/`（出厂档，现为六档）、`crates/yali-core/src/{profile,store}.rs`。
 

@@ -90,7 +90,7 @@ camelCase + `deny_unknown_fields`，缺字段回落默认（入口默认全关�
 | 拖 Dock / 打开方式 | CFBundleDocumentTypes（具体 UTI，rank=Alternate）+ `RunEvent::Opened` + 冷启动缓冲 | ✅ T-013 |
 | 剪贴板监听 | arboard changeCount，菜单栏开关 | M2 |
 | watch 文件夹 | notify crate（FSEvents），(path,mtime,size) 去重 | M2 |
-| 菜单栏托盘拖入 | Tauri tray；file-drop 需 AppKit helper 补充 | M2 可选 |
+| 菜单栏托盘 | Tauri tray（T-015 ✅：关窗常驻/唤回）；托盘**拖入**仍需 AppKit helper | 托盘已落，拖入待补 |
 | NSServices 子菜单 | objc2 胶水 + Info.plist | M2 评估 |
 | CLI | `yali compress/convert/lossless/undo/profiles/doctor` | M0 |
 
@@ -156,7 +156,7 @@ pub async fn compress(file: &Path, profile: &Profile) -> Result<CompressResult>;
 | M0 内核+CLI | schema+fixtures+core+CLI+benchkit | ✅ 已过：合成集达标 / p50=119ms / undo 逐字节还原 / 48 测试绿 |
 | M0.5 右键闭环 | install-workflows + 聚合通知 | 🔶 自动部分实测通过；Finder 菜单人工复核待办 |
 | M1 GUI | Tauri 壳+React 全界面+open-file | 🔶 五卡落地（编辑/目录/队列/对比/管理器）+ open-file（T-013）；真机拖入/「打开方式」/内存峰值待复核 |
-| M2 入口全量 | 剪贴板/watch/tray/失败队列/统计 | 🔶 T-013/T-014 落地；出口指标：20 图右键→通知 p50<8s |
+| M2 入口全量 | 剪贴板/watch/tray/失败队列/统计 | 🔶 T-013/T-014/T-015 落地；出口指标：20 图右键→通知 p50<8s |
 | M3 智能 | 分类路由+标定表+Vision helper+全格式 | 截图路由正确率>95%；抠图<2s |
 | M4 发布 | GitHub Release+brew tap+updater | 新机 brew install 到右键出结果<3min |
 

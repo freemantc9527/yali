@@ -2,13 +2,35 @@
 
 use std::path::Path;
 
+use tauri::Manager;
 use yali_core::engines::registry::Registry;
 use yali_core::pipeline::{compress_file, CompressReport};
 use yali_core::profile::Profile;
 use yali_core::ProfileStore;
 
+mod tray;
+
 fn err(e: anyhow::Error) -> String {
     format!("{e:#}")
+}
+
+/// 运行期设置快照（托盘可见性/关窗行为要即时读，不走磁盘 IO）
+struct RuntimeSettings(std::sync::RwLock<yali_core::Settings>);
+
+impl RuntimeSettings {
+    fn tray_enabled(&self) -> bool {
+        self.0
+            .read()
+            .map(|s| s.tray.enabled)
+            .unwrap_or_else(|e| e.into_inner().tray.enabled)
+    }
+
+    fn replace(&self, settings: &yali_core::Settings) {
+        match self.0.write() {
+            Ok(mut guard) => *guard = settings.clone(),
+            Err(poisoned) => *poisoned.into_inner() = settings.clone(),
+        }
+    }
 }
 
 /// T-013：LaunchServices 可能投递的图片扩展名（与 tauri.conf 的 fileAssociations 对齐）
@@ -92,10 +114,17 @@ async fn settings_show() -> Result<yali_core::Settings, String> {
 }
 
 #[tauri::command]
-async fn settings_save(settings: yali_core::Settings) -> Result<(), String> {
+async fn settings_save(
+    app: tauri::AppHandle,
+    settings: yali_core::Settings,
+) -> Result<(), String> {
     settings.validate().map_err(err)?;
     let store = yali_core::SettingsStore::open().map_err(err)?;
-    store.save(&settings).map_err(err)
+    store.save(&settings).map_err(err)?;
+    if let Some(state) = app.try_state::<RuntimeSettings>() {
+        state.replace(&settings);
+    }
+    tray::apply(&app, settings.tray.enabled).map_err(|e| e.to_string())
 }
 
 /// 逐文件进度事件（结果权威仍是 command 返回值；事件丢了不影响正确性）
@@ -182,6 +211,26 @@ async fn compress(
 pub fn run() {
     let app = tauri::Builder::default()
         .manage(PendingOpenFiles::default())
+        .setup(|app| {
+            let settings = yali_core::SettingsStore::open()
+                .and_then(|store| store.load())
+                .unwrap_or_default();
+            app.manage(RuntimeSettings(std::sync::RwLock::new(settings.clone())));
+            tray::apply(app.handle(), settings.tray.enabled)?;
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let enabled = window
+                    .try_state::<RuntimeSettings>()
+                    .map(|state| state.tray_enabled())
+                    .unwrap_or(false);
+                if tray::close_action(enabled) == tray::CloseAction::Hide {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             core_version,
             profiles_list,
@@ -308,12 +357,16 @@ mod tests {
         edited_settings.watch.enabled = true;
         edited_settings.watch.dirs =
             vec![home.join("watch").to_string_lossy().into_owned()];
-        settings_save(edited_settings.clone()).await.unwrap();
+        // settings_save 需要 AppHandle（托盘联动），测试里直接打内核 store
+        yali_core::SettingsStore::open()
+            .unwrap()
+            .save(&edited_settings)
+            .unwrap();
         assert_eq!(settings_show().await.unwrap(), edited_settings);
 
         let mut bad_settings = settings.clone();
         bad_settings.schema_version = 99;
-        assert!(settings_save(bad_settings).await.is_err(), "未来版本号必须被拒");
+        assert!(bad_settings.validate().is_err(), "未来版本号必须被拒");
         assert_eq!(settings_show().await.unwrap(), edited_settings, "非法保存不应落盘");
 
         // 用 benchkit 合成样张跑真实压缩（仓库内已入库，不依赖个人素材）

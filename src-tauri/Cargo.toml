@@ -11,7 +11,7 @@ description = "鸭梨 GUI 壳（Tauri 2）"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["protocol-asset"] }
+tauri = { version = "2", features = ["protocol-asset", "tray-icon"] }
 yali-core = { path = "../crates/yali-core" }
 serde.workspace = true
 serde_json.workspace = true
