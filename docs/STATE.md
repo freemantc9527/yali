@@ -1,6 +1,6 @@
 # STATE · 项目状态接力（跨 session 冷启动先读本文件）
 
-> 更新规则：每张任务卡完成时更新；本文件是 Agent 的"记忆外置盘"。最后更新：2026-11-17（T-010 完成 · M1 卡全部落地，人工验收待复核）。
+> 更新规则：每张任务卡完成时更新；本文件是 Agent 的"记忆外置盘"。最后更新：2026-11-17（T-012 右键三件套 · M1 卡全部落地）。
 
 ## 当前阶段：M1 GUI（五张卡全部落地；人工验收项待复核）
 
@@ -25,6 +25,7 @@
 - [x] **T-009 任务队列与进度事件（2026-11-17）**：Tauri compress 改并发（Semaphore，min(cores-1,4)）并逐文件发 `yali://progress`（started/done/failed + index/total）；UI 用纯 reducer（applyProgress/reconcile，乱序安全、事件丢失兜底）；浏览器实测 3 文件逐行更新；cargo 42 + ui 37 全绿
 - [x] **T-011 Profile 管理器（2026-11-17）**：另存为（档名规则与内核 path_for 对齐）/ 导出到剪贴板 / 粘贴导入（内核 validate 兜底）；bridge 降级态改成内存档案表（浏览器里另存/导入列表真实变化）；浏览器实测另存后下拉出现 my-web、非法 JSON 报解析错误
 - [x] **T-010 对比查看器（2026-11-17）**：`yali-core/metrics.rs`（ffmpeg ssim，与 benchkit 同口径；HEIC 走 sips 中转）+ Tauri `ssim` command + asset protocol（protocol-asset feature）；Viewer 组件滑杆/SSIM 标注，任务行点击打开；浏览器降级明确提示读不了本地路径
+- [x] **T-012 右键动作三件套（2026-11-17）**：模板参数化 + 安装脚本循环生成三条（压一下/转 JPG/压到 500K），快速操作里鸭梨固定 ≤3；新增出厂档 `jpg`（六档，`.seed` 签名补种机制）；顺带修两个质量 bug（RGBA→JPG 黑底、vipsthumbnail 默认 128×128）
 - [x] `docs/tasks/` 任务卡目录（T-002 起）
 - [x] benchkit/ 合成金样素材生成脚本（T-004）
 
@@ -58,6 +59,11 @@
 - **debug 与 release 对 `frontendDist` 的校验不同**：debug 因 `dev_url` 有值直接短路，release/codegen 会 panic「frontendDist doesn't exist」。`ui/dist` 是构建产物不入库 → 已由 `src-tauri/build.rs` 兜占位页；验证仓库可复现性时必须跑 `--release`
 - gh 2.104 无 `-g` 短参；`gh repo create` 远端新建用 `--add-readme --license --clone` 组合
 - 迁移后 `target/` 缓存带着旧绝对路径，指纹脏；换路径后建议 `cargo clean` 重建一次
+- **cjpeg 与 libvips 都把 RGBA PNG 的 alpha 合成到黑底**（实测 PSNR 2.2dB）：PNG→JPEG 必须先
+  `vips flatten --background 65535` 无损压平到白底（libvips background 是 16 位标度，255 无效）；
+  sips 直出虽正确但体积大 2.6 倍，只作回落
+- **vipsthumbnail 不带 `--size` 时默认输出 128×128**（GIF→JPG 被缩成 128×96）：兜底转换必须用
+  `vips copy`；这条是尺寸守卫第一次在真实用例上拦住数据损坏
 - **vipsthumbnail 不认 dotfile 输出路径**（`-o .foo.png` 会把图片写进 stdout，退出码还是 0）——预缩放中转必须用非隐藏文件名，且跑完校验文件存在
 - **`defaults write pbs FinderOrdering -dict-add k 7` 写出来是字符串**（同表其他值是 int）
   → Finder 解析排序表失败，「快速操作」整栏消失。改 `defaults export/import` + plistlib 保类型

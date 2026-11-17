@@ -15,6 +15,7 @@ describe("bridge 浏览器降级", () => {
     expect(await profilesList()).toEqual([
       "archive",
       "default",
+      "jpg",
       "mail",
       "screenshot",
       "web",

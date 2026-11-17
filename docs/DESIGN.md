@@ -68,7 +68,7 @@ macOS 原生图片处理入口：**右键 0.5 秒发起、后台静默完成；�
 
 | 通道 | 技术 | 阶段 |
 |---|---|---|
-| Finder 快速操作 | 用户级 `.workflow`（文本模板生成，Run Actions 节点调 `yali` CLI） | **M0.5 主通道** |
+| Finder 快速操作 | 用户级 `.workflow` ×3（压一下 / 转 JPG / 压到 500K，Run Shell Script 调 `yali` CLI） | **M0.5 主通道**（右键永不询问：选格式=多条预设，精调归 GUI） |
 | 拖 Dock / 打开方式 | CFBundleDocumentTypes + open-file 事件 | M1 |
 | 剪贴板监听 | arboard changeCount，菜单栏开关 | M2 |
 | watch 文件夹 | notify crate（FSEvents），(path,mtime,size) 去重 | M2 |

@@ -160,6 +160,18 @@ pub async fn compress_file(
         decoded = Some(png);
     }
 
+    // PNG → JPEG：先把 alpha 无损压平到白底再交给 mozjpeg。
+    // 原因：cjpeg 与 libvips 直吃 RGBA 都合成到**黑底**（本机实测 PSNR 2.2dB），
+    // 而 sips 直出虽正确但体积比 mozjpeg 大 2.6 倍；分享截图既要白底又要小。
+    // libvips flatten 的 background 用 16 位标度，65535 才是白。
+    let mut aux_file: Option<PathBuf> = None;
+    if base_fmt == InputFormat::Png && target_fmt == crate::profile::OutputFormat::Jpeg {
+        if let Some(flat) = flatten_alpha_to_white(&base_input, &out_dir).await? {
+            aux_file = Some(flat);
+            base_input = aux_file.clone().unwrap();
+        }
+    }
+
     let encoder = registry.pick(base_fmt, target_fmt)?;
 
     // 预缩放（照片类）：maxWidth/maxHeight 且 mode != none → vipsthumbnail 中转
@@ -278,7 +290,10 @@ pub async fn compress_file(
         status = "larger_output";
     }
 
-    // 清理中转（预缩放 PNG / 容器解码 PNG）
+    // 清理中转（压平 PNG / 预缩放 PNG / 容器解码 PNG）
+    if let Some(flat) = aux_file {
+        let _ = std::fs::remove_file(&flat);
+    }
     if encode_input != input {
         let _ = std::fs::remove_file(&encode_input);
     }
@@ -371,6 +386,30 @@ async fn pre_scaled_copy(
         bail!("vips 预缩放未产出文件（vipsthumbnail 行为异常）");
     }
     Ok(Some(tmp))
+}
+
+/// 用 vips 把 alpha 压平到白底（无损）；vips 不可用时返回 None，由调用方回落
+async fn flatten_alpha_to_white(input: &Path, dir: &Path) -> Result<Option<PathBuf>> {
+    let Some(vips_cli) = crate::engines::EngineKind::Vips.sibling_binary("vips") else {
+        return Ok(None);
+    };
+    let stem = input.file_stem().and_then(|s| s.to_str()).unwrap_or("img");
+    let flat = dir.join(format!("{stem}.yali-{}.flat.png", std::process::id()));
+    let plan = crate::engines::registry::SubprocessPlan {
+        program: vips_cli,
+        args: vec![
+            "flatten".into(),
+            input.to_string_lossy().into(),
+            flat.to_string_lossy().into(),
+            "--background".into(),
+            "65535".into(),
+        ],
+    };
+    if run_plan(&plan).await.is_err() || !flat.exists() {
+        let _ = std::fs::remove_file(&flat);
+        return Ok(None);
+    }
+    Ok(Some(flat))
 }
 
 /// 容器解码：sips 把 HEIC/AVIF/JXL 解成 PNG（macOS 原生全分辨率解码）。

@@ -60,7 +60,7 @@
 				<dict>
 					<key>COMMAND_STRING</key>
 					<string>export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
-exec "__YALI_BIN__" compress "$@" --quiet --notify</string>
+exec "__YALI_BIN__" __COMMAND__</string>
 					<key>CheckedForUserDefaultShell</key>
 					<true/>
 					<key>inputMethod</key>

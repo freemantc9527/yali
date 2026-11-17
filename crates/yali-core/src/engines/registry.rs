@@ -339,17 +339,24 @@ impl Encoder for SipsEncoder {
         EngineKind::Sips
     }
     fn supports(&self, input: InputFormat, output: OutputFormat) -> bool {
-        output == OutputFormat::Heic && matches!(input, InputFormat::Jpeg | InputFormat::Png | InputFormat::Tiff | InputFormat::Heic)
+        // JPEG 输出仅在「PNG 带 alpha」时由管道指名走这里（见 pipeline::png_has_alpha）
+        let targets_ok = matches!(output, OutputFormat::Heic)
+            || (output == OutputFormat::Jpeg && input == InputFormat::Png);
+        targets_ok && matches!(input, InputFormat::Jpeg | InputFormat::Png | InputFormat::Tiff | InputFormat::Heic)
     }
     fn plan(&self, req: &EncodeRequest) -> Result<SubprocessPlan> {
         if req.lossless {
             bail!("HEIC 无损未定义（M3 任务）");
         }
-        let q = mapping::webp_quality(need_level(req)?);
+        let (fmt, q) = if req.output_fmt == OutputFormat::Jpeg {
+            ("jpeg", mapping::jpeg_quality(need_level(req)?))
+        } else {
+            ("heic", mapping::webp_quality(need_level(req)?))
+        };
         Ok(SubprocessPlan {
             program: self.sips.clone(),
             args: vec![
-                "-s".into(), "format".into(), "heic".into(),
+                "-s".into(), "format".into(), fmt.into(),
                 "-s".into(), "formatOptions".into(), q.to_string(),
                 req.input.to_string_lossy().into(),
                 "--out".into(), req.output.to_string_lossy().into(),
@@ -358,7 +365,9 @@ impl Encoder for SipsEncoder {
     }
 }
 
-/// vipsthumbnail：兜底转换器（不直接吃 SVG/不认识的组合先转 PNG）+ 预缩放
+/// vips 兜底转换器：用 `vips copy`（全尺寸，只换容器/质量）。
+/// 不能用 vipsthumbnail——它不带 --size 时默认输出 128×128（实测把 480×360 的 GIF
+/// 缩成 128×96，被尺寸守卫拦下）。预缩放另有专门路径，显式传 --size。
 struct VipsEncoder {
     vips: PathBuf,
 }
@@ -391,7 +400,7 @@ impl Encoder for VipsEncoder {
         let out = format!("{}[Q={q}]", req.output.to_string_lossy());
         Ok(SubprocessPlan {
             program: self.vips.clone(),
-            args: vec![req.input.to_string_lossy().into(), "-o".into(), out],
+            args: vec!["copy".into(), req.input.to_string_lossy().into(), out],
         })
     }
 }
@@ -455,7 +464,8 @@ impl Registry {
         if let Some(sips) = path_of(EngineKind::Sips) {
             encoders.push(Box::new(SipsEncoder { sips }));
         }
-        if let Some(vips) = path_of(EngineKind::Vips) {
+        // 兜底转换用 vips 主 CLI（copy），预缩放仍用 vipsthumbnail（显式 --size）
+        if let Some(vips) = EngineKind::Vips.sibling_binary("vips") {
             encoders.push(Box::new(VipsEncoder { vips }));
         }
         // vips 兜底必须排最后：专用引擎优先
@@ -489,6 +499,14 @@ impl Registry {
             InputFormat::Heic => OutputFormat::Heic,
             InputFormat::Jxl => OutputFormat::Jxl,
         }
+    }
+
+    /// 指名某类编码器（RGBA PNG → JPEG 必须走 sips 白底合成，不能交给 cjpeg/vips）
+    pub fn encoder_of(&self, kind: EngineKind) -> Option<&dyn Encoder> {
+        self.encoders
+            .iter()
+            .find(|e| e.kind() == kind)
+            .map(|e| e.as_ref())
     }
 
     pub fn path_of(&self, kind: EngineKind) -> Option<PathBuf> {

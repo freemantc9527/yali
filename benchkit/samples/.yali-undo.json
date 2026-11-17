@@ -3,6 +3,10 @@
     {
       "input": "/Users/taocheng/career/yali/benchkit/samples/photo.jpg",
       "output": "/Users/taocheng/career/yali/benchkit/samples/photo-web.webp"
+    },
+    {
+      "input": "/Users/taocheng/career/yali/benchkit/samples/photo_heic.heic",
+      "output": "/Users/taocheng/career/yali/benchkit/samples/photo_heic-jpg.jpg"
     }
   ]
 }

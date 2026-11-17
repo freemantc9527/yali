@@ -3,7 +3,8 @@
 //! 数据目录：`~/Library/Application Support/app.yali/profiles/*.json`；
 //! 测试与沙盒用 `YALI_HOME` 重定向（`dir()` = `$YALI_HOME/profiles`）。
 //! 保存为原子写：先写同目录临时文件，再 rename 覆盖（DESIGN §2 同步机制的前提）。
-//! 首次访问若目录缺失或为空，自动播种五档出厂 fixtures（`fixtures/*.json`）。
+//! 首次访问自动播种六档出厂 fixtures（`fixtures/*.json`）；出厂档集合新增时
+//! 按 `.seed` 签名给老目录补种缺失档，签名一致则不复活用户删掉的档。
 
 use std::fs;
 use std::io::Write;
@@ -17,6 +18,7 @@ use crate::profile::Profile;
 pub const FACTORY_PROFILES: &[(&str, &str)] = &[
     ("default", include_str!("../../../fixtures/default.json")),
     ("web", include_str!("../../../fixtures/web.json")),
+    ("jpg", include_str!("../../../fixtures/jpg.json")),
     ("archive", include_str!("../../../fixtures/archive.json")),
     ("mail", include_str!("../../../fixtures/mail.json")),
     ("screenshot", include_str!("../../../fixtures/screenshot.json")),
@@ -102,18 +104,29 @@ impl ProfileStore {
         Ok(names)
     }
 
-    /// 目录缺失或无任何 .json 时，播种五档出厂 fixtures（已存在的文件不动）
+    /// 出厂档签名：档名集合变化（例如新增 jpg 档）就要给老用户补种缺失的档
+    fn factory_signature() -> String {
+        let mut names: Vec<&str> = FACTORY_PROFILES.iter().map(|(n, _)| *n).collect();
+        names.sort();
+        format!("{}:{}", names.len(), names.join(","))
+    }
+
+    /// 播种出厂档：新装全量播种；老用户若出厂档集合有新增，只补缺失的那几档。
+    /// 签名一致时什么都不动——用户主动删掉的出厂档不会被强行复活。
     fn ensure_seeded(&self) -> Result<()> {
-        if self.dir.exists() && self.list()?.iter().any(|n| FACTORY_PROFILES.iter().any(|(f, _)| f == n)) {
+        fs::create_dir_all(&self.dir)?;
+        let marker = self.dir.join(".seed");
+        let signature = Self::factory_signature();
+        if fs::read_to_string(&marker).map(|v| v.trim().to_string()).ok().as_deref() == Some(signature.as_str()) {
             return Ok(());
         }
-        fs::create_dir_all(&self.dir)?;
         for (name, raw) in FACTORY_PROFILES {
             let path = self.dir.join(format!("{name}.json"));
             if !path.exists() {
                 fs::write(&path, raw).with_context(|| format!("播种出厂档 '{name}' 失败"))?;
             }
         }
+        fs::write(&marker, signature + "\n")?;
         Ok(())
     }
 }
@@ -151,6 +164,34 @@ mod tests {
     }
 
     #[test]
+    fn profile_store_seeds_new_factory_profiles_for_existing_install() {
+        // 老用户：目录里只有五档 + 旧签名 → 补种后必须出现新增的 jpg 档
+        let dir = temp_dir("upgrade");
+        let profiles = dir.join("profiles");
+        fs::create_dir_all(&profiles).unwrap();
+        let default_raw = FACTORY_PROFILES.iter().find(|(n, _)| *n == "default").unwrap().1;
+        for name in ["archive", "default", "mail", "screenshot", "web"] {
+            fs::write(profiles.join(format!("{name}.json")), default_raw).unwrap();
+        }
+        fs::write(profiles.join(".seed"), "5:archive,default,mail,screenshot,web\n").unwrap();
+
+        let store = ProfileStore::with_dir(&profiles);
+        store.ensure_seeded().unwrap();
+        assert!(profiles.join("jpg.json").exists(), "出厂档集合新增后必须补种");
+        assert_eq!(store.list().unwrap().len(), 6, ".seed 不应被当成档");
+    }
+
+    #[test]
+    fn profile_store_does_not_resurrect_deleted_profiles() {
+        let dir = temp_dir("noresurrect");
+        let store = ProfileStore::with_dir(&dir);
+        store.ensure_seeded().unwrap();
+        fs::remove_file(dir.join("web.json")).unwrap();
+        store.ensure_seeded().unwrap();
+        assert!(!dir.join("web.json").exists(), "签名未变时不应复活被删的档");
+    }
+
+    #[test]
     fn profile_store_list_sorted() {
         let dir = temp_dir("list");
         let store = ProfileStore::with_dir(&dir);
@@ -169,8 +210,8 @@ mod tests {
         let names = store.list().unwrap();
         assert_eq!(
             names,
-            vec!["archive", "default", "mail", "screenshot", "web"],
-            "首启应播种五档出厂 fixtures"
+            vec!["archive", "default", "jpg", "mail", "screenshot", "web"],
+            "首启应播种六档出厂 fixtures"
         );
         for name in names {
             store.load(&name).unwrap(); // 播种出的每档都必须能通过解析 + 校验

@@ -15,5 +15,6 @@
 | [T-009-task-queue.md](T-009-task-queue.md) | ✅ 完成（2026-11-17） | 任务队列并发 + 进度事件 | 事件 started/done/failed + reducer 乱序测试；浏览器 3 文件逐行更新实测 |
 | [T-011-profile-manager.md](T-011-profile-manager.md) | ✅ 完成（2026-11-17） | Profile 管理器（另存/导入/导出） | 纯函数 12 测；浏览器实测另存与非法 JSON 报错 |
 | [T-010-compare-viewer.md](T-010-compare-viewer.md) | ✅ 完成（2026-11-17，manual 待复核） | 对比查看器（滑杆 + SSIM） | metrics 测试（同图=1、低质副本<0.95）；ui 48 测试；应用启动冒烟；真机滑杆手感人工验收 |
+| [T-012-quick-action-set.md](T-012-quick-action-set.md) | ✅ 完成（2026-11-17，manual 待复核） | 右键三件套 + 出厂档 jpg | automator 三动作各自产出正确；RGBA→JPG 白底正确；GIF→JPG 不再缩小；bench 三档绿 |
 
 T-002 落地物：`schema/profile.schema.json`（文档事实源）、`fixtures/`（五档出厂）、`crates/yali-core/src/{profile,store}.rs`。

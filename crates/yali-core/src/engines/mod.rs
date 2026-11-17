@@ -45,12 +45,9 @@ impl EngineKind {
         }
     }
 
-    /// mozjpeg 生态的第二个二进制（jpegtran 走同一 keg 路径）
+    /// 同一包里的第二个二进制（mozjpeg 的 jpegtran、vips 的 `vips` 主 CLI）
     pub fn sibling_binary(self, name: &str) -> Option<PathBuf> {
-        if self == EngineKind::Mozjpeg {
-            return self.resolve_binary(name);
-        }
-        None
+        self.resolve_binary(name)
     }
 
     fn resolve_binary(self, binary: &str) -> Option<PathBuf> {

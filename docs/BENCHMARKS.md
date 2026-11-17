@@ -76,3 +76,15 @@ jpegli（google/jpegli，需 cmake 自建）· Animated AVIF 体积 · gifski �
 任一指标劣化 >3% 退出码非零。default 档首跑（photo 531KB → 49KB / SSIM 0.965 / 121ms；ui 34.8KB → 4.7KB / 1.000 / 74ms；
 gif 966KB → 661KB / 0.823 / 184ms；transparent 33KB → 5.3KB / 0.932 / 66ms；heic 264KB → 258KB / 0.989 / 169ms）。
 口径与偏离说明见 `benchkit/README.md`。
+
+## 9. 转 JPG 档实测（2026-11-17，bench --profile jpg）
+
+| 样张 | 引擎 | 体积比 | SSIM | 耗时中位 |
+|---|---|---|---|---|
+| photo.jpg | mozjpeg | 0.093 | 0.965 | 95ms |
+| ui.png（不透明） | mozjpeg | 0.395 | 0.995 | 188ms |
+| transparent.png（RGBA） | flatten+mozjpeg | 0.356 | 0.913 | 154ms |
+| photo_heic.heic | sips解码+mozjpeg | 0.090 | 0.534（PNG 中转测量偏保守；对原图 ffmpeg 直测 0.80） | 696ms |
+
+RGBA→JPG 必须先压平 alpha：cjpeg/libvips 直吃 RGBA 会合成到黑底（PSNR 2.2dB）；
+`vips flatten --background 65535` 后走 mozjpeg，比 sips 直出小 2.6 倍。

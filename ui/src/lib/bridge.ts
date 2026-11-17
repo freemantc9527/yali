@@ -58,7 +58,7 @@ export interface CompressReport {
 export const isTauri = (): boolean =>
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
-const FALLBACK_PROFILES = ["archive", "default", "mail", "screenshot", "web"];
+const FALLBACK_PROFILES = ["archive", "default", "jpg", "mail", "screenshot", "web"];
 /** 浏览器降级的内存档案表（页面会话内有效；保存/导入后列表随之变化） */
 const fallbackStore = new Map<string, Profile>();
 
@@ -86,6 +86,10 @@ const FALLBACK_PROFILES_DETAIL: Record<string, () => Profile> = {
     quality: { kind: "lossless", level: null, targetBytes: null, minQualityFloor: 3 },
     format: { output: "jxl", animated: "keep" },
     resize: { maxWidth: null, maxHeight: null, keepRatio: true, mode: "none", cropAnchor: null },
+  }),
+  jpg: () => ({
+    ...baseProfile(),
+    format: { output: "jpeg", animated: "keep" },
   }),
   mail: () => ({
     ...baseProfile(),

@@ -1,13 +1,23 @@
-# workflows · Finder 右键「鸭梨 · 压一下」
+# workflows · Finder 右键三件套
 
-M0.5 主通道：用户级 `.workflow`（免 Xcode 免签名）。Finder 里选中图片 → 右键 →
-快速操作 →「鸭梨 · 压一下」→ 后台压缩 → **一条**聚合通知。
+M0.5 主通道：用户级 `.workflow`（免 Xcode 免签名）。选中图片 → 右键 → 快速操作 →
+鸭梨的三条动作 → 后台执行 → **一条**聚合通知。
+
+| 菜单项 | 命令 | 用途 |
+|---|---|---|
+| 鸭梨 · 压一下 | `compress --profile default` | 保持原格式，减体积 |
+| 鸭梨 · 转 JPG | `compress --profile jpg` | 兼容性最好（截图发谁都行） |
+| 鸭梨 · 压到 500K | `compress --profile mail` | IM/邮件/表单大小限制 |
+
+取舍原则：右键**永不询问**（DESIGN §1 原则③④），所以「选格式」靠多条预设动作在点菜单
+那一刻完成，而不是执行后弹框；WebP/AVIF/HEIC/JXL 等精调需求归 GUI 与 CLI。快速操作里
+鸭梨总数固定 ≤3。
 
 ## 安装 / 卸载
 
 ```bash
-workflows/install-workflows.sh                # 自动找 yali（$YALI_BIN → PATH → target/{release,debug}）
-workflows/install-workflows.sh --uninstall    # 卸载
+workflows/install-workflows.sh                # 三条一起装（自动找 yali：$YALI_BIN → PATH → target/{release,debug}）
+workflows/install-workflows.sh --uninstall    # 三条一起卸（含历史 bid 的 pbs 清理）
 ```
 
 - 二进制建议用 release：`cargo build --release -p yali-cli`（debug 冷启动明显慢）
@@ -54,6 +64,7 @@ svg-image），并保留 public.image 兜底。
 
 - Services 的 PATH 只有 `/usr/bin:/bin`：workflow 脚本显式 `export PATH`，CLI 引擎解析自带
   Homebrew 目录与 `brew --prefix` 绝对路径兜底（坑账本）
+- 出厂档新增时老目录会按 `.seed` 签名补种（不会复活用户主动删掉的档）
 - 通知由 CLI 侧 `--notify` 聚合发出（多选一条），文案规则：`N 张省了 X，M 张压不动已保持原样，K 张失败`
 - 负优化拦截生效时不落盘，仍如实计入通知
 - 撤销：`yali undo <目录>` 按 `.yali-undo.json` 还原（右键批次的清单写在图片所在目录）

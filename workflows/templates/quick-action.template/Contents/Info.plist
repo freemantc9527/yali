@@ -5,9 +5,9 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>zh_CN</string>
 	<key>CFBundleIdentifier</key>
-	<string>app.yali.quick-action</string>
+	<string>__BID__</string>
 	<key>CFBundleName</key>
-	<string>鸭梨 · 压一下</string>
+	<string>__TITLE__</string>
 	<key>CFBundlePackageType</key>
 	<string>BNDL</string>
 	<key>CFBundleShortVersionString</key>
@@ -22,7 +22,7 @@
 			<key>NSMenuItem</key>
 			<dict>
 				<key>default</key>
-				<string>鸭梨 · 压一下</string>
+				<string>__TITLE__</string>
 			</dict>
 			<key>NSMessage</key>
 			<string>runWorkflowAsService</string>

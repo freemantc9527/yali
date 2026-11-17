@@ -3,7 +3,7 @@
 use yali_core::Profile;
 
 const FIXTURE_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../fixtures");
-const NAMES: &[&str] = &["default", "web", "archive", "mail", "screenshot"];
+const NAMES: &[&str] = &["default", "web", "jpg", "archive", "mail", "screenshot"];
 
 fn fixture_raw(name: &str) -> String {
     std::fs::read_to_string(format!("{FIXTURE_DIR}/{name}.json")).unwrap()
@@ -44,6 +44,10 @@ fn profile_fixtures_cover_five_factory_profiles() {
             "screenshot" => {
                 assert_eq!(profile.quality.kind, yali_core::QualityKind::Lossless);
                 assert_eq!(profile.format.output, yali_core::OutputFormat::Auto);
+            }
+            "jpg" => {
+                assert_eq!(profile.quality.kind, yali_core::QualityKind::Level);
+                assert_eq!(profile.format.output, yali_core::OutputFormat::Jpeg);
             }
             _ => unreachable!(),
         }
