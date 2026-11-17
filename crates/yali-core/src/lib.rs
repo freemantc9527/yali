@@ -1,10 +1,13 @@
-//! Yali 内核：Profile / Store（T-002）；Pipeline / EngineRegistry 待 T-003。
+//! Yali 内核：Profile / Store / Pipeline / EngineRegistry / UndoManifest（无 UI 依赖）。
 //!
 //! 设计权威：docs/DESIGN.md；Profile 字段：docs/DESIGN.md §2；
 //! JSON Schema（文档与外部校验器事实源）：schema/profile.schema.json。
 
+pub mod engines;
+pub mod pipeline;
 pub mod profile;
 pub mod store;
+pub mod undo;
 
 pub use profile::{
     AnimatedPolicy, CropAnchor, DirKind, ExifPolicy, Format, IccPolicy, JpegEngine, LargerPolicy,

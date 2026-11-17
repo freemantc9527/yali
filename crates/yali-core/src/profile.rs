@@ -20,7 +20,8 @@ pub enum QualityKind {
     Lossless,
 }
 
-/// format.output：auto 表示按输入格式走默认引擎路由
+/// format.output：auto 表示按输入格式走默认引擎路由。
+/// Gif/Svg 仅作为管道内部路由目标（Profile JSON 不会出现，schema 不含此二值）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum OutputFormat {
@@ -28,10 +29,28 @@ pub enum OutputFormat {
     Auto,
     Jpeg,
     Png,
+    Gif,
     Webp,
+    Svg,
     Avif,
     Heic,
     Jxl,
+}
+
+impl OutputFormat {
+    pub fn ext(self) -> &'static str {
+        match self {
+            OutputFormat::Auto => "auto",
+            OutputFormat::Jpeg => "jpg",
+            OutputFormat::Png => "png",
+            OutputFormat::Gif => "gif",
+            OutputFormat::Webp => "webp",
+            OutputFormat::Svg => "svg",
+            OutputFormat::Avif => "avif",
+            OutputFormat::Heic => "heic",
+            OutputFormat::Jxl => "jxl",
+        }
+    }
 }
 
 /// 动图策略：默认保守（保持 GIF）；webp 显式开启（实测 -24%，docs/BENCHMARKS.md）

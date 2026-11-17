@@ -1,6 +1,6 @@
 # STATE · 项目状态接力（跨 session 冷启动先读本文件）
 
-> 更新规则：每张任务卡完成时更新；本文件是 Agent 的"记忆外置盘"。最后更新：2026-11-17（T-002 完成）。
+> 更新规则：每张任务卡完成时更新；本文件是 Agent 的"记忆外置盘"。最后更新：2026-11-17（T-003 完成）。
 
 ## 当前阶段：M-1 收尾 → M0 内核
 
@@ -15,6 +15,7 @@
 - [x] **release 构建坑修复**：`frontendDist` 缺失会让非 dev 构建 panic → `src-tauri/build.rs` 在 codegen 前兜占位页
 - [x] docs/ 自包含规格迁移（DESIGN/BENCHMARKS/TOOLCHAIN/NAMING/WORKFLOW/CROSSPLATFORM）
 - [x] **T-002 Profile Schema + Store + 五档 fixtures（2026-11-17）**：`schema/profile.schema.json`（文档事实源）+ `fixtures/{default,web,archive,mail,screenshot}.json` + `crates/yali-core/src/{profile,store}.rs`（六段 Schema / YALI_HOME 重定向 / 原子写 / 出厂播种）；`cargo test -p yali-core profile` 15+2 绿，零警告；CLI `profiles list/show` 从磁盘读取，`show default` 与 fixture 逐字节一致
+- [x] **T-003 EngineRegistry + CLI 真实现（2026-11-17）**：tokio 引回（子进程池 + 并发 min(cores-1,4)）；Encoder trait + 11 引擎注册（mozjpeg keg 路径反李鬼 / pngquant / oxipng / gifsicle / gif2webp / cwebp / avifenc / cjxl / svgo / sips / vips 兜底）；魔数嗅探；targetBytes ≤5 轮 level 二分；负优化拦截；UndoManifest；doctor/compress/convert/lossless/undo 全通
 - [ ] `ui/` 与内核接线：Profile 表单 + 拖入队列（T-006 起，按任务卡）
 - [ ] benchkit/ 合成金样素材生成脚本（T-004）
 - [ ] `docs/tasks/` 任务卡目录（随 T-002 落盘）
@@ -30,12 +31,12 @@
 ## 下一步（按序）
 > **执行计划已落卡**：冷启动先读 `docs/plans/PLAN-M0.md`（临时文档，M0 完成后移除），卡片在 `docs/tasks/`（索引见 `docs/tasks/README.md`）。
 
-1. T-003: EngineRegistry + 子进程池 + CLI 真实现（T-003）
-2. T-004: benchkit 合成金样 + bench.sh（T-004）
-3. T-005 收尾: UI 接线（T-005，manual-check）
+1. T-004: benchkit 合成金样 + bench.sh（T-004）
+2. T-005 收尾: UI 接线（T-005，manual-check）
 
 ## 坑账本
 - `tauri::generate_context!` **编译期**要求 `src-tauri/icons/icon.png` 存在（即使 bundle.active=false）
 - **debug 与 release 对 `frontendDist` 的校验不同**：debug 因 `dev_url` 有值直接短路，release/codegen 会 panic「frontendDist doesn't exist」。`ui/dist` 是构建产物不入库 → 已由 `src-tauri/build.rs` 兜占位页；验证仓库可复现性时必须跑 `--release`
 - gh 2.104 无 `-g` 短参；`gh repo create` 远端新建用 `--add-readme --license --clone` 组合
 - 迁移后 `target/` 缓存带着旧绝对路径，指纹脏；换路径后建议 `cargo clean` 重建一次
+- **vipsthumbnail 不认 dotfile 输出路径**（`-o .foo.png` 会把图片写进 stdout，退出码还是 0）——预缩放中转必须用非隐藏文件名，且跑完校验文件存在

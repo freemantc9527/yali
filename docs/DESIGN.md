@@ -101,7 +101,8 @@ yali/
 ├─ workflows/                # 待建 · .workflow 模板 + install-workflows.sh
 ├─ helpers/                  # 待建 · vision helper（CLT swiftc 编译的 Swift 小工具）
 ├─ benchkit/                 # 待建 · 合成金样 + bench.sh 回归
-└─ schema/                   # 待建 · profile.schema.json + fixtures/
+├─ schema/                   # ✓ 已建 · profile.schema.json（Profile 文档事实源）
+└─ fixtures/                 # ✓ 已建 · 五档出厂 fixtures（default/web/archive/mail/screenshot）
 ```
 
 - 引擎集成两步走：**Phase A 子进程**（Brewfile 钉版，tokio 进程池预热，GPL 边界干净）→ Phase B 库内链接（可选：imagequant-rs/oxipng/ravif/vips-sys；每步有 CLI 回退）

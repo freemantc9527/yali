@@ -54,3 +54,18 @@
 ## 6. 待补测（benchkit 自动化时纳入）
 
 jpegli（google/jpegli，需 cmake 自建）· Animated AVIF 体积 · gifski 质量向 · UI 截图素材集（验证分类器假设）· 目标大小二分收敛实测
+
+## 7. T-003 冒烟手测备注（2026-11-17，非标准金样，正式回归等 T-004 benchkit）
+
+样张：plasma 分形噪声 JPEG（噪声内容对压缩器不友好，省率偏高属正常）；机器 M1 Pro。
+
+| 档 | 引擎 | 结果 | 耗时 |
+|---|---|---|---|
+| default (level 4) | mozjpeg cjpeg q60 | 726KB → 85KB（-88%） | ~95ms，p50 稳定 |
+| mail (targetBytes 500KB) | mozjpeg 二分（floor 3 生效） | 726KB → 159KB | 725ms（≤5 轮 + vips 预缩放） |
+| web (level 5) | cwebp q75 | 726KB → 97KB（-87%） | 136ms |
+| lossless 归档 | cjxl --lossless_jpeg=1 | 726KB → 587KB（-19%） | 63ms（与 §基准 -17.2% 同量级） |
+
+行为验证：负优化拦截（预压 q30 样张再压 → status larger_output，不落盘）✓；undo 100% 还原 ✓；doctor 引擎路径全对（cjpeg 走 /opt/homebrew/opt/mozjpeg keg，PATH 李鬼未踩）✓。
+
+工程坑新增：**vipsthumbnail 不认 dotfile 输出路径，会把图片写进 stdout**——预缩放中转文件必须用非隐藏名（已修，代码注释有记）。

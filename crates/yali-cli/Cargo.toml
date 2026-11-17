@@ -16,3 +16,4 @@ yali-core = { path = "../yali-core" }
 clap.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true
+tokio.workspace = true
