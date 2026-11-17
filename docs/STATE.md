@@ -1,6 +1,6 @@
 # STATE · 项目状态接力（跨 session 冷启动先读本文件）
 
-> 更新规则：每张任务卡完成时更新；本文件是 Agent 的"记忆外置盘"。最后更新：2026-11-17（T-007 完成 · M1 进行中）。
+> 更新规则：每张任务卡完成时更新；本文件是 Agent 的"记忆外置盘"。最后更新：2026-11-17（T-008 完成 · M1 进行中）。
 
 ## 当前阶段：M0.5 右键闭环（自动部分完成，人工项待复核）→ M1 GUI
 
@@ -21,6 +21,7 @@
 - [x] **T-006 M0.5 右键闭环（2026-11-17）**：`workflows/`（模板 + install-workflows.sh）装到 `~/Library/Services/鸭梨 · 压一下.workflow`，pbs 注册可见；CLI 新增 `compress --notify` 聚合通知（多选一条，文案三态单测）；引擎解析加 Homebrew 绝对路径兜底（Services PATH 只有 /usr/bin:/bin）；`automator -i` 端到端跑通产出 `-{profile}` 文件
 - [ ] **人工复核（Agent 无法自验）**：Finder 右键菜单是否出现「鸭梨 · 压一下」、多选只弹一条通知
 - [x] **T-007 Profile 编辑与保存（2026-11-17）**：CLI `profiles save`（stdin/--file，落盘前 validate）+ Tauri `profiles_save`（command 冒烟含非法值拒绝）+ UI 可编辑表单（profile-edit 纯函数层，校验以内核为准）；浏览器实测：改 level→保存→「✓ 已保存」、清空后缀→「✗ 后缀模板不能为空」
+- [x] **T-008 输出目录策略 + schema v1.1（2026-11-17）**：`output.dirPath` 入 schema/fixtures；sibling/downloads/custom/override 四策略实测通过（downloads 重定向 HOME、override 读 `YALI_OUTPUT_DIR` 且缺失回落 sibling）；`{size}` 编码后渲染（photo-customout-48K.jpg）；undo 在 custom 目录按清单还原；engine 解析去掉 `brew --prefix` 子进程（HOME 陌生时会挂）改探 opt/<pkg>
 - [x] `docs/tasks/` 任务卡目录（T-002 起）
 - [x] benchkit/ 合成金样素材生成脚本（T-004）
 
@@ -43,7 +44,7 @@
 ## 下一步（按序）
 > 任务卡在 `docs/tasks/`（索引见 `docs/tasks/README.md`）。
 
-1. **M1 进行中**：计划见 `docs/plans/PLAN-M1.md`；T-007 ✅ → 下一张 T-008（输出目录策略 + schema v1.1）
+1. **M1 进行中**：计划见 `docs/plans/PLAN-M1.md`；T-007 ✅ T-008 ✅ → 下一张 T-009（任务队列并发 + 进度事件）
 2. 待人工复核项：Finder 右键菜单出现与通知文案（T-006 manual-check）
 
 ## 坑账本
@@ -52,6 +53,7 @@
 - gh 2.104 无 `-g` 短参；`gh repo create` 远端新建用 `--add-readme --license --clone` 组合
 - 迁移后 `target/` 缓存带着旧绝对路径，指纹脏；换路径后建议 `cargo clean` 重建一次
 - **vipsthumbnail 不认 dotfile 输出路径**（`-o .foo.png` 会把图片写进 stdout，退出码还是 0）——预缩放中转必须用非隐藏文件名，且跑完校验文件存在
+- **`brew --prefix` 在 HOME 陌生时会先拉 API 数据**（网络不畅可挂数分钟）——引擎解析不调 brew，直接探 `/opt/homebrew/opt/<pkg>` 与 `/usr/local/opt/<pkg>`
 - **Services（右键 .workflow）的 PATH 只有 `/usr/bin:/bin`**：引擎解析必须自带 Homebrew 兜底，brew 命令本身也要绝对路径（/opt/homebrew/bin/brew）
 - **libvips 的 heif loader 会返回内嵌缩略图**（1920×1280 的 HEIC 只解出 128×85）——HEIC/AVIF/JXL 容器解码走 sips，管道有输出尺寸守卫兜底（benchkit 首跑抓到）
 - **本机 ImageMagick 7.1.2-36 的 `compare -metric SSIM` 语义损坏**（同像素输出 0 而非 1）——benchkit 的 SSIM 用 ffmpeg ssim 滤镜

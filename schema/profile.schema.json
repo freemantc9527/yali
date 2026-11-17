@@ -68,10 +68,11 @@
     "output": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["dir", "suffixTemplate", "largerPolicy", "undoManifest"],
+      "required": ["dir", "dirPath", "suffixTemplate", "largerPolicy", "undoManifest"],
       "properties": {
-        "dir": { "enum": ["sibling", "override", "custom", "downloads"] },
-        "suffixTemplate": { "type": "string", "minLength": 1, "description": "支持 {profile} / {date} / {size} 占位符" },
+        "dir": { "enum": ["sibling", "override", "custom", "downloads"], "description": "sibling=与输入同目录；downloads=~/Downloads；custom=dirPath；override=环境变量 YALI_OUTPUT_DIR（未设置则回落 sibling）" },
+        "dirPath": { "type": ["string", "null"], "description": "dir=custom 时必填（绝对路径或 ~ 开头）" },
+        "suffixTemplate": { "type": "string", "minLength": 1, "description": "支持 {profile} / {date} / {size} 占位符（{size} 在编码完成后渲染）" },
         "largerPolicy": { "enum": ["keepOriginal", "saveLarger"], "description": "负优化拦截：输出 ≥ 输入 → 不落盘，状态 larger_output" },
         "undoManifest": { "type": "boolean", "description": "写撤销清单，yali undo 可 100% 还原" }
       }

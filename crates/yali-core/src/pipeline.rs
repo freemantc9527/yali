@@ -137,9 +137,12 @@ pub async fn compress_file(
         target_fmt
     };
 
-    // 输出落点：sibling 目录 + 后缀模板（其他 dir 策略 M1 GUI 落地）
-    let out_path = final_path(input, profile, target_fmt)?;
+    // 输出落点：目录策略（sibling/downloads/custom/override）+ 后缀模板；
+    // {size} 要等编码完成才知道，先按无 size 版本算临时名
+    let out_path = final_path(input, profile, target_fmt, None)?;
     let out_dir = out_path.parent().unwrap_or(Path::new(".")).to_path_buf();
+    std::fs::create_dir_all(&out_dir)
+        .with_context(|| format!("创建输出目录失败: {}", out_dir.display()))?;
 
     // 容器解码：HEIC/AVIF/JXL → 其他格式时先用 sips（macOS 原生）解成 PNG。
     // 不能走 vips：libvips 的 heif loader 会拿到内嵌缩略图（实测 1920×1280 只解出
@@ -269,15 +272,17 @@ pub async fn compress_file(
     let mut report_output: Option<PathBuf> = None;
     let mut report_bytes: Option<u64> = Some(output_size);
     if status == "done" {
-        std::fs::rename(&tmp, &out_path)?;
+        // {size} 占位在编码完成后渲染
+        let final_path = final_path(input, profile, target_fmt, Some(output_size))?;
+        std::fs::rename(&tmp, &final_path)?;
         if profile.output.undo_manifest {
             undo::append_entry(
-                &out_path.parent().unwrap_or(Path::new(".")).to_path_buf(),
+                &final_path.parent().unwrap_or(Path::new(".")).to_path_buf(),
                 input,
-                &out_path,
+                &final_path,
             )?;
         }
-        report_output = Some(out_path);
+        report_output = Some(final_path);
     } else {
         report_bytes = None;
     }
@@ -404,14 +409,56 @@ async fn probe_dims(path: &Path) -> Option<(u32, u32)> {
     Some((w?, h?))
 }
 
-/// 最终输出路径：sibling + 后缀模板（{profile}/{date}/{size}）
-fn final_path(input: &Path, profile: &Profile, target_fmt: crate::profile::OutputFormat) -> Result<PathBuf> {
-    let dir = input.parent().unwrap_or(Path::new("."));
-    let stem = input
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .context("文件名不是合法 UTF-8")?;
-    let ext = match target_fmt {
+/// 输出目录策略（DESIGN §2 output.dir / T-008）
+fn output_dir(input: &Path, profile: &Profile) -> Result<PathBuf> {
+    use crate::profile::DirKind;
+    match profile.output.dir {
+        DirKind::Sibling => Ok(input.parent().unwrap_or(Path::new(".")).to_path_buf()),
+        // 单次覆盖（workflow/CLI 场景）：环境变量优先，未设置时回落 sibling
+        DirKind::Override => match std::env::var("YALI_OUTPUT_DIR") {
+            Ok(dir) if !dir.trim().is_empty() => expand_home(&dir),
+            _ => Ok(input.parent().unwrap_or(Path::new(".")).to_path_buf()),
+        },
+        DirKind::Custom => {
+            let raw = profile
+                .output
+                .dir_path
+                .as_deref()
+                .context("output.dir=custom 但缺少 dirPath（validate 应已拦截）")?;
+            expand_home(raw)
+        }
+        DirKind::Downloads => {
+            let home = std::env::var("HOME").context("HOME 未设置，无法定位下载目录")?;
+            Ok(PathBuf::from(home).join("Downloads"))
+        }
+    }
+}
+
+fn expand_home(raw: &str) -> Result<PathBuf> {
+    if let Some(rest) = raw.strip_prefix("~/") {
+        let home = std::env::var("HOME").context("HOME 未设置，无法展开 ~")?;
+        return Ok(PathBuf::from(home).join(rest));
+    }
+    if raw == "~" {
+        let home = std::env::var("HOME").context("HOME 未设置，无法展开 ~")?;
+        return Ok(PathBuf::from(home));
+    }
+    Ok(PathBuf::from(raw))
+}
+
+/// `{size}` 的人类可读值（编码完成后才可用）
+fn size_token(bytes: u64) -> String {
+    if bytes >= 1024 * 1024 {
+        format!("{:.1}M", bytes as f64 / (1024.0 * 1024.0))
+    } else if bytes >= 1024 {
+        format!("{}K", bytes / 1024)
+    } else {
+        format!("{bytes}B")
+    }
+}
+
+fn ext_of(target_fmt: crate::profile::OutputFormat) -> Result<&'static str> {
+    Ok(match target_fmt {
         crate::profile::OutputFormat::Jpeg => "jpg",
         crate::profile::OutputFormat::Png => "png",
         crate::profile::OutputFormat::Gif => "gif",
@@ -421,14 +468,33 @@ fn final_path(input: &Path, profile: &Profile, target_fmt: crate::profile::Outpu
         crate::profile::OutputFormat::Jxl => "jxl",
         crate::profile::OutputFormat::Svg => "svg",
         crate::profile::OutputFormat::Auto => bail!("auto 不应出现在最终命名"),
-    };
-    let suffix = profile
+    })
+}
+
+/// 最终输出路径：目录策略 + 后缀模板（{profile}/{date}/{size}）。
+/// `size` 为 None 时保留 `{size}` 占位（用于编码前的临时命名）。
+fn final_path(
+    input: &Path,
+    profile: &Profile,
+    target_fmt: crate::profile::OutputFormat,
+    size: Option<u64>,
+) -> Result<PathBuf> {
+    let dir = output_dir(input, profile)?;
+    let stem = input
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .context("文件名不是合法 UTF-8")?;
+    let ext = ext_of(target_fmt)?;
+    let mut suffix = profile
         .output
         .suffix_template
         .replace("{profile}", &profile.name)
         .replace("{date}", &date_stamp());
+    if let Some(bytes) = size {
+        suffix = suffix.replace("{size}", &size_token(bytes));
+    }
     let name = format!("{stem}{suffix}.{ext}");
-    if Path::new(&name) == input.file_name().unwrap_or_default() {
+    if Path::new(&name) == input.file_name().unwrap_or_default() && dir == input.parent().unwrap_or(Path::new(".")) {
         bail!("后缀模板渲染后与输入同名，会覆盖原文件");
     }
     Ok(dir.join(name))
@@ -486,6 +552,10 @@ fn temp_sibling(target: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::profile::DirKind;
+    use std::sync::Mutex;
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn pipeline_sniff_common_formats() {
@@ -545,8 +615,66 @@ mod tests {
         let mut profile = Profile::default();
         profile.name = "web".into();
         let input = Path::new("/tmp/photo.jpg");
-        let out = final_path(input, &profile, crate::profile::OutputFormat::Webp).unwrap();
+        let out = final_path(input, &profile, crate::profile::OutputFormat::Webp, None).unwrap();
         assert_eq!(out.file_name().unwrap(), "photo-web.webp");
+    }
+
+    #[test]
+    fn pipeline_output_dir_strategies() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let original_home = std::env::var("HOME").ok();
+        let original_override = std::env::var("YALI_OUTPUT_DIR").ok();
+        std::env::set_var("HOME", "/home/tester");
+        std::env::remove_var("YALI_OUTPUT_DIR");
+
+        let input = Path::new("/tmp/photo/photo.jpg");
+        let mut profile = Profile::default();
+        profile.name = "t".into();
+
+        // sibling：与输入同目录
+        assert_eq!(output_dir(input, &profile).unwrap(), PathBuf::from("/tmp/photo"));
+
+        // downloads：$HOME/Downloads
+        profile.output.dir = DirKind::Downloads;
+        assert_eq!(output_dir(input, &profile).unwrap(), PathBuf::from("/home/tester/Downloads"));
+
+        // custom：绝对路径 / ~ 展开
+        profile.output.dir = DirKind::Custom;
+        profile.output.dir_path = Some("/Users/x/out".into());
+        assert_eq!(output_dir(input, &profile).unwrap(), PathBuf::from("/Users/x/out"));
+        profile.output.dir_path = Some("~/压缩输出".into());
+        assert_eq!(output_dir(input, &profile).unwrap(), PathBuf::from("/home/tester/压缩输出"));
+
+        // override：环境变量优先，缺失回落 sibling
+        profile.output.dir = DirKind::Override;
+        std::env::set_var("YALI_OUTPUT_DIR", "/tmp/override-dir");
+        assert_eq!(output_dir(input, &profile).unwrap(), PathBuf::from("/tmp/override-dir"));
+        std::env::remove_var("YALI_OUTPUT_DIR");
+        assert_eq!(output_dir(input, &profile).unwrap(), PathBuf::from("/tmp/photo"));
+
+        match original_home {
+            Some(v) => std::env::set_var("HOME", v),
+            None => std::env::remove_var("HOME"),
+        }
+        if let Some(v) = original_override {
+            std::env::set_var("YALI_OUTPUT_DIR", v);
+        }
+    }
+
+    #[test]
+    fn pipeline_suffix_size_placeholder_rendered_after_encode() {
+        let mut profile = Profile::default();
+        profile.name = "web".into();
+        profile.output.suffix_template = "-{profile}-{size}".into();
+        let input = Path::new("/tmp/photo.jpg");
+        // 编码前：{size} 原样保留（仅用于临时命名）
+        let pre = final_path(input, &profile, crate::profile::OutputFormat::Jpeg, None).unwrap();
+        assert_eq!(pre.file_name().unwrap(), "photo-web-{size}.jpg");
+        // 编码后：按实际体积渲染
+        let post = final_path(input, &profile, crate::profile::OutputFormat::Jpeg, Some(49_178)).unwrap();
+        assert_eq!(post.file_name().unwrap(), "photo-web-48K.jpg");
+        let mb = final_path(input, &profile, crate::profile::OutputFormat::Jpeg, Some(2_500_000)).unwrap();
+        assert_eq!(mb.file_name().unwrap(), "photo-web-2.4M.jpg");
     }
 
     #[test]
@@ -554,6 +682,6 @@ mod tests {
         let mut profile = Profile::default();
         profile.output.suffix_template = String::new();
         let input = Path::new("/tmp/photo.jpg");
-        assert!(final_path(input, &profile, crate::profile::OutputFormat::Jpeg).is_err());
+        assert!(final_path(input, &profile, crate::profile::OutputFormat::Jpeg, None).is_err());
     }
 }

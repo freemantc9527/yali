@@ -29,6 +29,7 @@
   },
   "output": {
     "dir": "sibling",
+    "dirPath": null,
     "suffixTemplate": "-{profile}",
     "largerPolicy": "keepOriginal",
     "undoManifest": true

@@ -220,7 +220,9 @@ impl Default for Metadata {
 #[serde(default, deny_unknown_fields, rename_all = "camelCase")]
 pub struct Output {
     pub dir: DirKind,
-    /// 支持 {profile} / {date} / {size} 占位符
+    /// dir=Custom 时必填（绝对路径或 ~ 开头）；其他策略忽略
+    pub dir_path: Option<String>,
+    /// 支持 {profile} / {date} / {size} 占位符（{size} 在编码完成后渲染）
     pub suffix_template: String,
     pub larger_policy: LargerPolicy,
     pub undo_manifest: bool,
@@ -230,6 +232,7 @@ impl Default for Output {
     fn default() -> Self {
         Self {
             dir: DirKind::default(),
+            dir_path: None,
             suffix_template: "-{profile}".into(),
             larger_policy: LargerPolicy::default(),
             undo_manifest: true,
@@ -294,7 +297,20 @@ impl Profile {
             _ => {}
         }
         if self.output.suffix_template.is_empty() {
-            bail!("profile '{}': output.suffixTemplate 不能为空", self.name);
+            bail!("profile '{}': output.suffixTemplate 不能为空（否则会覆盖原图）", self.name);
+        }
+        if self.output.dir == DirKind::Custom {
+            match self.output.dir_path.as_deref() {
+                Some(p) if !p.trim().is_empty() => {
+                    if !(p.starts_with('/') || p.starts_with('~')) {
+                        bail!(
+                            "profile '{}': output.dirPath 必须是绝对路径或 ~ 开头，得到 '{p}'",
+                            self.name
+                        );
+                    }
+                }
+                _ => bail!("profile '{}': output.dir=custom 需要 output.dirPath", self.name),
+            }
         }
         Ok(())
     }
@@ -337,6 +353,24 @@ mod tests {
         p.quality.level = Some(11);
         assert!(p.validate().is_err());
         p.quality.level = Some(4);
+        assert!(p.validate().is_ok());
+    }
+
+    #[test]
+    fn profile_validate_custom_dir_requires_dir_path() {
+        let mut p = Profile::default();
+        p.name = "t".into();
+        p.quality.kind = QualityKind::Level;
+        p.quality.level = Some(4); // 排除其他校验干扰
+        p.output.dir = DirKind::Custom;
+        let err = p.validate().unwrap_err().to_string();
+        assert!(err.contains("dirPath"), "custom 缺 dirPath 应报错: {err}");
+        p.output.dir_path = Some("relative/out".into());
+        let err = p.validate().unwrap_err().to_string();
+        assert!(err.contains("绝对路径"), "相对路径应拒绝: {err}");
+        p.output.dir_path = Some("/abs/out".into());
+        assert!(p.validate().is_ok());
+        p.output.dir_path = Some("~/out".into());
         assert!(p.validate().is_ok());
     }
 

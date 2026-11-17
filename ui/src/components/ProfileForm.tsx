@@ -234,6 +234,25 @@ export function ProfileForm({ profile, names, selected, onSelect, onSave }: Prop
 
             <dt>输出</dt>
             <dd className="row">
+              <select
+                aria-label="output-dir"
+                value={draft.output.dir}
+                onChange={(e) => setDraft(withOutput(draft, { dir: e.target.value }))}
+              >
+                <option value="sibling">与图片同目录</option>
+                <option value="downloads">下载目录</option>
+                <option value="custom">自定义目录</option>
+                <option value="override">环境变量覆盖</option>
+              </select>
+              {draft.output.dir === "custom" && (
+                <input
+                  aria-label="output-dir-path"
+                  type="text"
+                  placeholder="~/压缩输出"
+                  value={draft.output.dirPath ?? ""}
+                  onChange={(e) => setDraft(withOutput(draft, { dirPath: e.target.value }))}
+                />
+              )}
               <label className="inline">
                 后缀
                 <input

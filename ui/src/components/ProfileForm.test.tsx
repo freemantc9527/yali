@@ -51,6 +51,7 @@ describe("ProfileForm（T-007 可编辑）", () => {
 
   it("输出与元数据字段可编辑（含后缀模板现值）", () => {
     const html = render(base);
+    expect(html).toContain('aria-label="output-dir"');
     expect(html).toContain('aria-label="output-suffix"');
     expect(html).toContain('value="-{profile}"');
     expect(html).toContain('aria-label="metadata-exif"');
@@ -63,6 +64,16 @@ describe("ProfileForm（T-007 可编辑）", () => {
     expect(html).toContain("保存");
     expect(html).toContain("disabled");
     expect(html).not.toContain('data-testid="save-status"');
+  });
+
+  it("custom 目录时出现路径输入", () => {
+    const custom: Profile = {
+      ...base,
+      output: { ...base.output, dir: "custom", dirPath: "~/压缩输出" },
+    };
+    const html = render(custom);
+    expect(html).toContain('aria-label="output-dir-path"');
+    expect(html).toContain("~/压缩输出");
   });
 
   it("未加载时显示占位", () => {

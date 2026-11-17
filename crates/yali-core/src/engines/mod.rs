@@ -86,8 +86,8 @@ impl EngineKind {
                 return Some(candidate);
             }
         }
-        // brew keg 路径兜底（mozjpeg 这类 keg-only 必须靠它）
-        if let Some(prefix) = brew_pkg_prefix(pkg) {
+        // Homebrew keg 路径兜底（mozjpeg 这类 keg-only 必须靠它）
+        if let Some(prefix) = keg_prefix(pkg) {
             let candidate = prefix.join("bin").join(binary);
             if candidate.is_file() {
                 return Some(candidate);
@@ -103,21 +103,14 @@ impl EngineKind {
     }
 }
 
-/// brew --prefix <pkg>（mozjpeg 是 keg-only，必须逐包查；批量场景由 Registry
-/// 解析一次后复用路径，不逐文件调用）。
-/// Services/launchd 的 PATH 里没有 brew → 用标准安装位置绝对路径兜底。
-fn brew_pkg_prefix(pkg: &str) -> Option<PathBuf> {
-    let brew = ["/opt/homebrew/bin/brew", "/usr/local/bin/brew"]
+/// Homebrew keg 目录（mozjpeg 这类 keg-only 靠它）。
+/// **不调用 `brew --prefix`**：HOME 陌生时 brew 会先拉 API 数据，网络不畅会挂死
+/// （实测在服务上下文可挂 3 分钟+）。Homebrew 的 opt/<pkg> 是稳定布局，直接探目录。
+fn keg_prefix(pkg: &str) -> Option<PathBuf> {
+    ["/opt/homebrew", "/usr/local"]
         .iter()
-        .map(PathBuf::from)
-        .find(|p| p.is_file())
-        .unwrap_or_else(|| PathBuf::from("brew"));
-    std::process::Command::new(brew)
-        .args(["--prefix", pkg])
-        .output()
-        .ok()
-        .filter(|o| o.status.success())
-        .map(|o| PathBuf::from(String::from_utf8_lossy(&o.stdout).trim()))
+        .map(|base| Path::new(base).join("opt").join(pkg))
+        .find(|p| p.is_dir())
 }
 
 /// 引擎可用性探测结果（doctor 输出）

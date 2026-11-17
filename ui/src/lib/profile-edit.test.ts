@@ -62,6 +62,11 @@ describe("preflightError", () => {
     expect(preflightError(p)).toContain("目标大小");
   });
 
+  it("custom 目录必须填路径", () => {
+    expect(preflightError(withOutput(base, { dir: "custom", dirPath: "" }))).toContain("自定义目录");
+    expect(preflightError(withOutput(base, { dir: "custom", dirPath: "~/out" }))).toBeNull();
+  });
+
   it("后缀为空会覆盖原图，必须拦下", () => {
     expect(preflightError(withOutput(base, { suffixTemplate: "" }))).toContain("后缀");
   });

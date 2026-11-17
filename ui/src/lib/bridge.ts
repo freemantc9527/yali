@@ -25,6 +25,7 @@ export interface Profile {
   metadata: { exif: string; icc: string };
   output: {
     dir: string;
+    dirPath: string | null;
     suffixTemplate: string;
     largerPolicy: string;
     undoManifest: boolean;
@@ -57,7 +58,7 @@ const baseProfile = (): Profile => ({
   quality: { kind: "level", level: 4, targetBytes: null, minQualityFloor: 3 },
   format: { output: "auto", animated: "keep" },
   metadata: { exif: "privacy", icc: "srgb" },
-  output: { dir: "sibling", suffixTemplate: "-{profile}", largerPolicy: "keepOriginal", undoManifest: true },
+  output: { dir: "sibling", dirPath: null, suffixTemplate: "-{profile}", largerPolicy: "keepOriginal", undoManifest: true },
   ui: { notify: true, sound: false, openGUIOnFail: true },
 });
 

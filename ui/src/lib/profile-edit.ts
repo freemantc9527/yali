@@ -31,6 +31,8 @@ export interface MetadataPatch {
 }
 
 export interface OutputPatch {
+  dir?: string;
+  dirPath?: string | null;
   suffixTemplate?: string;
   largerPolicy?: string;
   undoManifest?: boolean;
@@ -80,6 +82,7 @@ export function preflightError(p: Profile): string | null {
     if (!q.targetBytes || q.targetBytes <= 0) return "目标大小必须大于 0";
   }
   if (!p.output.suffixTemplate) return "后缀模板不能为空（否则会覆盖原图）";
+  if (p.output.dir === "custom" && !(p.output.dirPath ?? "").trim()) return "自定义目录需要填写路径";
   if (Number.isNaN(q.level ?? 0) || Number.isNaN(q.minQualityFloor)) return "请输入合法数字";
   if (p.resize.maxWidth !== null && Number.isNaN(p.resize.maxWidth)) return "最大宽度必须是正整数";
   if (p.resize.maxHeight !== null && Number.isNaN(p.resize.maxHeight)) return "最大高度必须是正整数";
