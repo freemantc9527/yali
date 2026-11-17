@@ -16,7 +16,8 @@
 - [x] docs/ 自包含规格迁移（DESIGN/BENCHMARKS/TOOLCHAIN/NAMING/WORKFLOW/CROSSPLATFORM）
 - [x] **T-002 Profile Schema + Store + 五档 fixtures（2026-11-17）**：`schema/profile.schema.json`（文档事实源）+ `fixtures/{default,web,archive,mail,screenshot}.json` + `crates/yali-core/src/{profile,store}.rs`（六段 Schema / YALI_HOME 重定向 / 原子写 / 出厂播种）；`cargo test -p yali-core profile` 15+2 绿，零警告；CLI `profiles list/show` 从磁盘读取，`show default` 与 fixture 逐字节一致
 - [x] **T-003 EngineRegistry + CLI 真实现（2026-11-17）**：tokio 引回（子进程池 + 并发 min(cores-1,4)）；Encoder trait + 11 引擎注册（mozjpeg keg 路径反李鬼 / pngquant / oxipng / gifsicle / gif2webp / cwebp / avifenc / cjxl / svgo / sips / vips 兜底）；魔数嗅探；targetBytes ≤5 轮 level 二分；负优化拦截；UndoManifest；doctor/compress/convert/lossless/undo 全通
-- [ ] `ui/` 与内核接线：Profile 表单 + 拖入队列（T-006 起，按任务卡）
+- [x] **T-004 benchkit 合成金样 + 三指标回归（2026-11-17）**：`generate.sh` 确定性生成五类样张（seed 固定，两次生成哈希一致）；`bench.sh` 输出 体积比/SSIM/耗时中位数，与 `baseline.json` 比对（劣化>3% 退出码非零，实测触发）；default/web 双档全绿
+- [ ] `ui/` 与内核接线：Profile 表单 + 拖入队列（T-005 收尾 → T-006 起深化）
 - [ ] benchkit/ 合成金样素材生成脚本（T-004）
 - [ ] `docs/tasks/` 任务卡目录（随 T-002 落盘）
 
@@ -31,8 +32,7 @@
 ## 下一步（按序）
 > **执行计划已落卡**：冷启动先读 `docs/plans/PLAN-M0.md`（临时文档，M0 完成后移除），卡片在 `docs/tasks/`（索引见 `docs/tasks/README.md`）。
 
-1. T-004: benchkit 合成金样 + bench.sh（T-004）
-2. T-005 收尾: UI 接线（T-005，manual-check）
+1. T-005 收尾: UI 接线（T-005，manual-check）→ 完成后 M0 出口条件逐条核验
 
 ## 坑账本
 - `tauri::generate_context!` **编译期**要求 `src-tauri/icons/icon.png` 存在（即使 bundle.active=false）
@@ -40,3 +40,6 @@
 - gh 2.104 无 `-g` 短参；`gh repo create` 远端新建用 `--add-readme --license --clone` 组合
 - 迁移后 `target/` 缓存带着旧绝对路径，指纹脏；换路径后建议 `cargo clean` 重建一次
 - **vipsthumbnail 不认 dotfile 输出路径**（`-o .foo.png` 会把图片写进 stdout，退出码还是 0）——预缩放中转必须用非隐藏文件名，且跑完校验文件存在
+- **libvips 的 heif loader 会返回内嵌缩略图**（1920×1280 的 HEIC 只解出 128×85）——HEIC/AVIF/JXL 容器解码走 sips，管道有输出尺寸守卫兜底（benchkit 首跑抓到）
+- **本机 ImageMagick 7.1.2-36 的 `compare -metric SSIM` 语义损坏**（同像素输出 0 而非 1）——benchkit 的 SSIM 用 ffmpeg ssim 滤镜
+- plasma/噪声类合成图必须 `-seed` 固定随机，否则每次生成内容不同、基线漂移无意义

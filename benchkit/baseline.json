@@ -1,0 +1,57 @@
+{
+  "generatedAt": "2026-11-17T12:27:51+08:00",
+  "profile": "default",
+  "runsPerSample": 3,
+  "records": [
+    {
+      "sample": "photo.jpg",
+      "engine": "mozjpeg",
+      "status": "done",
+      "inputBytes": 531019,
+      "outputBytes": 49178,
+      "ratio": 0.0926,
+      "ssim": 0.964656,
+      "msMedian": 121
+    },
+    {
+      "sample": "ui.png",
+      "engine": "pngquant",
+      "status": "done",
+      "inputBytes": 34757,
+      "outputBytes": 4696,
+      "ratio": 0.1351,
+      "ssim": 0.999801,
+      "msMedian": 74
+    },
+    {
+      "sample": "anim.gif",
+      "engine": "gifsicle",
+      "status": "done",
+      "inputBytes": 966363,
+      "outputBytes": 661199,
+      "ratio": 0.6842,
+      "ssim": 0.8227,
+      "msMedian": 184
+    },
+    {
+      "sample": "transparent.png",
+      "engine": "pngquant",
+      "status": "done",
+      "inputBytes": 32978,
+      "outputBytes": 5276,
+      "ratio": 0.16,
+      "ssim": 0.932026,
+      "msMedian": 66
+    },
+    {
+      "sample": "photo_heic.heic",
+      "engine": "sips",
+      "status": "done",
+      "inputBytes": 263571,
+      "outputBytes": 257639,
+      "ratio": 0.9775,
+      "ssim": 0.98904,
+      "msMedian": 169
+    }
+  ]
+}

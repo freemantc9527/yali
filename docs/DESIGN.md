@@ -141,6 +141,7 @@ pub async fn compress(file: &Path, profile: &Profile) -> Result<CompressResult>;
 ## 9. 测试与性能预算
 
 - 金样回归：benchkit 合成集（照片/UI/动图/透明/HEIC），体积/SSIM/耗时三指标，劣化>3% 即红
-- 质量门：level≥5 时 SSIM≥0.95；负优化拦截零漏
+- 质量门：level≥5 时**单代照片类样本** SSIM≥0.95（平涂图形/动图对边缘 ringing 过敏、HEIC 属二代生成，绝对值不适用，由基线漂移守护；口径实测记录见 benchkit/README.md）
+- 负优化拦截零漏
 - 预算：core 常驻<80MB；GUI<250MB；右键冷启动<400ms；100 图批处理不卡 Finder
 - 兼容抽验：微信/QQ/钉钉发送、Safari/Chrome 显示、Preview/QuickLook

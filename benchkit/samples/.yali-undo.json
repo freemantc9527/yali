@@ -1,0 +1,8 @@
+{
+  "entries": [
+    {
+      "input": "/Users/taocheng/career/yali/benchkit/samples/photo.jpg",
+      "output": "/Users/taocheng/career/yali/benchkit/samples/photo-web.webp"
+    }
+  ]
+}
