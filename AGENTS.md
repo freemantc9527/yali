@@ -42,6 +42,8 @@
 - **NSPasteboard 只能在主线程访问**；`run_on_main_thread` 的回调不要在 `setup` 里 `block_on` 等
   （主线程正被 setup 占着 → 死锁），要么在异步任务里等，要么改成事件驱动
 - 剪贴板要比 `changeCount` 再比内容摘要：changeCount 变了不等于内容变了（同一张图复制两次）
+- watch 的产物会触发自己的事件（`-default` 又落回被监视目录）→ 产出路径必须进 ignored 集，
+  否则套娃；FSEvents 一个文件多次事件靠 settleMs + (mtime,size) 去重
 - `before*Command` 的 cwd 是 `src-tauri` → 钩子写 `pnpm --dir ../ui …`
 - 环境里 `CI=1` 会让 cargo-tauri 报 `invalid value '1' for '--ci'` → 整包用 `env -u CI`
 - tauri-bundler 会给不认识的扩展名（avif/jxl）兜底 `public.image` → `src-tauri/Info.plist` 精确覆盖，

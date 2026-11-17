@@ -9,7 +9,9 @@ use yali_core::profile::Profile;
 use yali_core::ProfileStore;
 
 mod clipboard;
+mod supported;
 mod tray;
+mod watch;
 
 fn err(e: anyhow::Error) -> String {
     format!("{e:#}")
@@ -48,11 +50,6 @@ impl RuntimeSettings {
     }
 }
 
-/// T-013：LaunchServices 可能投递的图片扩展名（与 tauri.conf 的 fileAssociations 对齐）
-const OPEN_FILE_EXTENSIONS: &[&str] = &[
-    "png", "jpg", "jpeg", "heic", "heif", "gif", "webp", "avif", "jxl", "tif", "tiff", "bmp",
-];
-
 /// 冷启动缓冲：open-file 事件可能早于前端就绪，先存这里，UI 挂载后取走
 #[derive(Default)]
 struct PendingOpenFiles(std::sync::Mutex<Vec<String>>);
@@ -74,12 +71,7 @@ fn open_paths_from_urls(urls: impl IntoIterator<Item = tauri::Url>) -> Vec<Strin
     urls.into_iter()
         .filter_map(|url| url.to_file_path().ok())
         .filter(|path| path.is_file())
-        .filter(|path| {
-            path.extension()
-                .and_then(|ext| ext.to_str())
-                .map(|ext| OPEN_FILE_EXTENSIONS.contains(&ext.to_ascii_lowercase().as_str()))
-                .unwrap_or(false)
-        })
+        .filter(|path| supported::is_image_path(path))
         .map(|path| path.to_string_lossy().into_owned())
         .filter(|path| seen.insert(path.clone()))
         .collect()
@@ -245,6 +237,9 @@ async fn settings_save(
     if let Some(state) = app.try_state::<RuntimeSettings>() {
         state.replace(&settings);
     }
+    if let Some(watcher) = app.try_state::<watch::WatchHandle>() {
+        watch::apply(&watcher, &settings);
+    }
     tray::apply(&app, settings.tray.enabled).map_err(|e| e.to_string())
 }
 
@@ -338,6 +333,8 @@ pub fn run() {
                 .unwrap_or_default();
             app.manage(RuntimeSettings(std::sync::RwLock::new(settings.clone())));
             tray::apply(app.handle(), settings.tray.enabled)?;
+            let watch_handle = watch::start(app.handle().clone(), &settings);
+            app.manage(watch_handle);
             #[cfg(target_os = "macos")]
             spawn_clipboard_watcher(app.handle());
             Ok(())

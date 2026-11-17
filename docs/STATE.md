@@ -1,7 +1,7 @@
 # STATE · 项目状态接力（跨 session 冷启动先读本文件）
 
 > 更新规则：每张任务卡完成时更新；本文件是 Agent 的「记忆外置盘」，只保留**当前真相**，
-> 历史细节进 `docs/tasks/` 卡片与 git log。最后更新：2026-11-17 16:41（M2：T-013/T-014/T-015/T-016 落地）。
+> 历史细节进 `docs/tasks/` 卡片与 git log。最后更新：2026-11-17 16:45（M2：T-013…T-017 落地）。
 
 ## 0. 冷启动清单（新会话第一件事）
 
@@ -25,7 +25,7 @@ env -u CI cargo tauri build --bundles app && ./scripts/bundle-check.sh   # 整�
 | M0 内核+CLI | ✅ | 出口四条全过（见下表） |
 | M0.5 右键闭环 | 🔶 | 自动部分完成并实测；**Finder 菜单人工复核待办** |
 | M1 GUI | 🔶 | 五卡落地 + open-file（T-013）；**真机拖拽/滑杆/内存峰值/「打开方式」待复核** |
-| M2 入口全量 | 🔶 | T-013/T-014/T-015/T-016 落地；余下 watch/队列库/统计页 3 卡 |
+| M2 入口全量 | 🔶 | T-013…T-017 落地；余下 队列库/统计页 2 卡 |
 
 ### M0 出口核验（2026-11-17 收口，全部通过）
 
@@ -53,6 +53,7 @@ env -u CI cargo tauri build --bundles app && ./scripts/bundle-check.sh   # 整�
 | T-014 | 应用设置 settings.json | 入口开关/ watch 目录/防抖，语法坏→备份回落、字段错→报错，CLI `settings show/path/reset` |
 | T-015 | 菜单栏托盘 + 关窗常驻 | `tray-icon` feature、`RuntimeSettings` 即时生效、关闭按钮 → 窗口 0 进程仍在（自动验证） |
 | T-016 | 剪贴板监听（复制即压） | NSPasteboard 主线程轮询 + FNV 去重 + TIFF 回落 sips；产物落「下载」；实测 -84% 尺寸不变 |
+| T-017 | watch 文件夹 | notify/FSEvents + settle 防抖 + (mtime,size) 去重 + 产物 ignored；实测无自激、覆盖重压 |
 
 ## 3. 待人工复核（Agent 无法自验，`manual-check`）
 
@@ -68,9 +69,8 @@ env -u CI cargo tauri build --bundles app && ./scripts/bundle-check.sh   # 整�
 ## 4. 下一步（建议顺序）
 
 1. 先做完第 3 节的人工复核（不然后面都在没验证的地上盖楼）
-2. **M2 余下卡片**（依赖顺序）：T-017 watch（notify/FSEvents；必须排除输出目录防自激）→
-   T-018 失败件队列库（SQLite 断点续）→ T-019 统计页（metrics.sqlite）
-   - 新增依赖要用户批：`tauri/tray-icon`、`arboard`、`notify`、`rusqlite`
+2. **M2 余下卡片**：T-018 失败件队列库（SQLite 断点续）→ T-019 统计页（metrics.sqlite）
+   - 新依赖 `rusqlite` 待批（T-013…T-017 已用：`tray-icon` feature、`objc2` 系、`notify`）
 3. M2 出口验收：20 图右键 → 通知 p50 < 8s（CLI 可先跑基线）
    - 托盘菜单展开/唤回窗口属人工（AX 点 status item 拿不到菜单层级）
 4. 技术债（有卡再做）：`helpers/` vision helper、`crates/yali-integration`、

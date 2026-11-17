@@ -20,6 +20,7 @@
 | [T-014-settings-store.md](T-014-settings-store.md) | ✅ 完成（2026-11-17） | 应用设置 settings.json + CLI + Tauri commands | settings 11 测；语法坏→备份回落、字段拼错→报错、未来版本→拒绝；CLI show/path/reset 实测 |
 | [T-015-tray.md](T-015-tray.md) | ✅ 完成（2026-11-17，manual 待复核） | 菜单栏托盘 + 关窗常驻 | 6 passed；status menu 存在；AX 点关闭按钮后窗口 0/进程在 |
 | [T-016-clipboard.md](T-016-clipboard.md) | ✅ 完成（2026-11-17，manual 待复核） | 剪贴板监听（复制即压） | 14 passed；透明 PNG 32978→5276 B 且尺寸不变；重复复制不重复产出 |
+| [T-017-watch.md](T-017-watch.md) | ✅ 完成（2026-11-17，manual 待复核） | watch 文件夹（拖进目录即压） | 18 passed；照片 531019→49178 B；等 5s 无套娃产物；覆盖同名文件重压 |
 
 T-002 落地物：`schema/profile.schema.json`（文档事实源）、`fixtures/`（出厂档，现为六档）、`crates/yali-core/src/{profile,store}.rs`。
 
