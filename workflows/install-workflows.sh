@@ -62,29 +62,33 @@ plutil -lint "$DEST/Contents/Info.plist" >/dev/null
 plutil -lint "$DEST/Contents/document.wflow" >/dev/null
 
 # 启用并挂进 Finder 快速操作菜单（等价于在 系统设置→服务 里勾选）：
-# 实测只装 bundle + flush pbs 不够——新版 macOS 对未登记进 NSServicesStatus /
-# FinderOrdering 的服务不自动上右键菜单
+# 实测两点都不够——①只装 bundle + flush pbs 不上菜单；②用 `defaults write ... 7`
+# 会把 FinderOrdering 的值写成**字符串**（其他条目都是 int），Finder 解析整个排序表
+# 失败后直接吞掉「快速操作」整栏。因此必须用 plistlib 保类型读写。
 python3 - "$BID" "$SERVICE_NAME" <<'PYEN'
-import subprocess, sys
+import plistlib, subprocess, sys
+
 bid, name = sys.argv[1], sys.argv[2]
 status_key = f"{bid} - {name} - runWorkflowAsService"
 ordering_key = f"SERVICE-{status_key}"
 
-def old_plist(d):
-    def val(v):
-        if isinstance(v, bool):
-            return "1" if v else "0"
-        if isinstance(v, int):
-            return str(v)
-        if isinstance(v, dict):
-            return "{ " + " ".join(f"{k} = {val(x)};" for k, x in v.items()) + " }"
-        return str(v)
-    return "{ " + " ".join(f"{k} = {val(x)};" for k, x in d.items()) + " }"
+raw = subprocess.run(["defaults", "export", "pbs", "-"], capture_output=True, check=True).stdout
+data = plistlib.loads(raw)
 
-subprocess.run(["defaults", "write", "pbs", "NSServicesStatus", "-dict-add", status_key,
-                old_plist({"presentation_modes": {"ContextMenu": 1, "FinderPreview": 1, "ServicesMenu": 1}})],
-               check=True)
-subprocess.run(["defaults", "write", "pbs", "FinderOrdering", "-dict-add", ordering_key, "7"], check=True)
+data.setdefault("NSServicesStatus", {})[status_key] = {
+    "presentation_modes": {"ContextMenu": True, "FinderPreview": True, "ServicesMenu": True},
+}
+ordering = data.setdefault("FinderOrdering", {})
+if ordering_key not in ordering:
+    ordering[ordering_key] = len(ordering)  # int，接在现有条目之后
+
+import tempfile, os
+fd, path = tempfile.mkstemp(suffix=".plist")
+with os.fdopen(fd, "wb") as f:
+    plistlib.dump(data, f)
+subprocess.run(["defaults", "import", "pbs", path], check=True)
+os.unlink(path)
+print(f"  已登记启用状态与排序（ordering={ordering[ordering_key]}，int）")
 PYEN
 
 flush_services

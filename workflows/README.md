@@ -23,6 +23,13 @@ workflows/install-workflows.sh --uninstall    # 卸载
 已自动验证：`automator -i <jpg> <workflow>` 全链路（产出 `-{profile}` 文件 + JSON 摘要 + 通知进程成功）；
 pbs 注册表可见 `NSBundleIdentifier = app.yali.quick-action`；CLI `--notify` 聚合文案单测三态覆盖。
 
+## 已修：登记排序把「快速操作」整栏弄丢（2026-11-17 实测）
+
+`defaults write pbs FinderOrdering -dict-add <key> 7` 会把值写成**字符串**，而该表其他
+条目都是整数——Finder 解析整个排序表失败后，直接不显示「快速操作」整栏（症状：裁剪/
+旋转/标记 全消失）。现在安装脚本改用 `defaults export/import` + plistlib 保类型读写，
+且只在键不存在时追加排序值。
+
 ## 已修：右键菜单只在部分位置出现（2026-11-17 实测）
 
 现象：废纸篓里的图片右键有「鸭梨 · 压一下」，普通文件夹里没有。
