@@ -141,8 +141,10 @@ pub async fn compress_file(
     // {size} 要等编码完成才知道，先按无 size 版本算临时名
     let out_path = final_path(input, profile, target_fmt, None)?;
     let out_dir = out_path.parent().unwrap_or(Path::new(".")).to_path_buf();
-    std::fs::create_dir_all(&out_dir)
-        .with_context(|| format!("创建输出目录失败: {}", out_dir.display()))?;
+    if !out_dir.is_dir() {
+        std::fs::create_dir_all(&out_dir)
+            .with_context(|| format!("创建输出目录失败: {}", out_dir.display()))?;
+    }
 
     // 容器解码：HEIC/AVIF/JXL → 其他格式时先用 sips（macOS 原生）解成 PNG。
     // 不能走 vips：libvips 的 heif loader 会拿到内嵌缩略图（实测 1920×1280 只解出
@@ -240,14 +242,31 @@ pub async fn compress_file(
     }
     let output_size = std::fs::metadata(&tmp)?.len();
 
-    // 尺寸守卫：编码器悄悄降采样（如 vips 解码容器只拿到缩略图）必须当场拦下
-    if let (Some((iw, ih)), Some((ow, oh))) = (probe_dims(&encode_input).await, probe_dims(&tmp).await) {
-        if (iw, ih) != (ow, oh) {
-            let _ = std::fs::remove_file(&tmp);
-            bail!(
-                "输出尺寸异常：{}×{} → {}×{}（编码器疑似降采样，已拒绝落盘）",
-                iw, ih, ow, oh
-            );
+    // 尺寸守卫：编码器悄悄降采样（如 vips 解码容器只拿到缩略图）必须当场拦下。
+    // 只在水土不服的路径上跑（容器格式 / vips 兜底 / 预缩放），否则每次要多两个 sips
+    // 进程，小图耗时实测劣化 4~5%——专用编码器路径不需要这层保险。
+    let guarded = encoder.kind() == crate::engines::EngineKind::Vips
+        || matches!(input_fmt, InputFormat::Heic | InputFormat::Avif | InputFormat::Jxl)
+        || matches!(
+            target_fmt,
+            crate::profile::OutputFormat::Heic
+                | crate::profile::OutputFormat::Avif
+                | crate::profile::OutputFormat::Jxl
+        )
+        || encode_input != input;
+    if guarded {
+        let (before, after) = tokio::join!(probe_dims(&encode_input), probe_dims(&tmp));
+        if let (Some((iw, ih)), Some((ow, oh))) = (before, after) {
+            if (iw, ih) != (ow, oh) {
+                let _ = std::fs::remove_file(&tmp);
+                bail!(
+                    "输出尺寸异常：{}×{} → {}×{}（编码器疑似降采样，已拒绝落盘）",
+                    iw,
+                    ih,
+                    ow,
+                    oh
+                );
+            }
         }
     }
 
