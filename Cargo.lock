@@ -4562,6 +4562,7 @@ dependencies = [
 name = "yali-core"
 version = "0.0.1"
 dependencies = [
+ "anyhow",
  "serde",
  "serde_json",
 ]

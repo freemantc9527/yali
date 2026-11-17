@@ -5,10 +5,9 @@ edition.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
-description = "Yali 内核：Profile / Pipeline / EngineRegistry（无 UI 依赖）"
+description = "Yali 内核：Profile / Store / Pipeline / EngineRegistry（无 UI 依赖）"
 
 [dependencies]
 serde.workspace = true
-
-[dev-dependencies]
 serde_json.workspace = true
+anyhow.workspace = true

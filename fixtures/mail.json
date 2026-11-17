@@ -1,0 +1,41 @@
+{
+  "name": "mail",
+  "pipeline": {
+    "classify": true,
+    "engine": {
+      "jpeg": "mozjpeg"
+    }
+  },
+  "resize": {
+    "maxWidth": 1920,
+    "maxHeight": null,
+    "keepRatio": true,
+    "mode": "shrinkOnly",
+    "cropAnchor": null
+  },
+  "quality": {
+    "kind": "targetBytes",
+    "level": null,
+    "targetBytes": 500000,
+    "minQualityFloor": 3
+  },
+  "format": {
+    "output": "auto",
+    "animated": "keep"
+  },
+  "metadata": {
+    "exif": "privacy",
+    "icc": "srgb"
+  },
+  "output": {
+    "dir": "sibling",
+    "suffixTemplate": "-{profile}",
+    "largerPolicy": "keepOriginal",
+    "undoManifest": true
+  },
+  "ui": {
+    "notify": true,
+    "sound": false,
+    "openGUIOnFail": true
+  }
+}

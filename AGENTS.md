@@ -22,8 +22,8 @@
 `crates/yali-integration`（平台差异收口）与 `crates/yali-vision`（M3）**尚未创建**，是预注册名，不要在未建卡的 PR 里提前落地。
 
 ## 目录现状（勿假设不存在的东西）
-已存在：`crates/yali-core`、`crates/yali-cli`、`src-tauri/`、`ui/`、`docs/`（含 `docs/decisions/`）。
-**尚未存在**（按任务卡创建，见 `docs/STATE.md`）：`schema/`、`benchkit/`、`workflows/`、`helpers/`、`docs/tasks/`、`crates/yali-integration`。
+已存在：`crates/yali-core`、`crates/yali-cli`、`src-tauri/`、`ui/`、`docs/`（含 `docs/decisions/`、`docs/tasks/`）、`docs/plans/`、`schema/`、`fixtures/`。
+**尚未存在**（按任务卡创建，见 `docs/STATE.md`）：`benchkit/`、`workflows/`、`helpers/`、`crates/yali-integration`。
 调用前先 `ls`，不要凭记忆引用不存在的路径。
 
 ## 硬性规则

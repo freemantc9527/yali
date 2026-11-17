@@ -1,0 +1,41 @@
+{
+  "name": "screenshot",
+  "pipeline": {
+    "classify": true,
+    "engine": {
+      "jpeg": "mozjpeg"
+    }
+  },
+  "resize": {
+    "maxWidth": null,
+    "maxHeight": null,
+    "keepRatio": true,
+    "mode": "none",
+    "cropAnchor": null
+  },
+  "quality": {
+    "kind": "lossless",
+    "level": null,
+    "targetBytes": null,
+    "minQualityFloor": 3
+  },
+  "format": {
+    "output": "auto",
+    "animated": "keep"
+  },
+  "metadata": {
+    "exif": "keep",
+    "icc": "keep"
+  },
+  "output": {
+    "dir": "sibling",
+    "suffixTemplate": "-{profile}",
+    "largerPolicy": "keepOriginal",
+    "undoManifest": true
+  },
+  "ui": {
+    "notify": true,
+    "sound": false,
+    "openGUIOnFail": true
+  }
+}

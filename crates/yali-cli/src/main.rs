@@ -1,7 +1,9 @@
 //! yali — 鸭梨 CLI。所有入口（workflow/GUI/剪贴板）共用的内核门面。
-//! M-1 占位：子命令签名先行，实现随 T-003+ 填充。
+//! T-002：profiles 子命令接入 ProfileStore（磁盘读取 + 出厂播种）。
+//! compress/convert/lossless/undo/doctor 待 T-003+ 填充真实管道。
 
 use clap::{Parser, Subcommand};
+use yali_core::ProfileStore;
 
 #[derive(Parser)]
 #[command(name = "yali", version, about = "鸭梨 Yali — 让图片没有压力")]
@@ -37,28 +39,36 @@ enum Cmd {
 
 #[derive(Subcommand)]
 enum ProfilesAction {
+    /// 列出磁盘上所有档（首启自动播种五档出厂 fixtures）
     List,
+    /// 从磁盘读取指定档，输出 JSON（与 fixtures/*.json 逐字段一致）
     Show { name: String },
 }
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.cmd {
-        Cmd::Profiles { action: ProfilesAction::Show { name } } => {
-            // 骨架实现：default 档输出与 yali-core 一致（T-002 换成 ProfileStore 读取）
-            let p = yali_core::Profile::default_profile();
-            if name != "default" {
-                anyhow::bail!("profile '{name}' not found (M-1 骨架仅内置 default)");
+        Cmd::Profiles { action } => match action {
+            ProfilesAction::List => {
+                let store = ProfileStore::open()?;
+                for name in store.list()? {
+                    println!("{name}");
+                }
+                Ok(())
             }
-            println!("{}", serde_json::to_string_pretty(&p)?);
-            Ok(())
-        }
-        Cmd::Profiles { action: ProfilesAction::List } => {
-            println!("default");
-            Ok(())
-        }
-        _ => {
-            println!("yali v{}: 该子命令尚未实现（M-1 骨架）", yali_core::CORE_VERSION);
+            ProfilesAction::Show { name } => {
+                let store = ProfileStore::open()?;
+                let profile = store.load(&name)?;
+                println!("{}", serde_json::to_string_pretty(&profile)?);
+                Ok(())
+            }
+        },
+        Cmd::Compress { .. }
+        | Cmd::Convert { .. }
+        | Cmd::Lossless { .. }
+        | Cmd::Undo { .. }
+        | Cmd::Doctor => {
+            println!("yali v{}: 该子命令尚未实现（T-003 起填充管道）", yali_core::CORE_VERSION);
             Ok(())
         }
     }
