@@ -29,6 +29,13 @@ async fn profiles_show(name: String) -> Result<Profile, String> {
 }
 
 #[tauri::command]
+async fn ssim(input: String, output: String) -> Result<f64, String> {
+    yali_core::metrics::ssim(Path::new(&input), Path::new(&output))
+        .await
+        .map_err(err)
+}
+
+#[tauri::command]
 async fn profiles_save(profile: Profile) -> Result<(), String> {
     profile.validate().map_err(err)?;
     let store = ProfileStore::open().map_err(err)?;
@@ -123,6 +130,7 @@ pub fn run() {
             profiles_list,
             profiles_show,
             profiles_save,
+            ssim,
             compress
         ])
         .run(tauri::generate_context!())

@@ -4,6 +4,7 @@
 //! JSON Schema（文档与外部校验器事实源）：schema/profile.schema.json。
 
 pub mod engines;
+pub mod metrics;
 pub mod pipeline;
 pub mod profile;
 pub mod store;

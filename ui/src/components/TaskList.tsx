@@ -5,7 +5,7 @@ export type { TaskRow };
 
 const basename = (path: string) => path.split("/").pop() ?? path;
 
-export function TaskRowView({ row }: { row: TaskRow }) {
+export function TaskRowView({ row, onOpen }: { row: TaskRow; onOpen?: (row: TaskRow) => void }) {
   const { report } = row;
   const name = basename(report?.input ?? row.path);
 
@@ -34,7 +34,12 @@ export function TaskRowView({ row }: { row: TaskRow }) {
       : `${report.savedPct > 0 ? "+" : ""}${report.savedPct.toFixed(1)}%`;
 
   return (
-    <li className={larger ? "task larger" : "task done"} data-testid="task-row">
+    <li
+      className={larger ? "task larger" : "task done"}
+      data-testid="task-row"
+      onClick={() => row.report && onOpen?.(row)}
+      style={{ cursor: row.report ? "pointer" : "default" }}
+    >
       <span className="task-name">{name}</span>
       <span className="sizes">
         {formatBytes(report.inputBytes)} →{" "}
@@ -53,7 +58,7 @@ export function TaskRowView({ row }: { row: TaskRow }) {
   );
 }
 
-export function TaskList({ rows }: { rows: TaskRow[] }) {
+export function TaskList({ rows, onOpen }: { rows: TaskRow[]; onOpen?: (row: TaskRow) => void }) {
   return (
     <section className="card" data-testid="task-list">
       <header className="card-head">
@@ -65,7 +70,7 @@ export function TaskList({ rows }: { rows: TaskRow[] }) {
       ) : (
         <ul className="tasks">
           {rows.map((row) => (
-            <TaskRowView key={`${row.index}-${row.path}`} row={row} />
+            <TaskRowView key={`${row.index}-${row.path}`} row={row} onOpen={onOpen} />
           ))}
         </ul>
       )}

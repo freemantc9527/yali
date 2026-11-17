@@ -193,3 +193,53 @@ h1 {
 .status.error {
   color: #cf222e;
 }
+
+/* T-010 对比查看器所需的最小样式 */
+.viewer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+.viewer {
+  background: var(--bg);
+  border-radius: 12px;
+  padding: 16px 20px;
+  width: min(900px, 92vw);
+  max-height: 88vh;
+  overflow: auto;
+}
+.compare {
+  position: relative;
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  user-select: none;
+}
+.compare img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.after-clip {
+  position: absolute;
+  inset: 0 auto 0 0;
+  overflow: hidden;
+}
+.after-clip img {
+  width: auto;
+  height: 100%;
+  max-width: none;
+}
+.divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #fff;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
+}

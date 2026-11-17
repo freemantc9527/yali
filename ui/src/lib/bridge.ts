@@ -149,6 +149,19 @@ const demoReport = (p: string, profile: string): CompressReport => ({
   status: "done",
 });
 
+/** 两图 SSIM（与 benchkit 同口径：ffmpeg ssim，1=完全一致） */
+export async function ssim(input: string, output: string): Promise<number> {
+  if (!isTauri()) return 0.9812; // 浏览器降级：演示值
+  return invoke<number>("ssim", { input, output });
+}
+
+/** 本地文件 → 可放进 <img src> 的地址（Tauri asset protocol）；浏览器返回 null */
+export function fileSrc(path: string | null): string | null {
+  if (!path || !isTauri()) return null;
+  const prefix = "asset://localhost/";
+  return prefix + encodeURIComponent(path);
+}
+
 export async function compress(paths: string[], profile: string): Promise<CompressReport[]> {
   if (!isTauri()) {
     const total = paths.length;

@@ -1,8 +1,8 @@
 # STATE · 项目状态接力（跨 session 冷启动先读本文件）
 
-> 更新规则：每张任务卡完成时更新；本文件是 Agent 的"记忆外置盘"。最后更新：2026-11-17（T-011 完成 · M1 进行中）。
+> 更新规则：每张任务卡完成时更新；本文件是 Agent 的"记忆外置盘"。最后更新：2026-11-17（T-010 完成 · M1 卡全部落地，人工验收待复核）。
 
-## 当前阶段：M0.5 右键闭环（自动部分完成，人工项待复核）→ M1 GUI
+## 当前阶段：M1 GUI（五张卡全部落地；人工验收项待复核）
 
 - [x] GitHub 仓库 `freemantc9527/yali`（public，Apache-2.0）
 - [x] README / AGENTS.md / .gitignore / Brewfile
@@ -24,6 +24,7 @@
 - [x] **T-008 输出目录策略 + schema v1.1（2026-11-17）**：`output.dirPath` 入 schema/fixtures；sibling/downloads/custom/override 四策略实测通过（downloads 重定向 HOME、override 读 `YALI_OUTPUT_DIR` 且缺失回落 sibling）；`{size}` 编码后渲染（photo-customout-48K.jpg）；undo 在 custom 目录按清单还原；engine 解析去掉 `brew --prefix` 子进程（HOME 陌生时会挂）改探 opt/<pkg>
 - [x] **T-009 任务队列与进度事件（2026-11-17）**：Tauri compress 改并发（Semaphore，min(cores-1,4)）并逐文件发 `yali://progress`（started/done/failed + index/total）；UI 用纯 reducer（applyProgress/reconcile，乱序安全、事件丢失兜底）；浏览器实测 3 文件逐行更新；cargo 42 + ui 37 全绿
 - [x] **T-011 Profile 管理器（2026-11-17）**：另存为（档名规则与内核 path_for 对齐）/ 导出到剪贴板 / 粘贴导入（内核 validate 兜底）；bridge 降级态改成内存档案表（浏览器里另存/导入列表真实变化）；浏览器实测另存后下拉出现 my-web、非法 JSON 报解析错误
+- [x] **T-010 对比查看器（2026-11-17）**：`yali-core/metrics.rs`（ffmpeg ssim，与 benchkit 同口径；HEIC 走 sips 中转）+ Tauri `ssim` command + asset protocol（protocol-asset feature）；Viewer 组件滑杆/SSIM 标注，任务行点击打开；浏览器降级明确提示读不了本地路径
 - [x] `docs/tasks/` 任务卡目录（T-002 起）
 - [x] benchkit/ 合成金样素材生成脚本（T-004）
 
@@ -46,7 +47,9 @@
 ## 下一步（按序）
 > 任务卡在 `docs/tasks/`（索引见 `docs/tasks/README.md`）。
 
-1. **M1 进行中**：计划见 `docs/plans/PLAN-M1.md`；T-007/008/009/011 ✅ → 仅剩 T-010（对比查看器：before/after 滑杆 + SSIM）
+1. **M1 卡全部落地**（T-007~T-011）：待人工复核——真机 `cargo tauri dev` 全流程、对比滑杆手感、
+   10 图批处理内存峰值 <300MB；复核后在 `docs/plans/PLAN-M1.md` 勾出口条件并归档
+2. 技术债候选（开卡再做）：Svelte 无、死代码清理、metrics.sqlite 统计页、open-file/Dock 拖入
 2. 待人工复核项：Finder 右键菜单出现与通知文案（T-006 manual-check）
 
 ## 坑账本

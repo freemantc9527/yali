@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { DropZone } from "./components/DropZone";
 import { ProfileForm } from "./components/ProfileForm";
 import { ProfileManager } from "./components/ProfileManager";
+import { Viewer } from "./components/Viewer";
 import { TaskList } from "./components/TaskList";
 import { applyProgress, reconcile, type TaskRow } from "./lib/tasks";
 import {
@@ -24,6 +25,7 @@ export default function App() {
   const [selected, setSelected] = useState("default");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [rows, setRows] = useState<TaskRow[]>([]);
+  const [viewing, setViewing] = useState<TaskRow | null>(null);
   const [busy, setBusy] = useState(false);
 
   // 逐文件进度事件（结果权威仍是 command 返回值，事件丢失由 reconcile 兜底）
@@ -100,7 +102,8 @@ export default function App() {
         onSave={handleSave}
       />
       <ProfileManager profile={profile} onSave={handleSave} />
-      <TaskList rows={rows} />
+      <TaskList rows={rows} onOpen={(row) => setViewing(row)} />
+      {viewing?.report && <Viewer report={viewing.report} onClose={() => setViewing(null)} />}
     </main>
   );
 }
