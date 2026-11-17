@@ -1,8 +1,8 @@
 # STATE · 项目状态接力（跨 session 冷启动先读本文件）
 
-> 更新规则：每张任务卡完成时更新；本文件是 Agent 的"记忆外置盘"。最后更新：2026-11-17（T-003 完成）。
+> 更新规则：每张任务卡完成时更新；本文件是 Agent 的"记忆外置盘"。最后更新：2026-11-17（T-005 完成 · **M0 收口**）。
 
-## 当前阶段：M-1 收尾 → M0 内核
+## 当前阶段：M0 完成 → M0.5 右键闭环
 
 - [x] GitHub 仓库 `freemantc9527/yali`（public，Apache-2.0）
 - [x] README / AGENTS.md / .gitignore / Brewfile
@@ -17,9 +17,9 @@
 - [x] **T-002 Profile Schema + Store + 五档 fixtures（2026-11-17）**：`schema/profile.schema.json`（文档事实源）+ `fixtures/{default,web,archive,mail,screenshot}.json` + `crates/yali-core/src/{profile,store}.rs`（六段 Schema / YALI_HOME 重定向 / 原子写 / 出厂播种）；`cargo test -p yali-core profile` 15+2 绿，零警告；CLI `profiles list/show` 从磁盘读取，`show default` 与 fixture 逐字节一致
 - [x] **T-003 EngineRegistry + CLI 真实现（2026-11-17）**：tokio 引回（子进程池 + 并发 min(cores-1,4)）；Encoder trait + 11 引擎注册（mozjpeg keg 路径反李鬼 / pngquant / oxipng / gifsicle / gif2webp / cwebp / avifenc / cjxl / svgo / sips / vips 兜底）；魔数嗅探；targetBytes ≤5 轮 level 二分；负优化拦截；UndoManifest；doctor/compress/convert/lossless/undo 全通
 - [x] **T-004 benchkit 合成金样 + 三指标回归（2026-11-17）**：`generate.sh` 确定性生成五类样张（seed 固定，两次生成哈希一致）；`bench.sh` 输出 体积比/SSIM/耗时中位数，与 `baseline.json` 比对（劣化>3% 退出码非零，实测触发）；default/web 双档全绿
-- [ ] `ui/` 与内核接线：Profile 表单 + 拖入队列（T-005 收尾 → T-006 起深化）
-- [ ] benchkit/ 合成金样素材生成脚本（T-004）
-- [ ] `docs/tasks/` 任务卡目录（随 T-002 落盘）
+- [x] **T-005 UI 接线（2026-11-17）**：Tauri commands（profiles_list/profiles_show/compress，壳层零业务逻辑）+ App/ProfileForm/TaskList/DropZone + bridge 浏览器降级；`pnpm --dir ui test` 19 绿；command 层真压缩冒烟（benchkit 样张）通过；应用启动冒烟通过（图标修成 RGBA8）；浏览器端到端验证：切档表单联动、拖入→`748.0 KB → 326.2 KB (-56.4%)` 行渲染
+- [x] `docs/tasks/` 任务卡目录（T-002 起）
+- [x] benchkit/ 合成金样素材生成脚本（T-004）
 
 ## 关键决策记录（摘要，全文在 docs/decisions/）
 - 技术栈：Tauri 2 + Rust + React；**硬约束无 Xcode**（ADR-002）
@@ -29,10 +29,19 @@
 - 分发：本地工具定位，证书延后；brew tap 源码构建为主渠道
 - 平台：macOS 先行，Linux→Windows 备忘见 docs/CROSSPLATFORM.md
 
-## 下一步（按序）
-> **执行计划已落卡**：冷启动先读 `docs/plans/PLAN-M0.md`（临时文档，M0 完成后移除），卡片在 `docs/tasks/`（索引见 `docs/tasks/README.md`）。
+## M0 出口条件核验（2026-11-17 收口，全部通过）
 
-1. T-005 收尾: UI 接线（T-005，manual-check）→ 完成后 M0 出口条件逐条核验
+- [x] 合成集回归达标：`benchkit/bench.sh` default/web 双档全绿；level 5 照片类 SSIM 0.9657 ≥ 0.95（DESIGN §9 口径）
+- [x] 单图 p50 < 1.5s：benchkit photo 样张 5 次实测 **p50 = 119ms**（预算的 8%）
+- [x] undo 100% 还原：CLI 端到端 sha256 逐字节一致 + 单测覆盖三种场景
+- [x] `cargo test` 全绿（core 32 + fixtures 2 + app command 1）且 `pnpm --dir ui test` 全绿（19）；零警告
+- [x] STATE 更新为 M0 完成，`docs/plans/PLAN-M0.md` 已移除
+
+## 下一步（按序）
+> 任务卡在 `docs/tasks/`（索引见 `docs/tasks/README.md`）。
+
+1. **M0.5 右键闭环**：`workflows/` `.workflow` 模板 + install-workflows.sh + 聚合通知（人工验收：真机右键→通知）
+2. M1 GUI：Tauri 壳 + React 全界面（DESIGN §5 六卡 Inspector / 对比查看器 / Profile 管理器）
 
 ## 坑账本
 - `tauri::generate_context!` **编译期**要求 `src-tauri/icons/icon.png` 存在（即使 bundle.active=false）

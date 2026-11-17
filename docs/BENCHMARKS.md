@@ -55,7 +55,7 @@
 
 jpegli（google/jpegli，需 cmake 自建）· Animated AVIF 体积 · gifski 质量向 · UI 截图素材集（验证分类器假设）· 目标大小二分收敛实测
 
-## 7. T-003 冒烟手测备注（2026-11-17，非标准金样，正式回归等 T-004 benchkit）
+## 7. T-003 冒烟手测备注（2026-11-17；正式回归已由 benchkit 接管，见 §8）
 
 样张：plasma 分形噪声 JPEG（噪声内容对压缩器不友好，省率偏高属正常）；机器 M1 Pro。
 
@@ -69,3 +69,10 @@ jpegli（google/jpegli，需 cmake 自建）· Animated AVIF 体积 · gifski �
 行为验证：负优化拦截（预压 q30 样张再压 → status larger_output，不落盘）✓；undo 100% 还原 ✓；doctor 引擎路径全对（cjpeg 走 /opt/homebrew/opt/mozjpeg keg，PATH 李鬼未踩）✓。
 
 工程坑新增：**vipsthumbnail 不认 dotfile 输出路径，会把图片写进 stdout**——预缩放中转文件必须用非隐藏名（已修，代码注释有记）。
+
+## 8. benchkit 自动化基线（2026-11-17 起）
+
+三指标回归已脚本化：`benchkit/bench.sh`（体积比 / SSIM / 耗时中位数），基线在 `benchkit/baseline.json`，
+任一指标劣化 >3% 退出码非零。default 档首跑（photo 531KB → 49KB / SSIM 0.965 / 121ms；ui 34.8KB → 4.7KB / 1.000 / 74ms；
+gif 966KB → 661KB / 0.823 / 184ms；transparent 33KB → 5.3KB / 0.932 / 66ms；heic 264KB → 258KB / 0.989 / 169ms）。
+口径与偏离说明见 `benchkit/README.md`。

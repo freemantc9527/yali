@@ -4574,10 +4574,12 @@ dependencies = [
 name = "yali-app"
 version = "0.0.1"
 dependencies = [
+ "anyhow",
  "serde",
  "serde_json",
  "tauri",
  "tauri-build",
+ "tokio",
  "yali-core",
 ]
 
