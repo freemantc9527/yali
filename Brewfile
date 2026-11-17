@@ -14,4 +14,4 @@ brew "gifski"         # GIF 高质量编码（Rust）
 brew "vips"           # 缩放/转码主力（LGPL，子进程/动态）
 brew "imagemagick"    # 仅 benchkit 度量用（SSIM），不进产品分发
 
-cask  "node" if false # 开发依赖说明：node/rust 由开发机自备，不进 bundle
+# 开发工具（不进 bundle，开发机自备）：rust 工具链、node、pnpm（前端包管理器，见 docs/decisions/ADR-004-pnpm.md）

@@ -2,10 +2,13 @@
 /target/
 **/*.rs.bk
 
-# Node / Vite
+# Node / Vite / pnpm
 node_modules/
 dist/
 .vite/
+coverage/
+*.tsbuildinfo
+pnpm-debug.log*
 
 # Tauri
 src-tauri/gen/
@@ -26,3 +29,4 @@ benchkit/local-samples/
 .idea/
 .vscode/
 *.swp
+.alma-snapshots

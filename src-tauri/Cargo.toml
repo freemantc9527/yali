@@ -3,6 +3,8 @@ name = "yali-app"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+authors.workspace = true
+repository.workspace = true
 description = "鸭梨 GUI 壳（Tauri 2）"
 
 [build-dependencies]

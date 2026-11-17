@@ -8,9 +8,9 @@
 2. **契约先行**：跨模块依赖一律先落 `schema/`（profile.schema.json + fixtures）+ 接口文档，再写实现
 3. **一卡一 PR**：验收 = 可执行命令的输出，不接受描述性"已完成"
 4. **状态接力**：`docs/STATE.md` 是跨 session 冷启动的唯一入口，每卡完成即更新
-5. **金样守门**：压缩质量变更必须过 `benchkit/bench.sh`（体积/SSIM/耗时，劣化>3% 拒绝合入）
+5. **金样守门**：压缩质量变更必须过 `benchkit/bench.sh`（体积/SSIM/耗时，劣化>3% 拒绝合入；脚本随 T-004 建立）
 
-## 2. 任务卡模板（docs/tasks/T-xxx.md）
+## 2. 任务卡模板（`docs/tasks/T-xxx.md`，该目录随 T-004 落地）
 
 ```markdown
 # T-012 · Profile Schema 与 Store
@@ -39,7 +39,7 @@ manual-check: false
 
 ## 4. 回环预算
 
-- `cargo test` <60s（改核心必跑）；`npm test` 秒级；Vite dev 随便跑
+- `cargo test` <60s（改核心必跑）；`pnpm --dir ui test` 秒级；Vite dev 随便跑
 - `cargo tauri build` 批处理化：一天攒几个 UI 卡再统一整包构建（16GB 机器 `-j4`）
 - UI 任务禁止无卡样式迭代（防"美化"黑洞）
 

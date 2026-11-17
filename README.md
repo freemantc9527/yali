@@ -28,7 +28,7 @@ macOS 原生的图片压缩与处理入口：右键即压、后台静默、Profi
 
 ## 状态
 
-**M-1 完成（CLT-only 构建终验通过），M0 内核开发进行中。**
+**M-1 完成（CLT-only 构建终验通过），M0 内核开发进行中。** UI 侧已具备最小 Vite + React 脚手架（T-005）。
 
 | 里程碑 | 内容 |
 |---|---|
@@ -51,13 +51,18 @@ macOS 原生的图片压缩与处理入口：右键即压、后台静默、Profi
 | `docs/WORKFLOW.md` | 任务卡制与验收流程 |
 | `docs/CROSSPLATFORM.md` | 跨平台备忘 |
 | `docs/STATE.md` | **当前进度（新 session 先读这个）** |
+| `docs/decisions/` | 架构决策记录（ADR-001~004，含技术栈与工具链） |
 
 ## 开发
 
 ```bash
-brew bundle --file Brewfile
+brew bundle --file Brewfile       # 引擎依赖（Rust / node / pnpm 由开发机自备）
 cargo test                        # 内核测试
 cargo run -p yali-cli -- profiles show default
+
+pnpm --dir ui install             # 前端依赖（包管理器统一 pnpm，见 ADR-004）
+pnpm --dir ui test                # 前端单测（vitest）
+pnpm --dir ui build               # 产出 ui/dist（Tauri 的前端产物）
 ```
 
 工程约定见 `AGENTS.md`（人类与 AI Agent 同等适用）。
