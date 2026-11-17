@@ -1,8 +1,8 @@
 # STATE · 项目状态接力（跨 session 冷启动先读本文件）
 
-> 更新规则：每张任务卡完成时更新；本文件是 Agent 的"记忆外置盘"。最后更新：2026-11-17（T-005 完成 · **M0 收口**）。
+> 更新规则：每张任务卡完成时更新；本文件是 Agent 的"记忆外置盘"。最后更新：2026-11-17（T-006 完成 · M0.5 右键闭环）。
 
-## 当前阶段：M0 完成 → M0.5 右键闭环
+## 当前阶段：M0.5 右键闭环（自动部分完成，人工项待复核）→ M1 GUI
 
 - [x] GitHub 仓库 `freemantc9527/yali`（public，Apache-2.0）
 - [x] README / AGENTS.md / .gitignore / Brewfile
@@ -18,6 +18,8 @@
 - [x] **T-003 EngineRegistry + CLI 真实现（2026-11-17）**：tokio 引回（子进程池 + 并发 min(cores-1,4)）；Encoder trait + 11 引擎注册（mozjpeg keg 路径反李鬼 / pngquant / oxipng / gifsicle / gif2webp / cwebp / avifenc / cjxl / svgo / sips / vips 兜底）；魔数嗅探；targetBytes ≤5 轮 level 二分；负优化拦截；UndoManifest；doctor/compress/convert/lossless/undo 全通
 - [x] **T-004 benchkit 合成金样 + 三指标回归（2026-11-17）**：`generate.sh` 确定性生成五类样张（seed 固定，两次生成哈希一致）；`bench.sh` 输出 体积比/SSIM/耗时中位数，与 `baseline.json` 比对（劣化>3% 退出码非零，实测触发）；default/web 双档全绿
 - [x] **T-005 UI 接线（2026-11-17）**：Tauri commands（profiles_list/profiles_show/compress，壳层零业务逻辑）+ App/ProfileForm/TaskList/DropZone + bridge 浏览器降级；`pnpm --dir ui test` 19 绿；command 层真压缩冒烟（benchkit 样张）通过；应用启动冒烟通过（图标修成 RGBA8）；浏览器端到端验证：切档表单联动、拖入→`748.0 KB → 326.2 KB (-56.4%)` 行渲染
+- [x] **T-006 M0.5 右键闭环（2026-11-17）**：`workflows/`（模板 + install-workflows.sh）装到 `~/Library/Services/鸭梨 · 压一下.workflow`，pbs 注册可见；CLI 新增 `compress --notify` 聚合通知（多选一条，文案三态单测）；引擎解析加 Homebrew 绝对路径兜底（Services PATH 只有 /usr/bin:/bin）；`automator -i` 端到端跑通产出 `-{profile}` 文件
+- [ ] **人工复核（Agent 无法自验）**：Finder 右键菜单是否出现「鸭梨 · 压一下」、多选只弹一条通知
 - [x] `docs/tasks/` 任务卡目录（T-002 起）
 - [x] benchkit/ 合成金样素材生成脚本（T-004）
 
@@ -40,8 +42,8 @@
 ## 下一步（按序）
 > 任务卡在 `docs/tasks/`（索引见 `docs/tasks/README.md`）。
 
-1. **M0.5 右键闭环**：`workflows/` `.workflow` 模板 + install-workflows.sh + 聚合通知（人工验收：真机右键→通知）
-2. M1 GUI：Tauri 壳 + React 全界面（DESIGN §5 六卡 Inspector / 对比查看器 / Profile 管理器）
+1. **M1 GUI**：Tauri 壳 + React 全界面（DESIGN §5 六卡 Inspector / 对比查看器 / Profile 管理器）——需先落 M1 任务卡
+2. 待人工复核项：Finder 右键菜单出现与通知文案（T-006 manual-check）
 
 ## 坑账本
 - `tauri::generate_context!` **编译期**要求 `src-tauri/icons/icon.png` 存在（即使 bundle.active=false）
@@ -49,6 +51,7 @@
 - gh 2.104 无 `-g` 短参；`gh repo create` 远端新建用 `--add-readme --license --clone` 组合
 - 迁移后 `target/` 缓存带着旧绝对路径，指纹脏；换路径后建议 `cargo clean` 重建一次
 - **vipsthumbnail 不认 dotfile 输出路径**（`-o .foo.png` 会把图片写进 stdout，退出码还是 0）——预缩放中转必须用非隐藏文件名，且跑完校验文件存在
+- **Services（右键 .workflow）的 PATH 只有 `/usr/bin:/bin`**：引擎解析必须自带 Homebrew 兜底，brew 命令本身也要绝对路径（/opt/homebrew/bin/brew）
 - **libvips 的 heif loader 会返回内嵌缩略图**（1920×1280 的 HEIC 只解出 128×85）——HEIC/AVIF/JXL 容器解码走 sips，管道有输出尺寸守卫兜底（benchkit 首跑抓到）
 - **本机 ImageMagick 7.1.2-36 的 `compare -metric SSIM` 语义损坏**（同像素输出 0 而非 1）——benchkit 的 SSIM 用 ffmpeg ssim 滤镜
 - plasma/噪声类合成图必须 `-seed` 固定随机，否则每次生成内容不同、基线漂移无意义

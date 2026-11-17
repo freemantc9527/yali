@@ -15,15 +15,15 @@
 | UI 构建 | `pnpm --dir ui build` → `ui/dist` | 可用 |
 | 整包 | `cargo tauri build`（仅任务卡要求时；16GB 机器加 `-j4`） | 前端产物齐备后可用 |
 | 金样回归 | `benchkit/bench.sh`（体积/SSIM/耗时三指标，劣化 >3% 即失败） | 可用（T-004） |
-| workflow 安装 | `workflows/install-workflows.sh`（改模板后重跑 + `killall pbs`） | **待 M0.5 建立** |
+| workflow 安装 | `workflows/install-workflows.sh`（改模板后重跑 + `killall pbs`） | 可用（T-006） |
 
 ## 命名权威
 所有名称以 `docs/NAMING.md` 注册表为准：bundle `app.yali`、crate `yali-core/yali-cli`、CLI `yali`、env 前缀 `YALI_`、数据目录 `~/Library/Application Support/app.yali/`。品牌语境 Yali/鸭梨，技术语境一律小写。
 `crates/yali-integration`（平台差异收口）与 `crates/yali-vision`（M3）**尚未创建**，是预注册名，不要在未建卡的 PR 里提前落地。
 
 ## 目录现状（勿假设不存在的东西）
-已存在：`crates/yali-core`、`crates/yali-cli`、`src-tauri/`、`ui/`、`docs/`（含 `docs/decisions/`、`docs/tasks/`）、`schema/`、`fixtures/`、`benchkit/`。
-**尚未存在**（按任务卡创建，见 `docs/STATE.md`）：`workflows/`、`helpers/`、`crates/yali-integration`。
+已存在：`crates/yali-core`、`crates/yali-cli`、`src-tauri/`、`ui/`、`docs/`（含 `docs/decisions/`、`docs/tasks/`）、`schema/`、`fixtures/`、`benchkit/`、`workflows/`。
+**尚未存在**（按任务卡创建，见 `docs/STATE.md`）：`helpers/`、`crates/yali-integration`。
 调用前先 `ls`，不要凭记忆引用不存在的路径。
 
 ## 硬性规则

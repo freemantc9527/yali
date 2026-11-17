@@ -9,5 +9,6 @@
 | [T-003-engine-registry.md](T-003-engine-registry.md) | ✅ 完成（2026-11-17） | EngineRegistry + 子进程池 + CLI 真实现 | doctor 11 引擎探测 ✓；compress 冒烟 p50≈95ms；负优化拦截/undo 还原均有测试；32+2 测试全绿 |
 | [T-004-benchkit.md](T-004-benchkit.md) | ✅ 完成（2026-11-17） | 合成金样 + bench.sh 三指标出表 | generate.sh 确定性可复跑；bench 双档通过；劣化>3% 实测退出码 1；baseline 入库 |
 | [T-005-ui-wiring.md](T-005-ui-wiring.md) | ✅ 完成（2026-11-17） | UI 接线（拖入队列 + Profile 表单） | 19 个前端测试绿；command 层真压缩冒烟；浏览器端到端拖入→结果行；真机拖拽待人工复核 |
+| [T-006-m0.5-workflow.md](T-006-m0.5-workflow.md) | ✅ 完成（2026-11-17，manual 待复核） | Finder 右键 .workflow + 聚合通知 | automator 端到端产出 + pbs 注册可见；CLI 聚合文案三态单测；右键菜单出现属人工验收 |
 
 T-002 落地物：`schema/profile.schema.json`（文档事实源）、`fixtures/`（五档出厂）、`crates/yali-core/src/{profile,store}.rs`。

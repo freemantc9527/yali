@@ -30,6 +30,9 @@ enum Cmd {
         /// 只输出 JSON 摘要，不打印过程信息（workflow 用）
         #[arg(long)]
         quiet: bool,
+        /// 结束时发一条聚合通知（Finder 右键「压一下」用）
+        #[arg(long)]
+        notify: bool,
     },
     /// 格式转换
     Convert {
@@ -85,10 +88,81 @@ fn max_concurrency() -> usize {
         .min(4)
 }
 
+/// 批处理汇总（聚合通知的依据；三态覆盖：done / larger_output / failed）
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+struct BatchSummary {
+    done: usize,
+    larger: usize,
+    failed: usize,
+    saved_bytes: i64,
+}
+
+fn summarize(reports: &[yali_core::pipeline::CompressReport], failed: usize) -> BatchSummary {
+    let mut s = BatchSummary { failed, ..Default::default() };
+    for r in reports {
+        if r.status == "done" {
+            s.done += 1;
+            s.saved_bytes += r.saved_bytes.unwrap_or(0);
+        } else if r.status == "larger_output" {
+            s.larger += 1;
+        }
+    }
+    s
+}
+
+/// 人类可读体积（通知文案用）
+fn human_bytes(bytes: i64) -> String {
+    let b = bytes.max(0) as f64;
+    if b < 1024.0 {
+        format!("{b:.0} B")
+    } else if b < 1024.0 * 1024.0 {
+        format!("{:.0} KB", b / 1024.0)
+    } else if b < 1024.0 * 1024.0 * 1024.0 {
+        format!("{:.1} MB", b / (1024.0 * 1024.0))
+    } else {
+        format!("{:.2} GB", b / (1024.0 * 1024.0 * 1024.0))
+    }
+}
+
+/// 聚合通知文案：多选只发一条
+fn notification_text(s: &BatchSummary) -> Option<String> {
+    let mut parts: Vec<String> = Vec::new();
+    if s.done > 0 {
+        parts.push(format!("{} 张省了 {}", s.done, human_bytes(s.saved_bytes)));
+    }
+    if s.larger > 0 {
+        if s.done > 0 {
+            parts.push(format!("{} 张压不动已保持原样", s.larger));
+        } else {
+            parts.push(format!("{} 张压不动，已保持原样", s.larger));
+        }
+    }
+    if s.failed > 0 {
+        parts.push(format!("{} 张失败", s.failed));
+    }
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join("，"))
+    }
+}
+
+/// osascript 发通知（失败不影响压缩结果）
+fn notify(text: &str) {
+    let escaped = text.replace('\\', "\\\\").replace('"', "\\\"");
+    let script = format!(
+        "display notification \"{escaped}\" with title \"鸭梨\" subtitle \"图片压完了\""
+    );
+    let _ = std::process::Command::new("/usr/bin/osascript")
+        .args(["-e", &script])
+        .output();
+}
+
 async fn run_batch(
     files: Vec<String>,
     profile: Profile,
     quiet: bool,
+    notify_flag: bool,
 ) -> Result<()> {
     let registry = Arc::new(Registry::discover(&profile));
     registry.warmup().await; // vips 冷启动 ~5s：预热是设计要求（坑账本）
@@ -107,12 +181,14 @@ async fn run_batch(
         }));
     }
 
+    let mut reports = Vec::new();
     let mut failures = 0usize;
     for handle in handles {
         let (file, result) = handle.await?;
         match result {
             Ok(report) => {
                 println!("{}", serde_json::to_string(&report)?);
+                reports.push(report);
             }
             Err(e) => {
                 failures += 1;
@@ -122,6 +198,13 @@ async fn run_batch(
                     eprintln!("{file}: {e:#}");
                 }
             }
+        }
+    }
+
+    let summary = summarize(&reports, failures);
+    if notify_flag {
+        if let Some(text) = notification_text(&summary) {
+            notify(&text);
         }
     }
     if failures > 0 {
@@ -134,21 +217,21 @@ async fn run_batch(
 async fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.cmd {
-        Cmd::Compress { files, profile, quiet } => {
+        Cmd::Compress { files, profile, quiet, notify } => {
             let profile = load_profile(&profile)?;
-            run_batch(files, profile, quiet).await
+            run_batch(files, profile, quiet, notify).await
         }
         Cmd::Convert { files, to } => {
             let mut profile = load_profile("default")?;
             profile.format.output = parse_format(&to)?;
-            run_batch(files, profile, false).await
+            run_batch(files, profile, false, false).await
         }
         Cmd::Lossless { files } => {
             let mut profile = load_profile("default")?;
             profile.quality.kind = QualityKind::Lossless;
             profile.format.output = OutputFormat::Jxl; // cjxl --lossless_jpeg=1 包裹
             profile.resize.mode = ResizeMode::None;
-            run_batch(files, profile, false).await
+            run_batch(files, profile, false, false).await
         }
         Cmd::Undo { dir } => {
             let report = undo::restore(&PathBuf::from(&dir))?;
@@ -198,5 +281,64 @@ async fn main() -> Result<()> {
             ]);
             Ok(())
         }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use yali_core::pipeline::CompressReport;
+
+    fn report(status: &'static str, saved: Option<i64>) -> CompressReport {
+        CompressReport {
+            input: "a.jpg".into(),
+            output: Some("a-default.jpg".into()),
+            input_bytes: 1_000_000,
+            output_bytes: Some(440_000),
+            saved_bytes: saved,
+            saved_pct: saved.map(|s| s as f64 / 1_000_000.0 * 100.0),
+            engine: "mozjpeg".into(),
+            elapsed_ms: 90,
+            status,
+        }
+    }
+
+    #[test]
+    fn summary_counts_three_states_and_savings() {
+        let reports = vec![
+            report("done", Some(560_000)),
+            report("done", Some(440_000)),
+            report("larger_output", None),
+        ];
+        let s = summarize(&reports, 1);
+        assert_eq!(s.done, 2);
+        assert_eq!(s.larger, 1);
+        assert_eq!(s.failed, 1);
+        assert_eq!(s.saved_bytes, 1_000_000);
+    }
+
+    #[test]
+    fn notification_text_aggregates_one_line() {
+        assert_eq!(
+            notification_text(&BatchSummary { done: 3, larger: 0, failed: 0, saved_bytes: 5_000_000 }),
+            Some("3 张省了 4.8 MB".to_string())
+        );
+        assert_eq!(
+            notification_text(&BatchSummary { done: 2, larger: 1, failed: 0, saved_bytes: 1_000 }),
+            Some("2 张省了 1000 B，1 张压不动已保持原样".to_string())
+        );
+        assert_eq!(
+            notification_text(&BatchSummary { done: 0, larger: 2, failed: 0, saved_bytes: 0 }),
+            Some("2 张压不动，已保持原样".to_string())
+        );
+        assert_eq!(notification_text(&BatchSummary::default()), None);
+    }
+
+    #[test]
+    fn human_bytes_units() {
+        assert_eq!(human_bytes(0), "0 B");
+        assert_eq!(human_bytes(1000), "1000 B");
+        assert_eq!(human_bytes(5_000_000), "4.8 MB");
     }
 }

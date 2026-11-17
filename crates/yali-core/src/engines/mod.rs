@@ -76,7 +76,17 @@ impl EngineKind {
                 }
             }
         }
-        // brew keg 路径兜底
+        // Homebrew 标准目录兜底：Finder Services / launchd 上下文的 PATH 只有
+        // /usr/bin:/bin，不能假设 /opt/homebrew/bin 在 PATH 里
+        for dir in ["/opt/homebrew/bin", "/usr/local/bin"] {
+            let candidate = Path::new(dir).join(binary);
+            if candidate.is_file()
+                && (self != EngineKind::Mozjpeg || candidate.to_string_lossy().contains("/mozjpeg/"))
+            {
+                return Some(candidate);
+            }
+        }
+        // brew keg 路径兜底（mozjpeg 这类 keg-only 必须靠它）
         if let Some(prefix) = brew_pkg_prefix(pkg) {
             let candidate = prefix.join("bin").join(binary);
             if candidate.is_file() {
@@ -94,9 +104,15 @@ impl EngineKind {
 }
 
 /// brew --prefix <pkg>（mozjpeg 是 keg-only，必须逐包查；批量场景由 Registry
-/// 解析一次后复用路径，不逐文件调用）
+/// 解析一次后复用路径，不逐文件调用）。
+/// Services/launchd 的 PATH 里没有 brew → 用标准安装位置绝对路径兜底。
 fn brew_pkg_prefix(pkg: &str) -> Option<PathBuf> {
-    std::process::Command::new("brew")
+    let brew = ["/opt/homebrew/bin/brew", "/usr/local/bin/brew"]
+        .iter()
+        .map(PathBuf::from)
+        .find(|p| p.is_file())
+        .unwrap_or_else(|| PathBuf::from("brew"));
+    std::process::Command::new(brew)
         .args(["--prefix", pkg])
         .output()
         .ok()
@@ -156,6 +172,10 @@ pub(crate) async fn run_engine(program: &Path, args: &[String]) -> Result<std::p
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    /// env 是进程级全局：所有改 env 的测试共用这把锁
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn engine_mozjpeg_resolution_rejects_libjpeg_turbo_cjpeg() {
@@ -172,8 +192,6 @@ mod tests {
 
     #[test]
     fn engine_yali_engines_path_takes_priority() {
-        use std::sync::Mutex;
-        static ENV_LOCK: Mutex<()> = Mutex::new(());
         let _guard = ENV_LOCK.lock().unwrap();
         let dir = std::env::temp_dir().join(format!("yali-engines-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
@@ -182,6 +200,24 @@ mod tests {
         let resolved = EngineKind::Pngquant.resolve();
         std::env::remove_var("YALI_ENGINES_PATH");
         assert_eq!(resolved, Some(dir.join("pngquant")));
+    }
+
+    #[test]
+    fn engine_resolves_without_brew_in_path() {
+        // Finder Services / launchd 的 PATH 只有 /usr/bin:/bin：Homebrew 目录必须自带兜底
+        let _guard = ENV_LOCK.lock().unwrap();
+        let original = std::env::var("PATH").ok();
+        std::env::set_var("PATH", "/usr/bin:/bin");
+        let path = EngineKind::Oxipng.resolve();
+        match original {
+            Some(v) => std::env::set_var("PATH", v),
+            None => std::env::remove_var("PATH"),
+        }
+        let path = path.expect("PATH 缺失时 oxipng 仍应通过 Homebrew 兜底解析到");
+        assert!(
+            path.starts_with("/opt/homebrew") || path.starts_with("/usr/local"),
+            "兜底路径应指向 Homebrew: {path:?}"
+        );
     }
 
     #[test]
