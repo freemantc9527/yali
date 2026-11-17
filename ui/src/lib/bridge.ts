@@ -59,6 +59,8 @@ export const isTauri = (): boolean =>
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
 const FALLBACK_PROFILES = ["archive", "default", "mail", "screenshot", "web"];
+/** 浏览器降级的内存档案表（页面会话内有效；保存/导入后列表随之变化） */
+const fallbackStore = new Map<string, Profile>();
 
 const baseProfile = (): Profile => ({
   name: "default",
@@ -108,12 +110,16 @@ export async function coreVersion(): Promise<string> {
 }
 
 export async function profilesList(): Promise<string[]> {
-  if (!isTauri()) return [...FALLBACK_PROFILES];
+  if (!isTauri()) {
+    return [...new Set([...FALLBACK_PROFILES, ...fallbackStore.keys()])].sort();
+  }
   return invoke<string[]>("profiles_list");
 }
 
 export async function profilesShow(name: string): Promise<Profile> {
   if (!isTauri()) {
+    const saved = fallbackStore.get(name);
+    if (saved) return saved;
     const factory = FALLBACK_PROFILES_DETAIL[name] ?? baseProfile;
     return { ...factory(), name };
   }
@@ -121,7 +127,11 @@ export async function profilesShow(name: string): Promise<Profile> {
 }
 
 export async function profilesSave(profile: Profile): Promise<void> {
-  if (!isTauri()) return; // 浏览器降级：不落盘，只走内存态
+  if (!isTauri()) {
+    // 浏览器降级：只写内存表（不落盘）
+    fallbackStore.set(profile.name, profile);
+    return;
+  }
   return invoke<void>("profiles_save", { profile });
 }
 

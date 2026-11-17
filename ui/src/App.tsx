@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { DropZone } from "./components/DropZone";
 import { ProfileForm } from "./components/ProfileForm";
+import { ProfileManager } from "./components/ProfileManager";
 import { TaskList } from "./components/TaskList";
 import { applyProgress, reconcile, type TaskRow } from "./lib/tasks";
 import {
@@ -48,7 +49,9 @@ export default function App() {
 
   const handleSave = useCallback(async (next: Profile) => {
     await profilesSave(next);
-    setProfile(next); // 保存后以草稿为准；下次切档会从磁盘重读
+    const list = await profilesList();
+    setNames(list);
+    setProfile(next); // 保存后以草稿为准；切档时会从磁盘重读
   }, []);
 
   const handlePaths = useCallback(
@@ -96,6 +99,7 @@ export default function App() {
         onSelect={setSelected}
         onSave={handleSave}
       />
+      <ProfileManager profile={profile} onSave={handleSave} />
       <TaskList rows={rows} />
     </main>
   );

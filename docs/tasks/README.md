@@ -13,5 +13,6 @@
 | [T-007-profile-editing.md](T-007-profile-editing.md) | ✅ 完成（2026-11-17） | Profile 编辑与保存 | `profiles save` 往返 + 非法值拒绝；command 冒烟含 save；ui 29 测试绿；浏览器实测保存/错误提示 |
 | [T-008-output-dir.md](T-008-output-dir.md) | ✅ 完成（2026-11-17） | 输出目录策略（schema v1.1） | 四策略 + `{size}` 实测；undo 在 custom 目录还原；ui 31 测试绿 |
 | [T-009-task-queue.md](T-009-task-queue.md) | ✅ 完成（2026-11-17） | 任务队列并发 + 进度事件 | 事件 started/done/failed + reducer 乱序测试；浏览器 3 文件逐行更新实测 |
+| [T-011-profile-manager.md](T-011-profile-manager.md) | ✅ 完成（2026-11-17） | Profile 管理器（另存/导入/导出） | 纯函数 12 测；浏览器实测另存与非法 JSON 报错 |
 
 T-002 落地物：`schema/profile.schema.json`（文档事实源）、`fixtures/`（五档出厂）、`crates/yali-core/src/{profile,store}.rs`。

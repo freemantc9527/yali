@@ -51,7 +51,7 @@ export function ProfileForm({ profile, names, selected, onSelect, onSave }: Prop
       await onSave(draft);
       setStatus({ kind: "ok", text: "已保存" });
     } catch (e) {
-      setStatus({ kind: "error", text: String(e) });
+      setStatus({ kind: "error", text: e instanceof Error ? e.message : String(e) });
     } finally {
       setSaving(false);
     }
