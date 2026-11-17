@@ -23,6 +23,15 @@ workflows/install-workflows.sh --uninstall    # 卸载
 已自动验证：`automator -i <jpg> <workflow>` 全链路（产出 `-{profile}` 文件 + JSON 摘要 + 通知进程成功）；
 pbs 注册表可见 `NSBundleIdentifier = app.yali.quick-action`；CLI `--notify` 聚合文案单测三态覆盖。
 
+## 已修：右键菜单只在部分位置出现（2026-11-17 实测）
+
+现象：废纸篓里的图片右键有「鸭梨 · 压一下」，普通文件夹里没有。
+原因：`NSSendFileTypes` 只声明抽象类型 `public.image` 时，Finder 在正常目录里对
+workflow 服务（`runWorkflowAsService`）的类型匹配不生效；废纸篓的过滤宽松才显示。
+对照本机可用的老服务（图压一下）正是声明具体 UTI 列表。
+修法：显式声明全部支持的类型（jpeg/png/gif/webp/avif/heic/heif/tiff/bmp/jpeg-xl/
+svg-image），并保留 public.image 兜底。
+
 ## 已修：右键菜单不出现（2026-11-17 实测）
 
 只装 bundle + `flush pbs` **不够**——新版 macOS 对没登记进启用库的服务不自动上右键菜单。

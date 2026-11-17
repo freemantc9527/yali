@@ -59,6 +59,8 @@
 - gh 2.104 无 `-g` 短参；`gh repo create` 远端新建用 `--add-readme --license --clone` 组合
 - 迁移后 `target/` 缓存带着旧绝对路径，指纹脏；换路径后建议 `cargo clean` 重建一次
 - **vipsthumbnail 不认 dotfile 输出路径**（`-o .foo.png` 会把图片写进 stdout，退出码还是 0）——预缩放中转必须用非隐藏文件名，且跑完校验文件存在
+- **Quick Action 的 `NSSendFileTypes` 只写抽象 `public.image` 不够**：Finder 在正常目录对
+  workflow 服务不做抽象类型匹配（废纸篓里反而显示）——要显式列具体 UTI（对照老服务「图压一下」）
 - **右键 Quick Action 只装 bundle + flush pbs 不上菜单**（新版 macOS）：必须把服务写进
   `pbs` 的 `NSServicesStatus`（presentation_modes 三处开）与 `FinderOrdering`——
   install-workflows.sh 已固化；修复时先 `killall Finder` 重建

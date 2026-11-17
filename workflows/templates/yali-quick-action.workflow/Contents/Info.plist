@@ -33,6 +33,17 @@
 			</dict>
 			<key>NSSendFileTypes</key>
 			<array>
+				<string>public.jpeg</string>
+				<string>public.png</string>
+				<string>com.compuserve.gif</string>
+				<string>org.webmproject.webp</string>
+				<string>public.avif</string>
+				<string>public.heic</string>
+				<string>public.heif</string>
+				<string>public.tiff</string>
+				<string>com.microsoft.bmp</string>
+				<string>public.jpeg-xl</string>
+				<string>public.svg-image</string>
 				<string>public.image</string>
 			</array>
 		</dict>
