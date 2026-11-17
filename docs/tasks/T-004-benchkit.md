@@ -12,6 +12,9 @@ acceptance:
   - 结果与 `benchkit/baseline.json` 比对，任一指标劣化 >3% 退出码非零
   - `baseline.json` 由 T-003 完成后的首次全量跑生成并入库
   - `cargo test` 不受影响（bench.sh 不进 cargo 测试回环，避免拖慢 <60s 预算）
+> 后续变更（T-012）：基线已改为**按档位分文件** `baseline-<profile>.json`，
+> 并新增 `palette.png` 样张；下面原文里的 `baseline.json` 是当时的口径。
+
 estimated: 2h
 manual-check: false
 
