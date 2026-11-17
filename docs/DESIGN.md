@@ -90,17 +90,18 @@ macOS 原生图片处理入口：**右键 0.5 秒发起、后台静默完成；�
 ## 6. 架构
 
 ```
+# 目标结构；标注「待建」的目录尚未存在，创建时机见 docs/STATE.md
 yali/
 ├─ crates/yali-core          # Profile(serde) · Pipeline · EngineRegistry · Classifier
 │                            # Metadata · UndoManifest · FileNamer · Metrics(rusqlite)
 ├─ crates/yali-cli           # clap 门面（安装二进制名 yali）
-├─ crates/yali-integration   # 平台差异 trait 收口（跨平台预埋）
+├─ crates/yali-integration   # 待建 · 平台差异 trait 收口（跨平台预埋）
 ├─ src-tauri                 # Tauri 壳：commands/tray/剪贴板/updater
-├─ ui/                       # React+Vite+Tailwind
-├─ workflows/                # .workflow 模板 + install-workflows.sh
-├─ helpers/                  # vision helper（CLT swiftc 编译的 Swift 小工具）
-├─ benchkit/                 # 合成金样 + bench.sh 回归
-└─ schema/                   # profile.schema.json + fixtures/
+├─ ui/                       # React+Vite（Tailwind 是否引入待 M1 任务卡评估）
+├─ workflows/                # 待建 · .workflow 模板 + install-workflows.sh
+├─ helpers/                  # 待建 · vision helper（CLT swiftc 编译的 Swift 小工具）
+├─ benchkit/                 # 待建 · 合成金样 + bench.sh 回归
+└─ schema/                   # 待建 · profile.schema.json + fixtures/
 ```
 
 - 引擎集成两步走：**Phase A 子进程**（Brewfile 钉版，tokio 进程池预热，GPL 边界干净）→ Phase B 库内链接（可选：imagequant-rs/oxipng/ravif/vips-sys；每步有 CLI 回退）

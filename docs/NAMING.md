@@ -33,9 +33,9 @@
 | CLI 安装二进制 | **`yali`** | 用户可见唯一命令名；文档示例一律写 `yali` |
 | CLI crate | `yali-cli` | cargo 包名带 -cli，产物是 `yali` |
 | 核心 crate | `yali-core` | |
-| 平台集成 crate | `yali-integration` | 平台差异 trait 收口 |
+| 平台集成 crate | `yali-integration` | 预注册，尚未创建；平台差异 trait 收口 |
 | Vision 封装 crate | `yali-vision` | M3 起可选 |
-| 前端包 | `yali-ui` | ui/，npm 私有不发布 |
+| 前端包 | `yali-ui` | ui/，pnpm 私有包不发布 |
 | Vision helper | `yali-vision-helper` | CLT swiftc 编译；子命令 cut/ocr/saliency |
 | Tauri 壳 | `src-tauri/`（package `yali-app`） | |
 
