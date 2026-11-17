@@ -14,6 +14,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$ROOT/.." && pwd)"
 TEMPLATE="$ROOT/templates/yali-quick-action.workflow"
 SERVICE_NAME="鸭梨 · 压一下"
+BID="app.yali.quick-action"
 DEST="$HOME/Library/Services/$SERVICE_NAME.workflow"
 
 flush_services() {
@@ -59,6 +60,33 @@ PY
 
 plutil -lint "$DEST/Contents/Info.plist" >/dev/null
 plutil -lint "$DEST/Contents/document.wflow" >/dev/null
+
+# 启用并挂进 Finder 快速操作菜单（等价于在 系统设置→服务 里勾选）：
+# 实测只装 bundle + flush pbs 不够——新版 macOS 对未登记进 NSServicesStatus /
+# FinderOrdering 的服务不自动上右键菜单
+python3 - "$BID" "$SERVICE_NAME" <<'PYEN'
+import subprocess, sys
+bid, name = sys.argv[1], sys.argv[2]
+status_key = f"{bid} - {name} - runWorkflowAsService"
+ordering_key = f"SERVICE-{status_key}"
+
+def old_plist(d):
+    def val(v):
+        if isinstance(v, bool):
+            return "1" if v else "0"
+        if isinstance(v, int):
+            return str(v)
+        if isinstance(v, dict):
+            return "{ " + " ".join(f"{k} = {val(x)};" for k, x in v.items()) + " }"
+        return str(v)
+    return "{ " + " ".join(f"{k} = {val(x)};" for k, x in d.items()) + " }"
+
+subprocess.run(["defaults", "write", "pbs", "NSServicesStatus", "-dict-add", status_key,
+                old_plist({"presentation_modes": {"ContextMenu": 1, "FinderPreview": 1, "ServicesMenu": 1}})],
+               check=True)
+subprocess.run(["defaults", "write", "pbs", "FinderOrdering", "-dict-add", ordering_key, "7"], check=True)
+PYEN
+
 flush_services
 
 echo "✓ 已安装：$DEST"

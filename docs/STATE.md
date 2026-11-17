@@ -49,6 +49,7 @@
 
 1. **M1 卡全部落地**（T-007~T-011）：待人工复核——真机 `cargo tauri dev` 全流程、对比滑杆手感、
    10 图批处理内存峰值 <300MB；复核后在 `docs/plans/PLAN-M1.md` 勾出口条件并归档
+2. **T-006 修复：右键菜单不出现**——启用库登记缺失，install-workflows.sh 已固化修复并重装；待用户确认菜单出现
 2. 技术债候选（开卡再做）：Svelte 无、死代码清理、metrics.sqlite 统计页、open-file/Dock 拖入
 2. 待人工复核项：Finder 右键菜单出现与通知文案（T-006 manual-check）
 
@@ -58,6 +59,9 @@
 - gh 2.104 无 `-g` 短参；`gh repo create` 远端新建用 `--add-readme --license --clone` 组合
 - 迁移后 `target/` 缓存带着旧绝对路径，指纹脏；换路径后建议 `cargo clean` 重建一次
 - **vipsthumbnail 不认 dotfile 输出路径**（`-o .foo.png` 会把图片写进 stdout，退出码还是 0）——预缩放中转必须用非隐藏文件名，且跑完校验文件存在
+- **右键 Quick Action 只装 bundle + flush pbs 不上菜单**（新版 macOS）：必须把服务写进
+  `pbs` 的 `NSServicesStatus`（presentation_modes 三处开）与 `FinderOrdering`——
+  install-workflows.sh 已固化；修复时先 `killall Finder` 重建
 - **`brew --prefix` 在 HOME 陌生时会先拉 API 数据**（网络不畅可挂数分钟）——引擎解析不调 brew，直接探 `/opt/homebrew/opt/<pkg>` 与 `/usr/local/opt/<pkg>`
 - **Services（右键 .workflow）的 PATH 只有 `/usr/bin:/bin`**：引擎解析必须自带 Homebrew 兜底，brew 命令本身也要绝对路径（/opt/homebrew/bin/brew）
 - **libvips 的 heif loader 会返回内嵌缩略图**（1920×1280 的 HEIC 只解出 128×85）——HEIC/AVIF/JXL 容器解码走 sips，管道有输出尺寸守卫兜底（benchkit 首跑抓到）

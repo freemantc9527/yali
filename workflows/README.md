@@ -23,6 +23,17 @@ workflows/install-workflows.sh --uninstall    # 卸载
 已自动验证：`automator -i <jpg> <workflow>` 全链路（产出 `-{profile}` 文件 + JSON 摘要 + 通知进程成功）；
 pbs 注册表可见 `NSBundleIdentifier = app.yali.quick-action`；CLI `--notify` 聚合文案单测三态覆盖。
 
+## 已修：右键菜单不出现（2026-11-17 实测）
+
+只装 bundle + `flush pbs` **不够**——新版 macOS 对没登记进启用库的服务不自动上右键菜单。
+`install-workflows.sh` 现在会直接写 `pbs` 的两处偏好（等价于在 系统设置→服务 里勾选）：
+
+- `NSServicesStatus.<bid> - <名称> - runWorkflowAsService` → presentation_modes 三处全开
+- `FinderOrdering.SERVICE-<bid> - <名称> - runWorkflowAsService` → 快速操作菜单排序
+
+装完如仍不显示：先 `killall Finder`（脚本已做），再检查 系统设置 → 键盘 → 键盘快捷键 →
+服务 → 文件与文件夹 / 快速操作 里有没有勾「鸭梨 · 压一下」。
+
 ## 实现要点（避坑）
 
 - Services 的 PATH 只有 `/usr/bin:/bin`：workflow 脚本显式 `export PATH`，CLI 引擎解析自带
