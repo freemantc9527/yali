@@ -8,6 +8,7 @@ use yali_core::pipeline::{compress_file, CompressReport};
 use yali_core::profile::Profile;
 use yali_core::ProfileStore;
 
+mod clipboard;
 mod tray;
 
 fn err(e: anyhow::Error) -> String {
@@ -23,6 +24,20 @@ impl RuntimeSettings {
             .read()
             .map(|s| s.tray.enabled)
             .unwrap_or_else(|e| e.into_inner().tray.enabled)
+    }
+
+    fn clipboard_enabled(&self) -> bool {
+        self.0
+            .read()
+            .map(|s| s.clipboard.enabled)
+            .unwrap_or_else(|e| e.into_inner().clipboard.enabled)
+    }
+
+    fn clipboard_min_bytes(&self) -> u64 {
+        self.0
+            .read()
+            .map(|s| s.clipboard.min_bytes)
+            .unwrap_or_else(|e| e.into_inner().clipboard.min_bytes)
     }
 
     fn replace(&self, settings: &yali_core::Settings) {
@@ -71,6 +86,112 @@ fn open_paths_from_urls(urls: impl IntoIterator<Item = tauri::Url>) -> Vec<Strin
 }
 
 /// UI 挂载时取走冷启动期间投递的文件（buffer 是唯一事实源，事件只当唤醒信号）
+/// T-016：剪贴板轮询（主线程读 NSPasteboard，后台做压缩）
+#[cfg(target_os = "macos")]
+fn spawn_clipboard_watcher(app: &tauri::AppHandle) {
+    use std::sync::{Arc, Mutex};
+
+    let handle = app.clone();
+    let watcher = Arc::new(Mutex::new(clipboard::ClipboardWatcher::new(64 * 1024)));
+
+    tauri::async_runtime::spawn(async move {
+        // 启动时对齐：把当前剪贴板内容标记为「已见过」，不当成新图片。
+        // 注意：不能在 setup 里 block_on 等主线程回调——主线程正被 setup 占着，会死锁。
+        {
+            let attach_watcher = watcher.clone();
+            let (tx, rx) = tokio::sync::oneshot::channel();
+            if handle
+                .run_on_main_thread(move || {
+                    let board = clipboard::SystemPasteboard::new();
+                    let mut guard = attach_watcher.lock().unwrap_or_else(|e| e.into_inner());
+                    guard.attach(&board);
+                    let _ = tx.send(());
+                })
+                .is_ok()
+            {
+                let _ = rx.await;
+            }
+        }
+
+        loop {
+            tokio::time::sleep(clipboard::POLL_INTERVAL).await;
+
+            let Some(state) = handle.try_state::<RuntimeSettings>() else { continue };
+            if !state.clipboard_enabled() {
+                continue;
+            }
+            let min_bytes = state.clipboard_min_bytes();
+            {
+                let mut guard = watcher.lock().unwrap_or_else(|e| e.into_inner());
+                guard.min_bytes = min_bytes;
+            }
+
+            let poll_watcher = watcher.clone();
+            let (tx, rx) = tokio::sync::oneshot::channel();
+            let dispatched = handle
+                .run_on_main_thread(move || {
+                    let board = clipboard::SystemPasteboard::new();
+                    let mut guard = poll_watcher.lock().unwrap_or_else(|e| e.into_inner());
+                    let _ = tx.send(guard.poll(&board));
+                })
+                .is_ok();
+            if !dispatched {
+                continue;
+            }
+            if let Ok(Some(png)) = rx.await {
+                handle_clipboard_image(&handle, png).await;
+            }
+        }
+    });
+}
+
+/// 剪贴板图片：写临时 PNG → 用默认档压 → 落「下载」→ 通知
+#[cfg(target_os = "macos")]
+async fn handle_clipboard_image(app: &tauri::AppHandle, png: Vec<u8>) {
+    let _ = app; // 预留：后续把结果推进 GUI 任务列表
+    let dir = clipboard::cache_dir();
+    if std::fs::create_dir_all(&dir).is_err() {
+        return;
+    }
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let input = dir.join(format!("clip-{stamp}.png"));
+    if std::fs::write(&input, &png).is_err() {
+        return;
+    }
+
+    let profile = match ProfileStore::open().and_then(|store| store.load("default")) {
+        Ok(profile) => clipboard::output_profile(profile),
+        Err(e) => {
+            clipboard::notify(&format!("剪贴板图片没压成：{e:#}"));
+            let _ = std::fs::remove_file(&input);
+            return;
+        }
+    };
+    let registry = Registry::discover(&profile);
+    registry.warmup().await;
+
+    match compress_file(&input, &profile, &registry).await {
+        Ok(report) => {
+            let name = report
+                .output
+                .as_deref()
+                .and_then(|path| Path::new(path).file_name())
+                .map(|name| name.to_string_lossy().into_owned())
+                .unwrap_or_else(|| "图片".to_string());
+            let pct = report
+                .saved_pct
+                .map(|pct| format!("{pct:.0}%"))
+                .unwrap_or_else(|| "0%".to_string());
+            clipboard::notify(&format!("{name}（{pct}），已存到「下载」"));
+        }
+        Err(e) => clipboard::notify(&format!("剪贴板图片没压成：{e:#}")),
+    }
+    let _ = std::fs::remove_file(&input);
+}
+
 #[tauri::command]
 fn take_pending_files(state: tauri::State<'_, PendingOpenFiles>) -> Vec<String> {
     state.take()
@@ -217,6 +338,8 @@ pub fn run() {
                 .unwrap_or_default();
             app.manage(RuntimeSettings(std::sync::RwLock::new(settings.clone())));
             tray::apply(app.handle(), settings.tray.enabled)?;
+            #[cfg(target_os = "macos")]
+            spawn_clipboard_watcher(app.handle());
             Ok(())
         })
         .on_window_event(|window, event| {

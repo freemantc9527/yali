@@ -39,6 +39,9 @@
 - `.workflow` 修改后 Finder 不立即刷新 → `killall pbs`
 - 非 ASCII 的 .app 包名会坑 DMG/updater → 包名固定 `Yali.app`，中文显示走 CFBundleDisplayName 本地化
 - **Tauri 2 没有 `capabilities/default.json` 时前端 `listen()` 被 ACL 拒绝**，事件静默失效（T-013 实测）
+- **NSPasteboard 只能在主线程访问**；`run_on_main_thread` 的回调不要在 `setup` 里 `block_on` 等
+  （主线程正被 setup 占着 → 死锁），要么在异步任务里等，要么改成事件驱动
+- 剪贴板要比 `changeCount` 再比内容摘要：changeCount 变了不等于内容变了（同一张图复制两次）
 - `before*Command` 的 cwd 是 `src-tauri` → 钩子写 `pnpm --dir ../ui …`
 - 环境里 `CI=1` 会让 cargo-tauri 报 `invalid value '1' for '--ci'` → 整包用 `env -u CI`
 - tauri-bundler 会给不认识的扩展名（avif/jxl）兜底 `public.image` → `src-tauri/Info.plist` 精确覆盖，
