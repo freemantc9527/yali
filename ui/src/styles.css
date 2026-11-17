@@ -163,3 +163,33 @@ h1 {
 .small {
   font-size: 12px;
 }
+
+/* T-007 编辑表单所需的最小样式 */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.fields input[type="number"] {
+  width: 88px;
+}
+.fields input[type="text"] {
+  width: 130px;
+}
+.status {
+  margin: 12px 0 0;
+  font-size: 13px;
+}
+.status.ok {
+  color: #1a7f37;
+}
+.status.error {
+  color: #cf222e;
+}

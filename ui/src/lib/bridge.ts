@@ -110,6 +110,11 @@ export async function profilesShow(name: string): Promise<Profile> {
   return invoke<Profile>("profiles_show", { name });
 }
 
+export async function profilesSave(profile: Profile): Promise<void> {
+  if (!isTauri()) return; // 浏览器降级：不落盘，只走内存态
+  return invoke<void>("profiles_save", { profile });
+}
+
 export async function compress(paths: string[], profile: string): Promise<CompressReport[]> {
   if (!isTauri()) {
     // 浏览器降级：返回演示数据，保证 UI 可独立调试

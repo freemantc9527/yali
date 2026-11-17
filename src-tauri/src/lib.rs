@@ -29,6 +29,13 @@ async fn profiles_show(name: String) -> Result<Profile, String> {
 }
 
 #[tauri::command]
+async fn profiles_save(profile: Profile) -> Result<(), String> {
+    profile.validate().map_err(err)?;
+    let store = ProfileStore::open().map_err(err)?;
+    store.save(&profile).map_err(err)
+}
+
+#[tauri::command]
 async fn compress(paths: Vec<String>, profile: String) -> Result<Vec<CompressReport>, String> {
     let profile = ProfileStore::open().map_err(err)?.load(&profile).map_err(err)?;
     let registry = Registry::discover(&profile);
@@ -49,6 +56,7 @@ pub fn run() {
             core_version,
             profiles_list,
             profiles_show,
+            profiles_save,
             compress
         ])
         .run(tauri::generate_context!())
@@ -73,6 +81,21 @@ mod tests {
         let profile = profiles_show("mail".into()).await.unwrap();
         assert_eq!(profile.name, "mail");
         assert_eq!(profile.quality.kind, yali_core::QualityKind::TargetBytes);
+
+        // profiles_save：改档 → 保存 → 读回；非法值必须被拒且不落盘
+        let mut edited = profile.clone();
+        edited.name = "mail2".into();
+        edited.quality.target_bytes = Some(300_000);
+        profiles_save(edited).await.unwrap();
+        let back = profiles_show("mail2".into()).await.unwrap();
+        assert_eq!(back.quality.target_bytes, Some(300_000));
+
+        let mut bad = profile.clone();
+        bad.name = "bad".into();
+        bad.quality.level = Some(0);
+        bad.quality.kind = yali_core::QualityKind::Level;
+        assert!(profiles_save(bad).await.is_err(), "非法 level 必须被拒");
+        assert!(profiles_show("bad".into()).await.is_err(), "非法档不应落盘");
 
         // 用 benchkit 合成样张跑真实压缩（仓库内已入库，不依赖个人素材）
         let sample = Path::new(env!("CARGO_MANIFEST_DIR")).join("../benchkit/samples/photo.jpg");

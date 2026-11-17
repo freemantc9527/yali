@@ -10,5 +10,6 @@
 | [T-004-benchkit.md](T-004-benchkit.md) | ✅ 完成（2026-11-17） | 合成金样 + bench.sh 三指标出表 | generate.sh 确定性可复跑；bench 双档通过；劣化>3% 实测退出码 1；baseline 入库 |
 | [T-005-ui-wiring.md](T-005-ui-wiring.md) | ✅ 完成（2026-11-17） | UI 接线（拖入队列 + Profile 表单） | 19 个前端测试绿；command 层真压缩冒烟；浏览器端到端拖入→结果行；真机拖拽待人工复核 |
 | [T-006-m0.5-workflow.md](T-006-m0.5-workflow.md) | ✅ 完成（2026-11-17，manual 待复核） | Finder 右键 .workflow + 聚合通知 | automator 端到端产出 + pbs 注册可见；CLI 聚合文案三态单测；右键菜单出现属人工验收 |
+| [T-007-profile-editing.md](T-007-profile-editing.md) | ✅ 完成（2026-11-17） | Profile 编辑与保存 | `profiles save` 往返 + 非法值拒绝；command 冒烟含 save；ui 29 测试绿；浏览器实测保存/错误提示 |
 
 T-002 落地物：`schema/profile.schema.json`（文档事实源）、`fixtures/`（五档出厂）、`crates/yali-core/src/{profile,store}.rs`。

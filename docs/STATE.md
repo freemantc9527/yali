@@ -1,6 +1,6 @@
 # STATE · 项目状态接力（跨 session 冷启动先读本文件）
 
-> 更新规则：每张任务卡完成时更新；本文件是 Agent 的"记忆外置盘"。最后更新：2026-11-17（T-006 完成 · M0.5 右键闭环）。
+> 更新规则：每张任务卡完成时更新；本文件是 Agent 的"记忆外置盘"。最后更新：2026-11-17（T-007 完成 · M1 进行中）。
 
 ## 当前阶段：M0.5 右键闭环（自动部分完成，人工项待复核）→ M1 GUI
 
@@ -20,6 +20,7 @@
 - [x] **T-005 UI 接线（2026-11-17）**：Tauri commands（profiles_list/profiles_show/compress，壳层零业务逻辑）+ App/ProfileForm/TaskList/DropZone + bridge 浏览器降级；`pnpm --dir ui test` 19 绿；command 层真压缩冒烟（benchkit 样张）通过；应用启动冒烟通过（图标修成 RGBA8）；浏览器端到端验证：切档表单联动、拖入→`748.0 KB → 326.2 KB (-56.4%)` 行渲染
 - [x] **T-006 M0.5 右键闭环（2026-11-17）**：`workflows/`（模板 + install-workflows.sh）装到 `~/Library/Services/鸭梨 · 压一下.workflow`，pbs 注册可见；CLI 新增 `compress --notify` 聚合通知（多选一条，文案三态单测）；引擎解析加 Homebrew 绝对路径兜底（Services PATH 只有 /usr/bin:/bin）；`automator -i` 端到端跑通产出 `-{profile}` 文件
 - [ ] **人工复核（Agent 无法自验）**：Finder 右键菜单是否出现「鸭梨 · 压一下」、多选只弹一条通知
+- [x] **T-007 Profile 编辑与保存（2026-11-17）**：CLI `profiles save`（stdin/--file，落盘前 validate）+ Tauri `profiles_save`（command 冒烟含非法值拒绝）+ UI 可编辑表单（profile-edit 纯函数层，校验以内核为准）；浏览器实测：改 level→保存→「✓ 已保存」、清空后缀→「✗ 后缀模板不能为空」
 - [x] `docs/tasks/` 任务卡目录（T-002 起）
 - [x] benchkit/ 合成金样素材生成脚本（T-004）
 
@@ -42,7 +43,7 @@
 ## 下一步（按序）
 > 任务卡在 `docs/tasks/`（索引见 `docs/tasks/README.md`）。
 
-1. **M1 GUI**：Tauri 壳 + React 全界面（DESIGN §5 六卡 Inspector / 对比查看器 / Profile 管理器）——需先落 M1 任务卡
+1. **M1 进行中**：计划见 `docs/plans/PLAN-M1.md`；T-007 ✅ → 下一张 T-008（输出目录策略 + schema v1.1）
 2. 待人工复核项：Finder 右键菜单出现与通知文案（T-006 manual-check）
 
 ## 坑账本

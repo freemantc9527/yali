@@ -6,6 +6,7 @@ import {
   compress,
   coreVersion,
   profilesList,
+  profilesSave,
   profilesShow,
   type Profile,
 } from "./lib/bridge";
@@ -39,6 +40,11 @@ export default function App() {
       .then(setProfile)
       .catch(() => setProfile(null));
   }, [selected]);
+
+  const handleSave = useCallback(async (next: Profile) => {
+    await profilesSave(next);
+    setProfile(next); // 保存后以草稿为准；下次切档会从磁盘重读
+  }, []);
 
   const handlePaths = useCallback(
     async (paths: string[]) => {
@@ -91,6 +97,7 @@ export default function App() {
         names={names}
         selected={selected}
         onSelect={setSelected}
+        onSave={handleSave}
       />
       <TaskList rows={rows} />
     </main>

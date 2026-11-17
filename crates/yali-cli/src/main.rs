@@ -59,6 +59,13 @@ enum ProfilesAction {
     List,
     /// 从磁盘读取指定档，输出 JSON
     Show { name: String },
+    /// 保存档案（stdin 或 --file 读 JSON；落盘前校验）
+    Save {
+        name: String,
+        /// 从文件读取 JSON（缺省读 stdin）
+        #[arg(long)]
+        file: Option<String>,
+    },
 }
 
 fn parse_format(s: &str) -> Result<OutputFormat> {
@@ -253,6 +260,26 @@ async fn main() -> Result<()> {
                 let store = ProfileStore::open()?;
                 let profile = store.load(&name)?;
                 println!("{}", serde_json::to_string_pretty(&profile)?);
+                Ok(())
+            }
+            ProfilesAction::Save { name, file } => {
+                let raw = match file {
+                    Some(path) => std::fs::read_to_string(&path)
+                        .map_err(|e| anyhow::anyhow!("读取 {path} 失败: {e}"))?,
+                    None => {
+                        use std::io::Read;
+                        let mut buf = String::new();
+                        std::io::stdin().read_to_string(&mut buf)?;
+                        buf
+                    }
+                };
+                let mut profile: Profile = serde_json::from_str(&raw)
+                    .map_err(|e| anyhow::anyhow!("profile 解析失败: {e}"))?;
+                profile.name = name; // 档名以命令行为准，避免 JSON 与文件名打架
+                profile.validate()?;
+                let store = ProfileStore::open()?;
+                store.save(&profile)?;
+                eprintln!("✓ 已保存 profile '{}'", profile.name);
                 Ok(())
             }
         },
