@@ -1,7 +1,7 @@
 # T-003 · EngineRegistry 与 CLI 真实现
 
 goal: yali-core 引擎层（Encoder trait + EngineRegistry + tokio 子进程池）+ CLI compress/convert/lossless/undo/doctor 真实现
-context: docs/DESIGN.md §3（算法规格）/ §7（API 草图）；docs/BENCHMARKS.md（选型依据）；docs/plans/PLAN-M0.md
+context: docs/DESIGN.md §3（算法规格）/ §7（API 草图）；docs/BENCHMARKS.md（选型依据）
 constraints:
   - 引擎全部走**子进程**（Phase A），不链接任何 GPL 库；不引入 imagequant-rs 等 crate（Phase B 期权，本轮不做）
   - tokio 从 workspace.dependencies 引回（`rt-multi-thread`/`process`/`macros`/`sync`），这是它在 Cargo.toml 里被注释掉的原因

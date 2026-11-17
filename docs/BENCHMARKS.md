@@ -72,7 +72,7 @@ jpegli（google/jpegli，需 cmake 自建）· Animated AVIF 体积 · gifski �
 
 ## 8. benchkit 自动化基线（2026-11-17 起）
 
-三指标回归已脚本化：`benchkit/bench.sh`（体积比 / SSIM / 耗时中位数），基线在 `benchkit/baseline.json`，
+三指标回归已脚本化：`benchkit/bench.sh`（体积比 / SSIM / 耗时中位数），基线按档位分文件（`benchkit/baseline-default.json` / `baseline-jpg.json`），
 任一指标劣化 >3% 退出码非零。default 档首跑（photo 531KB → 49KB / SSIM 0.965 / 121ms；ui 34.8KB → 4.7KB / 1.000 / 74ms；
 gif 966KB → 661KB / 0.823 / 184ms；transparent 33KB → 5.3KB / 0.932 / 66ms；heic 264KB → 258KB / 0.989 / 169ms）。
 口径与偏离说明见 `benchkit/README.md`。

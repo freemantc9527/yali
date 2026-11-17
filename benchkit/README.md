@@ -10,11 +10,11 @@ benchkit/generate.sh                 # 生成合成金样（确定性的，可�
 benchkit/bench.sh                    # 默认档（default）三指标回归
 benchkit/bench.sh --profile web      # 换档
 benchkit/bench.sh --format webp      # 临时覆盖输出格式（不动磁盘档案）
-benchkit/bench.sh --update-baseline  # 有意的质量变更后重写基线
+benchkit/bench.sh --update-baseline  # 有意的质量变更后重写当前档位基线
 ```
 
 - 输出表格：每样 × 引擎的 体积比 / SSIM / 耗时中位数（3 轮取中位，单图口径）
-- 与 `baseline.json` 比对：体积比↑ / SSIM↓ / 耗时↑ 任一劣化 >3% → 退出码非零
+- 与 `baseline-<profile>.json` 比对：体积比↑ / SSIM↓ / 耗时↑ 任一劣化 >3% → 退出码非零
 - 质量门（DESIGN §9）：level≥5 时**单代照片类样本** SSIM≥0.95
 
 ## 样张（全部合成，合规红线）
@@ -48,6 +48,6 @@ benchkit/bench.sh --update-baseline  # 有意的质量变更后重写基线
 
 ## 基线策略
 
-- `baseline.json` 由首次全量跑生成并入库；`--profile` 不同的运行不与基线比对（档位不同不可比）
+- 基线**按档位分文件**（`baseline-default.json` / `baseline-jpg.json`），首次全量跑生成；换档跑不互相污染
 - 只在**有意的质量变更**后用 `--update-baseline` 重写，并在 commit message 里说明原因
 - 计时指标在 16GB M1 Pro 上取单图中位数；机器负载波动 >3% 属正常误报，重跑一次确认

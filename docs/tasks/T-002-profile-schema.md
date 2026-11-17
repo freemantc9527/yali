@@ -1,7 +1,7 @@
 # T-002 · Profile Schema 与 Store
 
 goal: Profile v1 JSON Schema + fixtures + yali-core 加载/保存/校验/迁移
-context: docs/DESIGN.md §2（字段权威定义）；docs/plans/PLAN-M0.md
+context: docs/DESIGN.md §2（字段权威定义）
 constraints:
   - 纯 Rust crate（yali-core），零 UI 依赖
   - 不新增第三方依赖（serde/serde_json/anyhow 已在白名单）

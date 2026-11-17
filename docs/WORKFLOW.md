@@ -8,9 +8,9 @@
 2. **契约先行**：跨模块依赖一律先落 `schema/`（profile.schema.json + fixtures）+ 接口文档，再写实现
 3. **一卡一 PR**：验收 = 可执行命令的输出，不接受描述性"已完成"
 4. **状态接力**：`docs/STATE.md` 是跨 session 冷启动的唯一入口，每卡完成即更新
-5. **金样守门**：压缩质量变更必须过 `benchkit/bench.sh`（体积/SSIM/耗时，劣化>3% 拒绝合入；脚本随 T-004 建立）
+5. **金样守门**：压缩质量变更必须过 `benchkit/bench.sh`（体积/SSIM/耗时，劣化>3% 拒绝合入；基线按档位分文件）
 
-## 2. 任务卡模板（`docs/tasks/T-xxx.md`，该目录随 T-004 落地）
+## 2. 任务卡模板（`docs/tasks/T-xxx.md`）
 
 ```markdown
 # T-012 · Profile Schema 与 Store
@@ -31,7 +31,7 @@ manual-check: false
 
 | 项 | 时机 |
 |---|---|
-| Finder 快速操作真实出现、多选生效、通知文案/点击 | M0.5 末 |
+| Finder 快速操作真实出现、多选生效、通知文案/点击 | **M0.5 末（当前待复核）** |
 | 拖 Dock / 打开方式进队列 | M1 末 |
 | GUI 视觉对照 DESIGN.md §5 规格 | M1/M3 末 |
 | 产物在微信/浏览器/Preview 显示 | 每里程碑抽验 |
@@ -49,6 +49,11 @@ manual-check: false
 M-1 ✅ → M0 契约+内核+CLI → M0.5 右键闭环 → M1 GUI → M2 入口全量 → M3 智能 → M4 发布
 ```
 
-## 6. 坑账本制度
+## 6. 坑账本制度（本仓两条硬规矩）
+
+1. 报「全绿」前必须逐行看到 `test result: ok`——聚合计数管道会静默失败
+2. 改内核后 debug 与 release 都要重建——`bench.sh` 默认用 debug 二进制，会拿旧结果骗人
+
+
 
 STATE.md 的「坑账本」段随踩随记（如：generate_context! 编译期要图标、brew cjpeg 是李鬼、killall pbs 刷新 workflow）。同类问题二次出现必须写进 AGENTS.md 硬性规则。

@@ -1,7 +1,7 @@
 # T-004 · benchkit 合成金样与回归脚本
 
 goal: benchkit/ 合成金样生成脚本 + bench.sh 三指标回归 + 基线入库
-context: docs/DESIGN.md §9（金样回归口径）；docs/BENCHMARKS.md（历史实测，作对照）；docs/plans/PLAN-M0.md
+context: docs/DESIGN.md §9（金样回归口径）；docs/BENCHMARKS.md（历史实测，作对照）
 constraints:
   - 金样必须**合成生成**（脚本可复跑），禁止用个人照片衍生物入仓库（合规红线）
   - 覆盖五类：照片（渐变+噪点+高细节纹理合成）/ UI 截图（纯色块+文字模拟）/ 动图（多帧 GIF）/ 透明 PNG / HEIC（用 sips 或 vips 生成）

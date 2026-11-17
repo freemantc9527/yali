@@ -1,7 +1,7 @@
 # T-008 · 输出目录策略（schema v1.1）
 
 goal: output.dir 四策略真正生效（sibling / downloads / custom / override）+ `{size}` 占位渲染
-context: docs/DESIGN.md §2 output；docs/plans/PLAN-M1.md
+context: docs/DESIGN.md §2 output
 constraints:
   - schema v1.1：新增 `output.dirPath`（可空字符串），五档 fixtures 同步；`deny_unknown_fields` 保持
   - `dir=custom` 必填 dirPath，且必须是绝对路径或 `~` 开头（validate 拦）

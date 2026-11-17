@@ -42,7 +42,9 @@ macOS 原生图片处理入口：**右键 0.5 秒发起、后台静默完成；�
 }
 ```
 
-出厂档：default（level 4，JPEG 类实测 -55~60%）、网页（webp q75 / avif 智能，-69~-78%）、归档（JXL 无损包裹，-17.2% 可逆）、朋友圈/微博（1080 缩边）、邮件瘦身（targetBytes 500KB 二分收敛）、透明截图（无损 WebP/oxipng，由分类器自动路由）。
+出厂档（`fixtures/` 六档）：default（level 4）、web（webp q75）、jpg（输出 JPEG，右键「转 JPG」用）、
+archive（JXL 无损包裹，可逆）、mail（targetBytes 500KB 二分收敛）、screenshot（无损，由分类器路由）。
+右键只绑 default 与 jpg 两档——右键永不询问，其余精调归 GUI/CLI。
 
 同步机制：GUI 编辑 → 原子写 JSON → FSEvents 广播 → CLI/workflow 下次调用即生效，无 IPC。
 
@@ -90,19 +92,19 @@ macOS 原生图片处理入口：**右键 0.5 秒发起、后台静默完成；�
 ## 6. 架构
 
 ```
-# 目标结构；标注「待建」的目录尚未存在，创建时机见 docs/STATE.md
+# 目标结构；标注「待建」的目录尚未存在，创建时机见 docs/STATE.md §4
 yali/
 ├─ crates/yali-core          # Profile(serde) · Pipeline · EngineRegistry · Classifier
 │                            # Metadata · UndoManifest · FileNamer · Metrics(rusqlite)
 ├─ crates/yali-cli           # clap 门面（安装二进制名 yali）
-├─ crates/yali-integration   # 待建 · 平台差异 trait 收口（跨平台预埋）
+├─ crates/yali-integration   # 待建（M2+）· 平台差异 trait 收口
 ├─ src-tauri                 # Tauri 壳：commands/tray/剪贴板/updater
 ├─ ui/                       # React+Vite（Tailwind 是否引入待 M1 任务卡评估）
-├─ workflows/                # 待建 · .workflow 模板 + install-workflows.sh
-├─ helpers/                  # 待建 · vision helper（CLT swiftc 编译的 Swift 小工具）
-├─ benchkit/                 # 待建 · 合成金样 + bench.sh 回归
+├─ workflows/                # ✓ 已建 · .workflow 模板（两条动作）+ install-workflows.sh
+├─ helpers/                  # 待建（M3）· vision helper（CLT swiftc 编译）
+├─ benchkit/                 # ✓ 已建 · 合成金样 + bench.sh + 分档位基线
 ├─ schema/                   # ✓ 已建 · profile.schema.json（Profile 文档事实源）
-└─ fixtures/                 # ✓ 已建 · 五档出厂 fixtures（default/web/archive/mail/screenshot）
+└─ fixtures/                 # ✓ 已建 · 六档出厂 fixtures（default/web/jpg/archive/mail/screenshot）
 ```
 
 - 引擎集成两步走：**Phase A 子进程**（Brewfile 钉版，tokio 进程池预热，GPL 边界干净）→ Phase B 库内链接（可选：imagequant-rs/oxipng/ravif/vips-sys；每步有 CLI 回退）
@@ -131,9 +133,9 @@ pub async fn compress(file: &Path, profile: &Profile) -> Result<CompressResult>;
 | 里程碑 | 交付 | 验收（可执行） |
 |---|---|---|
 | M-1 整备 | 仓库/骨架/**CLT 终验** | ✅ 已过（2026-11-17） |
-| M0 内核+CLI | schema+fixtures+core+CLI+benchkit | ①合成集回归达标 ②单图 p50<1.5s ③undo 100% 还原 ④`cargo test` 绿 |
-| M0.5 右键闭环 | install-workflows + 聚合通知 | 真机右键→通知（人工验收） |
-| M1 GUI | Tauri 壳+React 全界面+open-file | §5 覆盖；10 图批处理内存峰值<300MB |
+| M0 内核+CLI | schema+fixtures+core+CLI+benchkit | ✅ 已过：合成集达标 / p50=119ms / undo 逐字节还原 / 48 测试绿 |
+| M0.5 右键闭环 | install-workflows + 聚合通知 | 🔶 自动部分实测通过；Finder 菜单人工复核待办 |
+| M1 GUI | Tauri 壳+React 全界面+open-file | 🔶 五卡落地（编辑/目录/队列/对比/管理器）；拖入与内存峰值待复核 |
 | M2 入口全量 | 剪贴板/watch/tray | 20 图右键→通知 p50<8s |
 | M3 智能 | 分类路由+标定表+Vision helper+全格式 | 截图路由正确率>95%；抠图<2s |
 | M4 发布 | GitHub Release+brew tap+updater | 新机 brew install 到右键出结果<3min |

@@ -1,7 +1,7 @@
 # T-007 · Profile 编辑与保存
 
 goal: GUI 表单可写：编辑六段字段 → 校验 → 原子落盘 → 回到只读视图；CLI 侧提供 headless 验收口
-context: docs/DESIGN.md §2/§5；docs/plans/PLAN-M1.md；T-002 Store（原子写）
+context: docs/DESIGN.md §2/§5；T-002 Store（原子写）
 constraints:
   - 校验规则只有一份：UI 只做「提前提示」，落盘前以内核 `Profile::validate()` 为准（不引第二套规则）
   - 禁止新增前端依赖；表单不做视觉迭代（M1 视觉卡再统一）
