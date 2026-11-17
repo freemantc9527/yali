@@ -4,6 +4,7 @@ import { TaskList, TaskRowView, type TaskRow } from "./TaskList";
 
 const doneRow: TaskRow = {
   path: "/tmp/photo.jpg",
+  index: 0,
   running: false,
   report: {
     input: "/tmp/photo.jpg",
@@ -31,6 +32,7 @@ describe("TaskRowView", () => {
   it("负优化件显示 ⚠ 与「未落盘」", () => {
     const row: TaskRow = {
       path: "/tmp/tiny.jpg",
+      index: 1,
       running: false,
       report: {
         input: "/tmp/tiny.jpg",
@@ -51,14 +53,14 @@ describe("TaskRowView", () => {
 
   it("失败行显示错误信息", () => {
     const html = renderToStaticMarkup(
-      <TaskRowView row={{ path: "/tmp/x.png", running: false, error: "引擎缺失" }} />,
+      <TaskRowView row={{ path: "/tmp/x.png", index: 2, running: false, error: "引擎缺失" }} />,
     );
     expect(html).toContain("✗ 失败");
     expect(html).toContain("引擎缺失");
   });
 
   it("处理中行显示占位", () => {
-    const html = renderToStaticMarkup(<TaskRowView row={{ path: "/tmp/a.jpg", running: true }} />);
+    const html = renderToStaticMarkup(<TaskRowView row={{ path: "/tmp/a.jpg", index: 3, running: true }} />);
     expect(html).toContain("处理中");
   });
 });

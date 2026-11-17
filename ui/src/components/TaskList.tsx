@@ -1,12 +1,7 @@
-import type { CompressReport } from "../lib/bridge";
 import { formatBytes } from "../lib/format";
+import type { TaskRow } from "../lib/tasks";
 
-export interface TaskRow {
-  path: string;
-  running: boolean;
-  report?: CompressReport;
-  error?: string;
-}
+export type { TaskRow };
 
 const basename = (path: string) => path.split("/").pop() ?? path;
 
@@ -70,7 +65,7 @@ export function TaskList({ rows }: { rows: TaskRow[] }) {
       ) : (
         <ul className="tasks">
           {rows.map((row) => (
-            <TaskRowView key={row.path + (row.report?.output ?? "")} row={row} />
+            <TaskRowView key={`${row.index}-${row.path}`} row={row} />
           ))}
         </ul>
       )}

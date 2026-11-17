@@ -33,6 +33,15 @@ export interface Profile {
   ui: { notify: boolean; sound: boolean; openGUIOnFail: boolean };
 }
 
+export interface ProgressEvent {
+  path: string;
+  index: number;
+  total: number;
+  status: "started" | "done" | "failed";
+  report?: CompressReport | null;
+  error?: string | null;
+}
+
 /** 与内核 CompressReport（camelCase）一一对应 */
 export interface CompressReport {
   input: string;
@@ -116,22 +125,48 @@ export async function profilesSave(profile: Profile): Promise<void> {
   return invoke<void>("profiles_save", { profile });
 }
 
+// 浏览器降级的进度广播（模拟 Tauri 事件，便于脱离壳调试逐行更新）
+const progressHandlers = new Set<(e: ProgressEvent) => void>();
+const demoReport = (p: string, profile: string): CompressReport => ({
+  input: p,
+  output: `${p.replace(/\.[^.]+$/, "")}-${profile}.jpg`,
+  inputBytes: 766_000,
+  outputBytes: 334_000,
+  savedBytes: 432_000,
+  savedPct: -56.4,
+  engine: "mozjpeg",
+  elapsedMs: 96,
+  status: "done",
+});
+
 export async function compress(paths: string[], profile: string): Promise<CompressReport[]> {
   if (!isTauri()) {
-    // 浏览器降级：返回演示数据，保证 UI 可独立调试
-    return paths.map((p) => ({
-      input: p,
-      output: `${p.replace(/\.[^.]+$/, "")}-${profile}.jpg`,
-      inputBytes: 766_000,
-      outputBytes: 334_000,
-      savedBytes: 432_000,
-      savedPct: -56.4,
-      engine: "mozjpeg",
-      elapsedMs: 96,
-      status: "done" as const,
-    }));
+    const total = paths.length;
+    const reports: CompressReport[] = [];
+    for (const [index, path] of paths.entries()) {
+      progressHandlers.forEach((h) => h({ path, index, total, status: "started" }));
+      await new Promise((r) => setTimeout(r, 120));
+      const report = demoReport(path, profile);
+      reports.push(report);
+      progressHandlers.forEach((h) => h({ path, index, total, status: "done", report }));
+    }
+    return reports;
   }
   return invoke<CompressReport[]>("compress", { paths, profile });
+}
+
+/** 订阅逐文件进度（Tauri 事件 `yali://progress`；浏览器降级走本地广播） */
+export function onProgress(handler: (e: ProgressEvent) => void): () => void {
+  if (!isTauri()) {
+    progressHandlers.add(handler);
+    return () => progressHandlers.delete(handler);
+  }
+  let unlisten: (() => void) | undefined;
+  void (async () => {
+    const { listen } = await import("@tauri-apps/api/event");
+    unlisten = await listen<ProgressEvent>("yali://progress", (ev) => handler(ev.payload));
+  })();
+  return () => unlisten?.();
 }
 
 /**

@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { DropZone } from "./components/DropZone";
 import { ProfileForm } from "./components/ProfileForm";
-import { TaskList, type TaskRow } from "./components/TaskList";
+import { TaskList } from "./components/TaskList";
+import { applyProgress, reconcile, type TaskRow } from "./lib/tasks";
 import {
   compress,
   coreVersion,
   profilesList,
+  onProgress,
   profilesSave,
   profilesShow,
   type Profile,
@@ -22,6 +24,9 @@ export default function App() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [rows, setRows] = useState<TaskRow[]>([]);
   const [busy, setBusy] = useState(false);
+
+  // 逐文件进度事件（结果权威仍是 command 返回值，事件丢失由 reconcile 兜底）
+  useEffect(() => onProgress((event) => setRows((prev) => applyProgress(prev, event))), []);
 
   useEffect(() => {
     coreVersion().then(setVersion);
@@ -50,22 +55,14 @@ export default function App() {
     async (paths: string[]) => {
       if (paths.length === 0 || busy) return;
       setBusy(true);
+      const base = rows.length; // 新批次排在已有任务之前，index 全局唯一
       setRows((prev) => [
-        ...paths.map((path) => ({ path, running: true })),
+        ...paths.map((path, i) => ({ path, index: base + i, running: true })),
         ...prev,
       ]);
       try {
         const reports = await compress(paths, selected);
-        const byInput = new Map(reports.map((r) => [r.input, r]));
-        setRows((prev) =>
-          prev.map((row) => {
-            const report = byInput.get(row.path);
-            if (!report) return row;
-            // 相对路径与绝对路径都要能对上
-            const key = [...byInput.keys()].find((k) => k.endsWith(row.path) || row.path.endsWith(k));
-            return { ...row, running: false, report: key ? byInput.get(key) : report };
-          }),
-        );
+        setRows((prev) => reconcile(prev, reports));
       } catch (e) {
         setRows((prev) =>
           prev.map((row) =>
@@ -76,7 +73,7 @@ export default function App() {
         setBusy(false);
       }
     },
-    [busy, selected],
+    [busy, rows.length, selected],
   );
 
   return (

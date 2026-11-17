@@ -90,7 +90,7 @@ pub fn sniff(path: &Path) -> Result<InputFormat> {
 }
 
 /// 单文件压缩结果（stdout JSON 摘要，camelCase）
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CompressReport {
     pub input: String,
