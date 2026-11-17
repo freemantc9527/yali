@@ -49,13 +49,28 @@ enum Cmd {
         #[command(subcommand)]
         action: ProfilesAction,
     },
+    /// 应用设置（settings.json：watch / 剪贴板 / 托盘开关）
+    Settings {
+        #[command(subcommand)]
+        action: SettingsAction,
+    },
     /// 环境自检（引擎路径/版本，报 issue 时先跑这个）
     Doctor,
 }
 
 #[derive(Subcommand)]
+enum SettingsAction {
+    /// 打印当前配置 JSON（文件缺失时输出默认值）
+    Show,
+    /// 打印配置文件绝对路径
+    Path,
+    /// 备份旧文件并恢复默认配置
+    Reset,
+}
+
+#[derive(Subcommand)]
 enum ProfilesAction {
-    /// 列出磁盘上所有档（首启自动播种五档出厂 fixtures）
+    /// 列出磁盘上所有档（首启自动播种六档出厂 fixtures）
     List,
     /// 从磁盘读取指定档，输出 JSON
     Show { name: String },
@@ -283,6 +298,23 @@ async fn main() -> Result<()> {
                 Ok(())
             }
         },
+        Cmd::Settings { action } => {
+            let store = yali_core::SettingsStore::open()?;
+            match action {
+                SettingsAction::Show => {
+                    println!("{}", serde_json::to_string_pretty(&store.load()?)?);
+                }
+                SettingsAction::Path => {
+                    println!("{}", store.file().display());
+                }
+                SettingsAction::Reset => {
+                    let settings = store.reset()?;
+                    println!("已恢复默认配置: {}", store.file().display());
+                    println!("{}", serde_json::to_string_pretty(&settings)?);
+                }
+            }
+            Ok(())
+        }
         Cmd::Doctor => {
             let profile = Profile::default();
             let registry = Registry::discover(&profile);

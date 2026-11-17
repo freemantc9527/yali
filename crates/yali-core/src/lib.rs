@@ -7,6 +7,7 @@ pub mod engines;
 pub mod metrics;
 pub mod pipeline;
 pub mod profile;
+pub mod settings;
 pub mod store;
 pub mod undo;
 
@@ -14,7 +15,19 @@ pub use profile::{
     AnimatedPolicy, CropAnchor, DirKind, ExifPolicy, Format, IccPolicy, JpegEngine, LargerPolicy,
     Metadata, Output, OutputFormat, Pipeline, Profile, Quality, QualityKind, Resize, ResizeMode, Ui,
 };
+pub use settings::{
+    ClipboardSettings, NotifySettings, Settings, SettingsStore, TraySettings, WatchSettings,
+    SETTINGS_SCHEMA_VERSION,
+};
 pub use store::ProfileStore;
+
+/// 测试公用设施：`YALI_HOME` 是进程级环境变量，所有改它的测试必须共用一把锁。
+#[cfg(test)]
+pub(crate) mod test_support {
+    use std::sync::Mutex;
+
+    pub static ENV_LOCK: Mutex<()> = Mutex::new(());
+}
 
 /// 内核版本号，与 CLI `yali --version` 联动
 pub const CORE_VERSION: &str = env!("CARGO_PKG_VERSION");

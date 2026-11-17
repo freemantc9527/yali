@@ -13,7 +13,7 @@
 | CLI | `cargo run -p yali-cli -- <args>`（安装产物统一叫 `yali`） | 可用 |
 | UI | `pnpm --dir ui test` / `pnpm --dir ui dev` | 可用（T-005 接线） |
 | UI 构建 | `pnpm --dir ui build` → `ui/dist` | 可用 |
-| 整包 | `cargo tauri build`（仅任务卡要求时；16GB 机器加 `-j4`） | 前端产物齐备后可用 |
+| 整包 | `env -u CI cargo tauri build --bundles app` + `scripts/bundle-check.sh`（T-013 实测） | 可用（tauri-cli 2.12.5） |
 | 金样回归 | `benchkit/bench.sh`（体积/SSIM/耗时三指标，劣化 >3% 即失败） | 可用（T-004） |
 | workflow 安装 | `workflows/install-workflows.sh`（改模板后重跑 + `killall pbs`） | 可用（T-006） |
 
@@ -22,11 +22,12 @@
 `crates/yali-integration`（平台差异收口）与 `crates/yali-vision`（M3）**尚未创建**，是预注册名，不要在未建卡的 PR 里提前落地。
 
 ## 目录现状（勿假设不存在的东西）
-已存在：`crates/yali-core`、`crates/yali-cli`、`src-tauri/`、`ui/`、`docs/`（含 `docs/decisions/`、`docs/tasks/`）、`schema/`、`fixtures/`、`benchkit/`、`workflows/`。
+已存在：`crates/yali-core`、`crates/yali-cli`、`src-tauri/`（含 `capabilities/`、`Info.plist`）、`ui/`、`docs/`（含 `docs/decisions/`、`docs/tasks/`）、`schema/`、`fixtures/`、`benchkit/`、`workflows/`、`scripts/`。
 **尚未存在**（按任务卡创建，见 `docs/STATE.md`）：`helpers/`、`crates/yali-integration`。
 调用前先 `ls`，不要凭记忆引用不存在的路径。
 
 ## 硬性规则
+- **默认只本地 commit，禁止 push**：`git push` 必须等用户明确指令（2026-11-17 用户定，任何 PR/卡完成都不例外）
 - 调用 C/Vision/vips API 前，必须先 grep 系统头文件（`/Library/Developer/CommandLineTools/SDKs/*/usr/include/`）或本机实测，**禁止凭记忆写 API 名**（`docs/api-notes/` 尚未建立，等 M3 有了再引用）
 - UI 只做任务卡所列组件，不"顺手优化"视觉；禁止无卡改样式
 - 验收命令输出贴进 PR；标记 `manual-check` 的卡只能提交"待人工验收"
@@ -37,5 +38,10 @@
 - libvips 子进程冷启动 ~5s → 走进程池预热
 - `.workflow` 修改后 Finder 不立即刷新 → `killall pbs`
 - 非 ASCII 的 .app 包名会坑 DMG/updater → 包名固定 `Yali.app`，中文显示走 CFBundleDisplayName 本地化
+- **Tauri 2 没有 `capabilities/default.json` 时前端 `listen()` 被 ACL 拒绝**，事件静默失效（T-013 实测）
+- `before*Command` 的 cwd 是 `src-tauri` → 钩子写 `pnpm --dir ../ui …`
+- 环境里 `CI=1` 会让 cargo-tauri 报 `invalid value '1' for '--ci'` → 整包用 `env -u CI`
+- tauri-bundler 会给不认识的扩展名（avif/jxl）兜底 `public.image` → `src-tauri/Info.plist` 精确覆盖，
+  `scripts/bundle-check.sh` 断言 UTI 与 `tauri.conf.json` 不漂移
 - `tauri::generate_context!` 编译期需要 `src-tauri/icons/icon.png`（bundle.active=false 也要）
 - `frontendDist`（`ui/dist`）在**非 dev** 构建时是硬校验：目录不存在直接 panic。`src-tauri/build.rs` 已兜占位页，但提交前务必跑一次 `pnpm --dir ui build` 让产物是真前端

@@ -261,9 +261,8 @@ mod tests {
 
     #[test]
     fn profile_store_respects_yali_home_env() {
-        use std::sync::Mutex;
-        static ENV_LOCK: Mutex<()> = Mutex::new(());
-        let _guard = ENV_LOCK.lock().unwrap(); // env 是进程级全局，串行化避免并发测试互踩
+        // env 是进程级全局，串行化避免并发测试互踩（settings 测试共用同一把锁）
+        let _guard = crate::test_support::ENV_LOCK.lock().unwrap();
         let root = temp_dir("env");
         std::env::set_var("YALI_HOME", &root);
         let dir = ProfileStore::dir().unwrap();

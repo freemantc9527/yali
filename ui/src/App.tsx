@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { DropZone } from "./components/DropZone";
 import { ProfileForm } from "./components/ProfileForm";
 import { ProfileManager } from "./components/ProfileManager";
@@ -9,9 +9,11 @@ import {
   compress,
   coreVersion,
   profilesList,
+  onOpenFiles,
   onProgress,
   profilesSave,
   profilesShow,
+  takePendingFiles,
   type Profile,
 } from "./lib/bridge";
 
@@ -80,6 +82,24 @@ export default function App() {
     },
     [busy, rows.length, selected],
   );
+
+  // 系统投递（打开方式 / Dock 拖入）走同一个入队口；用 ref 避免每次任务变化都重订阅
+  const handlePathsRef = useRef(handlePaths);
+  useEffect(() => {
+    handlePathsRef.current = handlePaths;
+  }, [handlePaths]);
+
+  useEffect(() => {
+    const drain = () => {
+      void takePendingFiles().then((paths) => {
+        if (paths.length > 0) void handlePathsRef.current(paths);
+      });
+    };
+    // 先订阅再取缓冲：两个动作之间投递的文件也不会丢
+    const unlisten = onOpenFiles(drain);
+    drain();
+    return unlisten;
+  }, []);
 
   return (
     <main className="shell">

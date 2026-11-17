@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { compress, coreVersion, isTauri, profilesList, profilesShow } from "./bridge";
+import {
+  compress,
+  coreVersion,
+  isTauri,
+  onOpenFiles,
+  profilesList,
+  profilesShow,
+  takePendingFiles,
+} from "./bridge";
 
 // node 环境没有 Tauri 注入，全部走浏览器降级分支——这正是 vitest 需要的可测性。
 describe("bridge 浏览器降级", () => {
@@ -36,6 +44,12 @@ describe("bridge 浏览器降级", () => {
     const archive = await profilesShow("archive");
     expect(archive.quality.kind).toBe("lossless");
     expect(archive.format.output).toBe("jxl");
+  });
+
+  it("系统投递在浏览器降级为空且可退订（T-013）", async () => {
+    const off = onOpenFiles(() => {});
+    expect(await takePendingFiles()).toEqual([]);
+    off();
   });
 
   it("compress 降级返回完整报告结构（供 UI 演示）", async () => {

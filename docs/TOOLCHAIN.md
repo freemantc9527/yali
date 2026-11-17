@@ -5,7 +5,9 @@
 ## 1. 定稿技术栈
 
 **Tauri 2（Rust 核心 + React UI）+ CLT-only 工具链** —— 2026-11-17 终验通过：`cargo build -p yali-app`（含 tauri/objc2/webkit 全依赖图）编译成功，`cargo test` 全绿。决策全文见 `docs/decisions/ADR-002-tauri-clt-only.md`（兜底路径 ADR-003 备而未用）。
-前端包管理器 **pnpm**（ADR-004），Tauri 钩子命令统一 `pnpm --dir ui …`。
+前端包管理器 **pnpm**（ADR-004）。Tauri 的 `before*Command` 钩子 **以 `src-tauri` 为 cwd 执行**，
+所以钩子命令是 `pnpm --dir ../ui …`（T-013 实测：写 `--dir ui` 会报 No such file or directory）。
+tauri CLI 由 `cargo install tauri-cli --version '^2' --locked` 安装（v2.12.5，CLT-only 编译 4m34s 通过）。
 
 选型排除逻辑（摘要）：
 - 依赖 SwiftUI/SwiftPM 全家桶 ❌——CLT 无 XCTest/swift-testing（`swift test` 不可用）、无 SwiftUIMacros（@State/@Observable 宏不可编译）
@@ -39,3 +41,10 @@ mozjpeg 4.1.5（⚠️ keg-only：brew 的 `cjpeg` 是 libjpeg-turbo 3.2.1 的�
 5. `tauri::generate_context!` 编译期硬依赖 `src-tauri/icons/icon.png`（bundle.active=false 也要）——新克隆先有图标
 6. `tauri::generate_context!` 在**非 dev** 构建时硬校验 `frontendDist`（`../ui/dist`）存在，缺失直接 panic（`tauri-codegen` 的 codegen 阶段，不是运行时）。`ui/dist` 是构建产物不入库，因此 `src-tauri/build.rs` 在 codegen 之前兜一个占位 `index.html`；正式提交前仍应跑 `pnpm --dir ui build` 产出真前端
 7. debug 构建对 `frontendDist` 不校验（`dev_url` 有值即短路）——**不要**因此认为「新克隆能 debug 编译 = 仓库可复现 release」
+8. 打整包：`env -u CI cargo tauri build --bundles app` → `target/release/bundle/macos/Yali.app`，
+   再用 `scripts/bundle-check.sh` 校验 Info.plist。**环境里 `CI=1` 会让 cargo-tauri 报
+   `invalid value '1' for '--ci'`**（clap 把 CI 当布尔参数），所以显式 `env -u CI`
+9. `bundle.macOS.infoPlist` 的路径按 `src-tauri` 目录解析（写 `Info.plist`，不是 `src-tauri/Info.plist`）；
+   它的顶层键会**整键覆盖** bundler 生成的同名键（T-013 用它覆盖 `CFBundleDocumentTypes`）
+10. Tauri 2 的前端 `listen()` 需要 capability：没有 `src-tauri/capabilities/default.json`（`core:default`）时
+   事件订阅会被 ACL 拒绝，且报错只落在 WebView 控制台，`yali://progress` / `yali://open-files` 会静默失效

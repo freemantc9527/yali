@@ -48,6 +48,22 @@ archive（JXL 无损包裹，可逆）、mail（targetBytes 500KB 二分收敛�
 
 同步机制：GUI 编辑 → 原子写 JSON → FSEvents 广播 → CLI/workflow 下次调用即生效，无 IPC。
 
+**应用设置**（与 Profile 分开，T-014）：`~/Library/Application Support/app.yali/settings.json`，
+camelCase + `deny_unknown_fields`，缺字段回落默认（入口默认全关）：
+
+```jsonc
+{
+  "schemaVersion": 1,
+  "clipboard": { "enabled": false, "minBytes": 65536 },   // 小于该体积的剪贴板图忽略
+  "watch":     { "enabled": false, "dirs": [], "settleMs": 800 }, // 防抖窗口
+  "tray":      { "enabled": true },
+  "notify":    { "enabled": true }
+}
+```
+
+异常策略：文件缺失→默认；JSON 语法坏→备份 `settings.json.bad-<毫秒>` 后回落默认；
+字段拼错/类型错→**报错**（不静默吃配置）；`schemaVersion` 高于当前→报错且不覆盖。
+
 ## 3. 压缩管道与算法规格
 
 ```
@@ -71,7 +87,7 @@ archive（JXL 无损包裹，可逆）、mail（targetBytes 500KB 二分收敛�
 | 通道 | 技术 | 阶段 |
 |---|---|---|
 | Finder 快速操作 | 用户级 `.workflow` ×2（压一下 / 转 JPG，Run Shell Script 调 `yali` CLI；按 UTI 逐动作声明，JPEG 文件不显示「转 JPG」） | **M0.5 主通道**（右键永不询问：选格式=预设动作，精调归 GUI） |
-| 拖 Dock / 打开方式 | CFBundleDocumentTypes + open-file 事件 | M1 |
+| 拖 Dock / 打开方式 | CFBundleDocumentTypes（具体 UTI，rank=Alternate）+ `RunEvent::Opened` + 冷启动缓冲 | ✅ T-013 |
 | 剪贴板监听 | arboard changeCount，菜单栏开关 | M2 |
 | watch 文件夹 | notify crate（FSEvents），(path,mtime,size) 去重 | M2 |
 | 菜单栏托盘拖入 | Tauri tray；file-drop 需 AppKit helper 补充 | M2 可选 |
@@ -98,8 +114,11 @@ yali/
 │                            # Metadata · UndoManifest · FileNamer · Metrics(rusqlite)
 ├─ crates/yali-cli           # clap 门面（安装二进制名 yali）
 ├─ crates/yali-integration   # 待建（M2+）· 平台差异 trait 收口
-├─ src-tauri                 # Tauri 壳：commands/tray/剪贴板/updater
+├─ src-tauri                 # Tauri 壳：commands/open-file/剪贴板/updater
+│                            # ├─ capabilities/default.json（T-013：事件监听必需）
+│                            # └─ Info.plist（T-013：精确 CFBundleDocumentTypes 覆盖）
 ├─ ui/                       # React+Vite（Tailwind 是否引入待 M1 任务卡评估）
+├─ scripts/                  # ✓ 已建 · bundle-check.sh（bundle 元数据/UTI 漂移守门）
 ├─ workflows/                # ✓ 已建 · .workflow 模板（两条动作）+ install-workflows.sh
 ├─ helpers/                  # 待建（M3）· vision helper（CLT swiftc 编译）
 ├─ benchkit/                 # ✓ 已建 · 合成金样 + bench.sh + 分档位基线
@@ -109,7 +128,8 @@ yali/
 
 - 引擎集成两步走：**Phase A 子进程**（Brewfile 钉版，tokio 进程池预热，GPL 边界干净）→ Phase B 库内链接（可选：imagequant-rs/oxipng/ravif/vips-sys；每步有 CLI 回退）
 - 任务模型：并发 `min(active_cores-1, 4)`；状态机 `created→classifying→processing→done|failed|larger_output`；SQLite 持久化断点续
-- 数据：`app.yali/metrics.sqlite`（统计）、`.yali-undo.json`（撤销清单，`yali undo` / GUI ⌘Z 消费）
+- 数据：`app.yali/settings.json`（应用设置，T-014）、`app.yali/metrics.sqlite`（统计）、
+  `.yali-undo.json`（撤销清单，`yali undo` / GUI ⌘Z 消费）
 - 更新：tauri-plugin-updater（minisign，与 Apple 证书解耦）
 
 ## 7. API 草图
@@ -135,8 +155,8 @@ pub async fn compress(file: &Path, profile: &Profile) -> Result<CompressResult>;
 | M-1 整备 | 仓库/骨架/**CLT 终验** | ✅ 已过（2026-11-17） |
 | M0 内核+CLI | schema+fixtures+core+CLI+benchkit | ✅ 已过：合成集达标 / p50=119ms / undo 逐字节还原 / 48 测试绿 |
 | M0.5 右键闭环 | install-workflows + 聚合通知 | 🔶 自动部分实测通过；Finder 菜单人工复核待办 |
-| M1 GUI | Tauri 壳+React 全界面+open-file | 🔶 五卡落地（编辑/目录/队列/对比/管理器）；拖入与内存峰值待复核 |
-| M2 入口全量 | 剪贴板/watch/tray | 20 图右键→通知 p50<8s |
+| M1 GUI | Tauri 壳+React 全界面+open-file | 🔶 五卡落地（编辑/目录/队列/对比/管理器）+ open-file（T-013）；真机拖入/「打开方式」/内存峰值待复核 |
+| M2 入口全量 | 剪贴板/watch/tray/失败队列/统计 | 🔶 T-013/T-014 落地；出口指标：20 图右键→通知 p50<8s |
 | M3 智能 | 分类路由+标定表+Vision helper+全格式 | 截图路由正确率>95%；抠图<2s |
 | M4 发布 | GitHub Release+brew tap+updater | 新机 brew install 到右键出结果<3min |
 

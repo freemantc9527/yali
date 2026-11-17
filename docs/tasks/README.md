@@ -1,7 +1,7 @@
 # docs/tasks · 任务卡索引
 
 > 卡片制度：一卡一 commit；验收命令的输出摘要写进 commit message；完成即更新 `docs/STATE.md`。
-> M0 / M0.5 / M1 共 11 张卡已全部落地；里程碑状态与待人工复核项见 `docs/STATE.md`。
+> M0 / M0.5 / M1 共 11 张卡 + M2 前两张（T-013/T-014）已落地；里程碑状态与待人工复核项见 `docs/STATE.md`。
 
 | 卡 | 状态 | 内容 | 验收 |
 |---|---|---|---|
@@ -16,6 +16,8 @@
 | [T-011-profile-manager.md](T-011-profile-manager.md) | ✅ 完成（2026-11-17） | Profile 管理器（另存/导入/导出） | 纯函数 12 测；浏览器实测另存与非法 JSON 报错 |
 | [T-010-compare-viewer.md](T-010-compare-viewer.md) | ✅ 完成（2026-11-17，manual 待复核） | 对比查看器（滑杆 + SSIM） | metrics 测试（同图=1、低质副本<0.95）；ui 48 测试；应用启动冒烟；真机滑杆手感人工验收 |
 | [T-012-quick-action-set.md](T-012-quick-action-set.md) | ✅ 完成（2026-11-17，manual 待复核） | 右键动作取舍（两条）+ 出厂档 jpg | automator 实测；PNG→JPG 调色板/透明两条路径正确；bench default/jpg 双基线 |
+| [T-013-app-bundle-open-file.md](T-013-app-bundle-open-file.md) | ✅ 完成（2026-11-17，manual 待复核） | 真 .app + CFBundleDocumentTypes + open-file 入队 | `cargo tauri build` 出 Yali.app；`bundle-check.sh` 10 类 UTI 无抽象类型；`open -a` 冷启动/运行中/多文件均自动压出产物 |
+| [T-014-settings-store.md](T-014-settings-store.md) | ✅ 完成（2026-11-17） | 应用设置 settings.json + CLI + Tauri commands | settings 11 测；语法坏→备份回落、字段拼错→报错、未来版本→拒绝；CLI show/path/reset 实测 |
 
 T-002 落地物：`schema/profile.schema.json`（文档事实源）、`fixtures/`（出厂档，现为六档）、`crates/yali-core/src/{profile,store}.rs`。
 

@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  T-013：覆盖 tauri-bundler 生成的 CFBundleDocumentTypes。
+  原因：bundler 对 avif/jxl 不认识，会兜底塞抽象类型 public.image（导致「打开方式」
+  对所有图片格式都列 Yali）。这里只写具体 UTI，与 tauri.conf.json 的 fileAssociations
+  保持一致；改动任一处都必须同步另一处，scripts/check-bundle.sh 会断言两者一致。
+  注意：tauri.conf.json 里的 "infoPlist" 按 src-tauri 目录解析（写 "Info.plist"，不要写 src-tauri/…）。
+-->
+<plist version="1.0">
+<dict>
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>PNG 图片</string>
+      <key>CFBundleTypeRole</key>
+      <string>Viewer</string>
+      <key>CFBundleTypeExtensions</key>
+      <array><string>png</string></array>
+      <key>LSItemContentTypes</key>
+      <array><string>public.png</string></array>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>JPEG 图片</string>
+      <key>CFBundleTypeRole</key>
+      <string>Viewer</string>
+      <key>CFBundleTypeExtensions</key>
+      <array><string>jpg</string><string>jpeg</string></array>
+      <key>LSItemContentTypes</key>
+      <array><string>public.jpeg</string></array>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>HEIC 图片</string>
+      <key>CFBundleTypeRole</key>
+      <string>Viewer</string>
+      <key>CFBundleTypeExtensions</key>
+      <array><string>heic</string></array>
+      <key>LSItemContentTypes</key>
+      <array><string>public.heic</string></array>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>HEIF 图片</string>
+      <key>CFBundleTypeRole</key>
+      <string>Viewer</string>
+      <key>CFBundleTypeExtensions</key>
+      <array><string>heif</string></array>
+      <key>LSItemContentTypes</key>
+      <array><string>public.heif</string></array>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>GIF 图片</string>
+      <key>CFBundleTypeRole</key>
+      <string>Viewer</string>
+      <key>CFBundleTypeExtensions</key>
+      <array><string>gif</string></array>
+      <key>LSItemContentTypes</key>
+      <array><string>com.compuserve.gif</string></array>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>WebP 图片</string>
+      <key>CFBundleTypeRole</key>
+      <string>Viewer</string>
+      <key>CFBundleTypeExtensions</key>
+      <array><string>webp</string></array>
+      <key>LSItemContentTypes</key>
+      <array><string>org.webmproject.webp</string></array>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>AVIF 图片</string>
+      <key>CFBundleTypeRole</key>
+      <string>Viewer</string>
+      <key>CFBundleTypeExtensions</key>
+      <array><string>avif</string></array>
+      <key>LSItemContentTypes</key>
+      <array><string>public.avif</string></array>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>JPEG XL 图片</string>
+      <key>CFBundleTypeRole</key>
+      <string>Viewer</string>
+      <key>CFBundleTypeExtensions</key>
+      <array><string>jxl</string></array>
+      <key>LSItemContentTypes</key>
+      <array><string>public.jpeg-xl</string></array>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>TIFF 图片</string>
+      <key>CFBundleTypeRole</key>
+      <string>Viewer</string>
+      <key>CFBundleTypeExtensions</key>
+      <array><string>tif</string><string>tiff</string></array>
+      <key>LSItemContentTypes</key>
+      <array><string>public.tiff</string></array>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>BMP 图片</string>
+      <key>CFBundleTypeRole</key>
+      <string>Viewer</string>
+      <key>CFBundleTypeExtensions</key>
+      <array><string>bmp</string></array>
+      <key>LSItemContentTypes</key>
+      <array><string>com.microsoft.bmp</string></array>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+    </dict>
+  </array>
+</dict>
+</plist>

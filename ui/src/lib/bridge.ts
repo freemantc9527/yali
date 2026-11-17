@@ -166,6 +166,29 @@ export function fileSrc(path: string | null): string | null {
   return prefix + encodeURIComponent(path);
 }
 
+/** 系统投递信号（Tauri 事件 `yali://open-files`）的浏览器降级订阅表 */
+const openFileHandlers = new Set<() => void>();
+
+/** 订阅「系统投递了图片」（打开方式 / Dock 拖入）。路径本身用 takePendingFiles 取。 */
+export function onOpenFiles(handler: () => void): () => void {
+  if (!isTauri()) {
+    openFileHandlers.add(handler);
+    return () => openFileHandlers.delete(handler);
+  }
+  let unlisten: (() => void) | undefined;
+  void (async () => {
+    const { listen } = await import("@tauri-apps/api/event");
+    unlisten = await listen("yali://open-files", () => handler());
+  })();
+  return () => unlisten?.();
+}
+
+/** 取走系统投递的图片路径（冷启动缓冲 + 事件唤醒共用）；取走即清空 */
+export async function takePendingFiles(): Promise<string[]> {
+  if (!isTauri()) return [];
+  return invoke<string[]>("take_pending_files");
+}
+
 export async function compress(paths: string[], profile: string): Promise<CompressReport[]> {
   if (!isTauri()) {
     const total = paths.length;
