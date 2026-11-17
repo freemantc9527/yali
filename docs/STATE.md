@@ -27,10 +27,12 @@
 - 平台：macOS 先行，Linux→Windows 备忘见 docs/CROSSPLATFORM.md
 
 ## 下一步（按序）
-1. T-002: `schema/profile.schema.json` + fixtures 入库
-2. T-003: yali-core 骨架（EngineRegistry 接口 + 子进程池）
-3. T-004: benchkit 合成金样 + bench.sh（同时建 `docs/tasks/`）
-4. T-005 收尾: UI 接线（Profile 表单 → invoke）
+> **执行计划已落卡**：冷启动先读 `docs/plans/PLAN-M0.md`（临时文档，M0 完成后移除），卡片在 `docs/tasks/`。
+
+1. T-002: Profile Schema + Store + 五档 fixtures（`docs/tasks/T-002-profile-schema.md`）
+2. T-003: EngineRegistry + 子进程池 + CLI 真实现（T-003）
+3. T-004: benchkit 合成金样 + bench.sh（T-004）
+4. T-005 收尾: UI 接线（T-005，manual-check）
 
 ## 坑账本
 - `tauri::generate_context!` **编译期**要求 `src-tauri/icons/icon.png` 存在（即使 bundle.active=false）
