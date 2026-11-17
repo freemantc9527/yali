@@ -150,7 +150,7 @@ mod tests {
         std::env::set_var("YALI_HOME", &home);
 
         let names = profiles_list().await.unwrap();
-        assert_eq!(names, vec!["archive", "default", "mail", "screenshot", "web"]);
+        assert_eq!(names, vec!["archive", "default", "jpg", "mail", "screenshot", "web"]);
 
         let profile = profiles_show("mail".into()).await.unwrap();
         assert_eq!(profile.name, "mail");

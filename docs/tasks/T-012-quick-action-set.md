@@ -16,7 +16,7 @@ acceptance:
   - RGBA PNG → JPG 白底正确（PSNR 45dB vs 白底参考），体积不劣于 mozjpeg 基线
   - GIF → JPG 不再被缩成 128×96（尺寸守卫实测拦住过）
   - `bench.sh --profile jpg` 三指标出表；default/web 基线仍绿
-  - cargo 42 + ui 48 全绿
+  - cargo 46 + ui 48 全绿（T-012 顺带把 Tauri 冒烟的档案列表期望从五档改六档）
 estimated: 3h
 manual-check: true（Finder 快速操作里三条鸭梨、且总数 ≤3）
 
