@@ -5,7 +5,7 @@ context: `docs/DESIGN.md` §4（剪贴板、watch、tray 都要开关与目录�
 constraints:
   - **零新增依赖**（serde / serde_json / anyhow）
   - camelCase + `deny_unknown_fields`（与 Profile 一致：拼错字段必须报错，不能静默忽略）
-  - 缺字段回落默认（老版本配置可前向兼容），默认值 = 所有入口默认关闭（不偷偷监听剪贴板/目录）
+  - 缺字段回落默认（老版本配置可前向兼容），默认值 = 剪贴板 / watch 默认关闭，托盘 / 通知默认开启（不偷偷监听剪贴板/目录）
   - 文件损坏不崩：备份为 `settings.json.bad-<时间戳>` 后回落默认值
   - 原子写（临时文件 + rename）；`YALI_HOME` 重定向与 ProfileStore 同源
 acceptance:
@@ -36,12 +36,12 @@ manual-check: false
 
 ## 验收记录（2026-11-17）
 
-- `cargo test -p yali-core settings`：11 passed（默认全关 / 缺失文件 / 往返 / 缺字段默认 /
+- `cargo test -p yali-core settings`：11 passed（默认监听关闭 / 缺失文件 / 往返 / 缺字段默认 /
   拼错字段报错且不删文件 / 语法坏→`.bad-<ms>` 备份+默认 / 未来版本拒绝 / 相对与重复目录拒绝 /
   原子写无残留 / reset 备份 / YALI_HOME）
 - CLI（YALI_HOME 指向临时目录）：
   - `yali settings path` → `<tmp>/settings.json`
-  - `yali settings show` → 默认 JSON（全关，minBytes 65536，settleMs 800）
+  - `yali settings show` → 默认 JSON（监听关闭，托盘 / 通知开启，minBytes 65536，settleMs 800）
   - `yali settings reset` → 「已恢复默认配置」+ 默认 JSON，目录只剩 settings.json
 - Tauri `settings_show` / `settings_save` 已接入，command 冒烟覆盖：默认→保存→读回→非法版本拒写
 - 文档：DESIGN §2 记录位置与异常策略；§6 数据段补充 settings.json

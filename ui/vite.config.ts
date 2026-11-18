@@ -1,10 +1,12 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
 // 与 src-tauri/tauri.conf.json 的 devUrl 对齐：端口固定，避免 Tauri 连不上 dev server。
 // 构建产物固定输出到 ui/dist（tauri.conf.json 的 frontendDist 指向这里）。
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
+  resolve: { alias: { "@": new URL("./src", import.meta.url).pathname } },
   clearScreen: false,
   server: {
     port: 5173,

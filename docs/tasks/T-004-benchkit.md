@@ -8,12 +8,12 @@ constraints:
   - `benchkit/local-samples/` 已在 .gitignore，个人素材只放这里
 acceptance:
   - `benchkit/generate.sh` 一键生成全部合成样（输出进 benchkit/samples/，入库）
-  - `benchkit/bench.sh` 跑完输出表格：每样×每引擎的 体积比 / SSIM（`magick compare -metric SSIM`）/ 耗时
-  - 结果与 `benchkit/baseline.json` 比对，任一指标劣化 >3% 退出码非零
-  - `baseline.json` 由 T-003 完成后的首次全量跑生成并入库
-  - `cargo test` 不受影响（bench.sh 不进 cargo 测试回环，避免拖慢 <60s 预算）
+  - `benchkit/bench.sh` 跑完输出表格：每样×每引擎的 体积比 / SSIM（ffmpeg，原因见 benchkit/README.md）/ 耗时
+  - 结果与 `benchkit/baseline-<profile>.json` 比对，体积比 / SSIM 任一劣化 >3% 退出码非零；耗时仅观察（2026-11-18 用户调整，原三指标硬门槛作为历史记录）
+  - `baseline-<profile>.json` 按档位生成并入库
+  - `cargo test` 不受影响（bench.sh 不进 cargo 单测回环；回环耗时只观察）
 > 后续变更（T-012）：基线已改为**按档位分文件** `baseline-<profile>.json`，
-> 并新增 `palette.png` 样张；下面原文里的 `baseline.json` 是当时的口径。
+> 并新增 `palette.png` 样张。
 
 estimated: 2h
 manual-check: false
@@ -21,5 +21,5 @@ manual-check: false
 ## 实现要点
 - 生成工具只依赖本机已有的 CLI（ImageMagick / vips / sips），不写 Python 依赖
 - bench.sh 参数：`--profile <name>`（默认 default）`--format <fmt>`；并发跑但计时取单图口径
-- SSIM 计算注意：`magick compare` 的 metric 在 stderr；脚本要捕获处理
+- SSIM 统一用 ffmpeg；alpha、二代样本与质量门口径见 benchkit/README.md
 - 完成后：更新 STATE.md；此后所有压缩质量变更必须过 bench.sh

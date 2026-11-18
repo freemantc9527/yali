@@ -1,7 +1,7 @@
 # T-010 · 对比查看器（before/after 滑杆 + SSIM）
 
 goal: 点任务行打开对比查看器：滑杆切分原图/压缩图，标注 SSIM（与 benchkit 同口径）
-context: docs/DESIGN.md §5「对比查看器：Space 唤起，before/after 滑杆 + SSIM 标注」
+context: 当前对比查看器规格见 [UI-REDESIGN](../UI-REDESIGN.md)
 constraints:
   - SSIM 口径必须与 benchkit 一致（ffmpeg ssim 滤镜；IM7 的 SSIM 已证实不可用）
   - 本地图片走 Tauri asset protocol（`protocol-asset` feature + security.assetProtocol scope）

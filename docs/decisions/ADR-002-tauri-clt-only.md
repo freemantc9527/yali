@@ -6,7 +6,7 @@
 ## 背景
 
 新增硬约束：**开发机不安装 Xcode，只有 Command Line Tools**。
-ADR-001 的隐含前提（`swift test`、SwiftUI 宏、xcodebuild 可用）随之崩塌——
+ADR-001 的隐含前提（`swift test`、SwiftUI 宏、xcodebuild 可用）随之崩塌，
 CLT-only 下 Swift 是唯一「测试断腿」的候选：XCTest 模块缺失，SwiftUIMacros 插件不随 CLT。
 
 ## 实证（本机 CLT-only 逐项验证，2026-11-16 ~ 11-17）
@@ -41,5 +41,5 @@ CLT-only 下 Swift 是唯一「测试断腿」的候选：XCTest 模块缺失，
 
 - 承担：WebView 老化路径需要用现代前端栈 + 定期依赖升级对冲
 - 承担：包体 ~15MB（可接受，相对 Electron 是数量级改善）
-- 约束：任何验收禁止出现 `swift test` / `xcodebuild`（见 `docs/TOOLCHAIN.md` §2）
+- 约束：任何验收禁止出现 `swift test` / `xcodebuild`（见 [工具链边界](../TOOLCHAIN.md#1-环境与命令)）
 - 回滚条件：若 M0 内核暴露 Tauri 无法覆盖的必需系统能力且 Swift helper 兜不住 → 触发 ADR-003

@@ -1,7 +1,7 @@
 # T-015 · 菜单栏托盘 + 关窗常驻
 
 goal: 让鸭梨成为一个常驻 app：菜单栏有图标，关窗只是收起来，为剪贴板/watch 入口提供挂载点
-context: `docs/DESIGN.md` §4 入口矩阵；`docs/STATE.md` §4 第 2 条；`settings.tray.enabled`（T-014 已定义，默认 true）
+context: `docs/DESIGN.md` §4 入口矩阵；`settings.tray.enabled`（T-014 已定义，默认 true）
 constraints:
   - 只开 `tauri` 的 `tray-icon` feature，不引新 crate
   - 关窗行为必须跟随 `settings.tray.enabled`：托盘关着就按普通 app 退出，不许出现「窗口没了进程还在但无处唤回」

@@ -26,3 +26,12 @@ describe("ratio", () => {
     expect(ratio(1000, 1000)).toBe("0.0%");
   });
 });
+
+describe("savings 工作台统一口径", () => {
+  it("正数节省、增大明确说明、零分母不可计算", async () => {
+    const { savings } = await import("./format");
+    expect(savings(1000, 420)).toBe("58.0%");
+    expect(savings(1000, 1100)).toBe("增加 10.0%");
+    expect(savings(0, 0)).toBe("不可计算");
+  });
+});

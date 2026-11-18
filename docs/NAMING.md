@@ -18,11 +18,11 @@
 
 | 产出物 | 定名 |
 |---|---|
-| GitHub | `freemantc9527/yali`（将来可 transfer 至 `yali-app` org，名字已预检可用） |
+| GitHub | `freemantc9527/yali` |
 | App 包 | `Yali.app`（productName=`Yali`，ASCII 保工具链兼容） |
 | 显示名本地化 | zh-Hans `CFBundleDisplayName=鸭梨`；en=`Yali` |
 | bundle identifier | `app.yali`（所有数据路径派生源） |
-| brew tap / formula | `yali-app/tap` / `yali` |
+| brew tap / formula（规划） | `yali-app/tap` / `yali` |
 | License | Apache-2.0 |
 | 版本 | SemVer，首发 v0.1.0；Keep a Changelog |
 
@@ -43,8 +43,8 @@
 
 | 项 | 定名（zh / en） |
 |---|---|
-| workflow 五项 | `压一下/Compress` · `转为 WebP/Convert to WebP` · `无损归档/Lossless Archive` · `去除隐私信息/Strip Privacy` · `抠图去背景/Cut Out` |
-| workflow 品牌后缀 | 不加（菜单干净）；归属靠 `app.yali/workflows.lock.json` 清单，卸载不误伤第三方 |
+| workflow 两项 | `鸭梨 · 压一下` / Compress · `鸭梨 · 转 JPG` / Convert to JPG |
+| workflow 标识 | `app.yali.quick-action.compress` · `app.yali.quick-action.to-jpg`（模板与安装脚本为准） |
 | 菜单栏图标 | `yaliTemplate.png`（@2x，模板图自动明暗） |
 | 通知标题 | 鸭梨 / Yali |
 
@@ -53,14 +53,11 @@
 | 项 | 值 |
 |---|---|
 | 应用数据根 | `~/Library/Application Support/app.yali/` |
-| Profile 库 / 指标 / 日志 | `…/profiles/*.json` · `…/metrics.sqlite` · `…/logs/` |
+| Profile / 设置 | `…/profiles/*.json` · `…/settings.json` |
+| 指标 / 日志（规划） | `…/metrics.sqlite` · `…/logs/` |
 | 撤销清单 | 目标目录内 `.yali-undo.json` |
 | 环境变量 | `YALI_PROFILE` · `YALI_ENGINES_PATH` · `YALI_HOME` |
 
 ## 6. 书写规则
 
 品牌语境「鸭梨/Yali」，技术语境一律小写 `yali`；禁止 `YALI`（env 前缀除外）/`YaLi`；中英混排首现「鸭梨（Yali）」。
-
-## 7. 撞名核查
-
-Yali 为真实梨品种与地名，软件领域无知名品牌占用；"鸭梨"系通用词，组合资产（名+吉祥物+tagline）为护城河；商业化时再跑商标检索。

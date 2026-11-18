@@ -1,9 +1,11 @@
 # benchkit · 合成金样回归
 
 质量相关变更（参数映射 / 编码器 / 管道）**合并前必须过 `bench.sh`**。本目录不进 cargo 测试回环，
-避免拖慢 `<60s` 单测预算。
+避免拖慢日常单测回环。
 
 ## 一键使用
+
+需要 Python 3、ffmpeg 与 [Brewfile](../Brewfile) 中的引擎和 ImageMagick；默认使用 debug CLI，可用 `YALI_BIN` 指定已重建的二进制。
 
 ```bash
 benchkit/generate.sh                 # 生成合成金样（确定性的，可复跑；产物入库）
@@ -14,14 +16,15 @@ benchkit/bench.sh --update-baseline  # 有意的质量变更后重写当前档�
 ```
 
 - 输出表格：每样 × 引擎的 体积比 / SSIM / 耗时中位数（3 轮取中位，单图口径）
-- 与 `baseline-<profile>.json` 比对：体积比↑ / SSIM↓ / 耗时↑ 任一劣化 >3% → 退出码非零
-- 质量门（DESIGN §9）：level≥5 时**单代照片类样本** SSIM≥0.95
+- 与 `baseline-<profile>.json` 比对：体积比↑ / SSIM↓ 任一劣化 >3% → 退出码非零；耗时仅输出观察提示
+- 质量门（[DESIGN §9](../docs/DESIGN.md#9-质量与验证)）：level≥5 时**单代照片类样本** SSIM≥0.95
 
 ## 样张（全部合成，合规红线）
 
 | 样张 | 内容 | 说明 |
 |---|---|---|
 | `photo.jpg` | 渐变 + 结构纹理 + 中等噪声，1920×1280 q92 | 照片类代表；`-seed 42` 固定随机，可复跑 |
+| `palette.png` | 已量化调色板 PNG | 覆盖无 alpha 转 JPEG 与 pngquant 退出 99 回落 |
 | `ui.png` | 纯色块 + 文字模拟，1600×1000 | UI 截图类 |
 | `anim.gif` | 12 帧分形噪点，480×360 | 动图类 |
 | `transparent.png` | 圆形 + 半透明块 + 文字，alpha | 透明 PNG 类 |
@@ -49,5 +52,14 @@ benchkit/bench.sh --update-baseline  # 有意的质量变更后重写当前档�
 ## 基线策略
 
 - 基线**按档位分文件**（`baseline-default.json` / `baseline-jpg.json`），首次全量跑生成；换档跑不互相污染
-- 只在**有意的质量变更**后用 `--update-baseline` 重写，并在 commit message 里说明原因
-- 计时指标在 16GB M1 Pro 上取单图中位数；机器负载波动 >3% 属正常误报，重跑一次确认
+- 只在**有意的质量变更**后用 `--update-baseline` 重写，并在任务卡 / PR 中说明原因
+- 计时指标取单图中位数，受机器、负载和缓存影响，仅作观察，不影响退出码。内存、CPU 等系统资源也不作为验收硬指标，不为这些波动改基线（用户确认，2026-11-18）
+
+## 引擎处理约束
+
+- cjpeg / vips 会把 RGBA 的 alpha 合成黑底，透明 PNG 转 JPEG 先正确压白；flatten 只用于真透明输入，产物须为 RGB，否则回落 sips。
+- vipsthumbnail 默认只出 128×128，预缩放必须显式 --size；普通转换用 vips copy。中转文件不能用 dotfile 名，避免图片被写入 stdout 却退出成功。
+- HEIC / AVIF / JXL 容器按现有路由走 sips，防 vips 只读内嵌缩略图；输出尺寸守卫必须保留。
+- 调色板 PNG 强制 oxipng 无损；有损回落使用快速优化档，避免 pngquant 退出码 99。
+- libvips 冷启动约 5s，保留现有预热策略。合成噪声固定 seed，不让样张漂移。
+- 回归前重建实际使用的 CLI，debug / release 分开确认，不能拿旧二进制评估新代码。

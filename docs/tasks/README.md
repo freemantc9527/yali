@@ -1,28 +1,26 @@
-# docs/tasks · 任务卡索引
+# 任务卡索引
 
-> 卡片制度：一卡一 commit；验收命令的输出摘要写进 commit message；完成即更新 `docs/STATE.md`。
-> M0 / M0.5 / M1 共 11 张卡 + M2 前两张（T-013/T-014）已落地；里程碑状态与待人工复核项见 `docs/STATE.md`。
+一卡一任务变更 / PR，不因完成任务自动提交。验收输出留在卡片，当前状态汇总于 [STATE](../STATE.md)。历史卡的约束描述当时范围；现行 UI、构建与验证以 UI 规格、AGENTS 为准。
 
-| 卡 | 状态 | 内容 | 验收 |
-|---|---|---|---|
-| [T-002-profile-schema.md](T-002-profile-schema.md) | ✅ 完成（2026-11-17） | Profile v1 六段 Schema + Store + 出厂 fixtures（现六档，T-012 增 jpg） | `cargo test -p yali-core profile` 15+2 绿；CLI `show default` 与 fixture 逐字节一致 |
-| [T-003-engine-registry.md](T-003-engine-registry.md) | ✅ 完成（2026-11-17） | EngineRegistry + 子进程池 + CLI 真实现 | doctor 11 引擎探测 ✓；compress 冒烟 p50≈95ms；负优化拦截/undo 还原均有测试；32+2 测试全绿 |
-| [T-004-benchkit.md](T-004-benchkit.md) | ✅ 完成（2026-11-17） | 合成金样 + bench.sh 三指标出表 | generate.sh 确定性可复跑；bench 双档通过；劣化>3% 实测退出码 1；baseline 入库 |
-| [T-005-ui-wiring.md](T-005-ui-wiring.md) | ✅ 完成（2026-11-17） | UI 接线（拖入队列 + Profile 表单） | 19 个前端测试绿；command 层真压缩冒烟；浏览器端到端拖入→结果行；真机拖拽待人工复核 |
-| [T-006-m0.5-workflow.md](T-006-m0.5-workflow.md) | ✅ 完成（2026-11-17，manual 待复核） | Finder 右键 .workflow + 聚合通知 | automator 端到端产出 + pbs 注册可见；CLI 聚合文案三态单测；右键菜单出现属人工验收 |
-| [T-007-profile-editing.md](T-007-profile-editing.md) | ✅ 完成（2026-11-17） | Profile 编辑与保存 | `profiles save` 往返 + 非法值拒绝；command 冒烟含 save；ui 29 测试绿；浏览器实测保存/错误提示 |
-| [T-008-output-dir.md](T-008-output-dir.md) | ✅ 完成（2026-11-17） | 输出目录策略（schema v1.1） | 四策略 + `{size}` 实测；undo 在 custom 目录还原；ui 31 测试绿 |
-| [T-009-task-queue.md](T-009-task-queue.md) | ✅ 完成（2026-11-17） | 任务队列并发 + 进度事件 | 事件 started/done/failed + reducer 乱序测试；浏览器 3 文件逐行更新实测 |
-| [T-011-profile-manager.md](T-011-profile-manager.md) | ✅ 完成（2026-11-17） | Profile 管理器（另存/导入/导出） | 纯函数 12 测；浏览器实测另存与非法 JSON 报错 |
-| [T-010-compare-viewer.md](T-010-compare-viewer.md) | ✅ 完成（2026-11-17，manual 待复核） | 对比查看器（滑杆 + SSIM） | metrics 测试（同图=1、低质副本<0.95）；ui 48 测试；应用启动冒烟；真机滑杆手感人工验收 |
-| [T-012-quick-action-set.md](T-012-quick-action-set.md) | ✅ 完成（2026-11-17，manual 待复核） | 右键动作取舍（两条）+ 出厂档 jpg | automator 实测；PNG→JPG 调色板/透明两条路径正确；bench default/jpg 双基线 |
-| [T-013-app-bundle-open-file.md](T-013-app-bundle-open-file.md) | ✅ 完成（2026-11-17，manual 待复核） | 真 .app + CFBundleDocumentTypes + open-file 入队 | `cargo tauri build` 出 Yali.app；`bundle-check.sh` 10 类 UTI 无抽象类型；`open -a` 冷启动/运行中/多文件均自动压出产物 |
-| [T-014-settings-store.md](T-014-settings-store.md) | ✅ 完成（2026-11-17） | 应用设置 settings.json + CLI + Tauri commands | settings 11 测；语法坏→备份回落、字段拼错→报错、未来版本→拒绝；CLI show/path/reset 实测 |
-| [T-015-tray.md](T-015-tray.md) | ✅ 完成（2026-11-17，manual 待复核） | 菜单栏托盘 + 关窗常驻 | 6 passed；status menu 存在；AX 点关闭按钮后窗口 0/进程在 |
-| [T-016-clipboard.md](T-016-clipboard.md) | ✅ 完成（2026-11-17，manual 待复核） | 剪贴板监听（复制即压） | 14 passed；透明 PNG 32978→5276 B 且尺寸不变；重复复制不重复产出 |
-| [T-017-watch.md](T-017-watch.md) | ✅ 完成（2026-11-17，manual 待复核） | watch 文件夹（拖进目录即压） | 18 passed；照片 531019→49178 B；等 5s 无套娃产物；覆盖同名文件重压 |
-| [T-020-brand-icons.md](T-020-brand-icons.md) | ✅ 完成（2026-11-18，人工核验通过） | 品牌应用图标集 + 透明吉祥物 + 单色菜单栏模板图 | 应用 18 测；整包 / UTI 校验通过；图标显示与尺寸人工通过 |
+| 任务卡 | 内容 | 状态 |
+|---|---|---|
+| [T-002](T-002-profile-schema.md) | Profile Schema、Store 与出厂档 | 完成 |
+| [T-003](T-003-engine-registry.md) | EngineRegistry + 子进程池 + CLI 真实现 | 完成 |
+| [T-004](T-004-benchkit.md) | 合成金样 + bench.sh 三指标出表 | 完成 |
+| [T-005](T-005-ui-wiring.md) | UI 接线（拖入队列 + Profile 表单） | 已实施；交互待 T-021 人工验收 |
+| [T-006](T-006-m0.5-workflow.md) | Finder 右键 .workflow + 聚合通知 | 完成；菜单与聚合通知已确认，通知点击待验 |
+| [T-007](T-007-profile-editing.md) | Profile 编辑与保存 | 完成 |
+| [T-008](T-008-output-dir.md) | 输出目录策略（schema v1.1） | 完成 |
+| [T-009](T-009-task-queue.md) | 任务队列并发 + 进度事件 | 完成 |
+| [T-010](T-010-compare-viewer.md) | 对比查看器（滑杆 + SSIM） | 已实施，待人工验收 |
+| [T-011](T-011-profile-manager.md) | Profile 管理器（另存/导入/导出） | 完成 |
+| [T-012](T-012-quick-action-set.md) | 右键动作取舍（两条）+ 出厂档 jpg | 完成；两条菜单与 JPEG 隐藏规则已确认 |
+| [T-013](T-013-app-bundle-open-file.md) | 真 .app + CFBundleDocumentTypes + open-file 入队 | 完成；打开方式和 Dock 已确认 |
+| [T-014](T-014-settings-store.md) | 应用设置 settings.json + CLI + Tauri commands | 完成 |
+| [T-015](T-015-tray.md) | 菜单栏托盘 + 关窗常驻 | 已实施，待人工验收 |
+| [T-016](T-016-clipboard.md) | 剪贴板监听（复制即压） | 已实施，待人工验收 |
+| [T-017](T-017-watch.md) | watch 文件夹（拖进目录即压） | 已实施，待人工验收 |
+| [T-020](T-020-brand-icons.md) | 品牌应用图标集 + 透明吉祥物 + 单色菜单栏模板图 | 完成，图标已确认 |
+| [T-021](T-021-responsive-workbench.md) | shadcn/ui 响应式工作台、本批参数、预设/设置/对比与原生交互 | 已实施，待人工验收（2026-11-18） |
 
-T-002 落地物：`schema/profile.schema.json`（文档事实源）、`fixtures/`（出厂档，现为六档）、`crates/yali-core/src/{profile,store}.rs`。
-
-> 卡片**不删**：一卡一 commit 的验收证据与实现要点都留在这里，`docs/STATE.md` 只保留当前真相。
+T-018 失败件持久队列与 T-019 统计页尚未实施。卡片保留设计取舍与验收证据，不删除历史卡。

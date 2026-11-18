@@ -1,78 +1,85 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { TaskList, TaskRowView, type TaskRow } from "./TaskList";
-
-const doneRow: TaskRow = {
-  path: "/tmp/photo.jpg",
-  index: 0,
-  running: false,
+import { TaskRowView } from "./TaskList";
+import { TooltipProvider } from "./ui/tooltip";
+import type { Job } from "../lib/batches";
+const job: Job = {
+  jobId: "a",
+  batchId: "b",
+  path: "/tmp/图片.jpg",
+  source: "manual",
+  attempt: 1,
+  status: "done",
   report: {
-    input: "/tmp/photo.jpg",
-    output: "/tmp/photo-default.jpg",
-    inputBytes: 766_000,
-    outputBytes: 334_000,
-    savedBytes: 432_000,
-    savedPct: -56.4,
-    engine: "mozjpeg",
-    elapsedMs: 96,
+    input: "/tmp/图片.jpg",
+    output: "/tmp/图片-default.jpg",
+    inputBytes: 1000,
+    outputBytes: 420,
+    savedBytes: 580,
+    savedPct: -99,
+    engine: "test",
+    elapsedMs: 1,
     status: "done",
   },
 };
-
-describe("TaskRowView", () => {
-  it("完成行显示 输入 → 输出 与压缩率", () => {
-    const html = renderToStaticMarkup(<TaskRowView row={doneRow} />);
-    expect(html).toContain("photo.jpg");
-    expect(html).toContain("748.0 KB → 326.2 KB");
-    expect(html).toContain("-56.4%");
-    expect(html).toContain("mozjpeg");
-    expect(html).not.toContain("⚠");
+const render = (next: Job) =>
+  renderToStaticMarkup(
+    <TooltipProvider>
+      <TaskRowView
+        job={next}
+        active={null}
+        selected={false}
+        duplicate={false}
+        onSelect={() => {}}
+        onCompare={() => {}}
+        onRetry={() => {}}
+        onRemove={() => {}}
+      />
+    </TooltipProvider>,
+  );
+describe("任务结果展示", () => {
+  it("从字节而非 savedPct 计算节省", () => {
+    const html = render(job);
+    expect(html).toContain("58.0%");
+    expect(html).not.toContain("-99");
+    expect(html).toContain("对比");
   });
-
-  it("负优化件显示 ⚠ 与「未落盘」", () => {
-    const row: TaskRow = {
-      path: "/tmp/tiny.jpg",
-      index: 1,
-      running: false,
+  it("转换增大使用明确中性说明", () => {
+    const html = render({
+      ...job,
+      report: { ...job.report!, outputBytes: 1100 },
+    });
+    expect(html).toContain("增加 10.0%");
+    expect(html).toContain("已转换，体积增加");
+  });
+  it("未减小无虚假结果或对比入口", () => {
+    const html = render({
+      ...job,
+      status: "larger_output",
       report: {
-        input: "/tmp/tiny.jpg",
-        output: null,
-        inputBytes: 52_379,
-        outputBytes: null,
-        savedBytes: null,
-        savedPct: null,
-        engine: "mozjpeg",
-        elapsedMs: 79,
+        ...job.report!,
         status: "larger_output",
+        output: null,
+        outputBytes: null,
       },
-    };
-    const html = renderToStaticMarkup(<TaskRowView row={row} />);
-    expect(html).toContain("⚠ 负优化");
-    expect(html).toContain("未落盘");
+    });
+    expect(html).toContain("未减小，已保留原图");
+    expect(html).not.toContain(">对比<");
+    expect(html).toContain(">原图<");
   });
-
-  it("失败行显示错误信息", () => {
-    const html = renderToStaticMarkup(
-      <TaskRowView row={{ path: "/tmp/x.png", index: 2, running: false, error: "引擎缺失" }} />,
-    );
-    expect(html).toContain("✗ 失败");
-    expect(html).toContain("引擎缺失");
+  it("失败保留可读错误与重试入口", () => {
+    const html = render({
+      ...job,
+      status: "failed",
+      report: undefined,
+      error: "无法读取图片",
+    });
+    expect(html).toContain("无法读取图片");
+    expect(html).toContain("重试 图片.jpg");
   });
-
-  it("处理中行显示占位", () => {
-    const html = renderToStaticMarkup(<TaskRowView row={{ path: "/tmp/a.jpg", index: 3, running: true }} />);
+  it("处理中没有伪造单图百分比", () => {
+    const html = render({ ...job, status: "processing", report: undefined });
     expect(html).toContain("处理中");
-  });
-});
-
-describe("TaskList", () => {
-  it("空列表给出引导文案", () => {
-    const html = renderToStaticMarkup(<TaskList rows={[]} />);
-    expect(html).toContain("拖入图片开始");
-  });
-
-  it("多行渲染", () => {
-    const html = renderToStaticMarkup(<TaskList rows={[doneRow, doneRow]} />);
-    expect(html.match(/data-testid="task-row"/g)?.length).toBe(2);
+    expect(html).not.toContain("%");
   });
 });

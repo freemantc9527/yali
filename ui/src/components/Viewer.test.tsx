@@ -1,40 +1,42 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import type { CompressReport } from "../lib/bridge";
 import { clampPos, Viewer } from "./Viewer";
-
-const report: CompressReport = {
-  input: "/tmp/photo.jpg",
-  output: "/tmp/photo-default.jpg",
-  inputBytes: 531019,
-  outputBytes: 49178,
-  savedBytes: 481841,
-  savedPct: -90.7,
-  engine: "mozjpeg",
-  elapsedMs: 120,
+import { TooltipProvider } from "./ui/tooltip";
+import type { Job } from "../lib/batches";
+const job: Job = {
+  jobId: "a",
+  batchId: "b",
+  path: "/tmp/photo.jpg",
+  source: "manual",
+  attempt: 1,
   status: "done",
+  report: {
+    input: "/tmp/photo.jpg",
+    output: "/tmp/photo-default.jpg",
+    inputBytes: 1000,
+    outputBytes: 420,
+    savedBytes: 580,
+    savedPct: 58,
+    engine: "test",
+    elapsedMs: 1,
+    status: "done",
+  },
 };
-
-describe("clampPos", () => {
-  it("限制在 0..100", () => {
-    expect(clampPos(-10)).toBe(0);
-    expect(clampPos(0)).toBe(0);
-    expect(clampPos(50)).toBe(50);
+describe("对比查看器", () => {
+  it("分割位置限制在范围内", () => {
+    expect(clampPos(-5)).toBe(0);
     expect(clampPos(140)).toBe(100);
+    expect(clampPos(50)).toBe(50);
   });
-});
-
-describe("Viewer", () => {
-  it("浏览器模式（无 asset protocol）给出说明而非破图", () => {
-    const html = renderToStaticMarkup(<Viewer report={report} onClose={() => {}} />);
-    expect(html).toContain("浏览器预览模式读不了本地文件路径");
-    expect(html).toContain("对比");
-    expect(html).toContain("计算中");
-  });
-
-  it("没有产出（负优化）时不渲染图，仍可打开", () => {
-    const larger: CompressReport = { ...report, output: null, status: "larger_output" };
-    const html = renderToStaticMarkup(<Viewer report={larger} onClose={() => {}} />);
-    expect(html).toContain("浏览器预览模式");
+  it("大画布始终提供返回、100% 与演示说明", () => {
+    const html = renderToStaticMarkup(
+      <TooltipProvider>
+        <Viewer job={job} jobs={[job]} onSelect={() => {}} onClose={() => {}} />
+      </TooltipProvider>,
+    );
+    expect(html).toContain("返回工作台");
+    expect(html).toContain("100%");
+    expect(html).toContain("未执行本地压缩");
+    expect(html).not.toContain("viewer-backdrop");
   });
 });

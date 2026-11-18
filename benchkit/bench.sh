@@ -7,8 +7,9 @@
 #   benchkit/bench.sh --format webp         # 临时覆盖输出格式（不动磁盘档案）
 #   benchkit/bench.sh --update-baseline     # 首次全量跑后重写 baseline.json
 #
-# 判定（DESIGN §9）：任一指标劣化 >3% 退出码非零；level≥5 档额外要求 SSIM≥0.95。
-# 不进 cargo 测试回环（<60s 预算留给单测）；质量相关变更必须过本脚本。
+# 判定（DESIGN §9）：体积比 / SSIM 劣化 >3% 退出码非零；耗时仅观察。
+# level≥5 档照片类额外要求 SSIM≥0.95。
+# 不进 cargo 单测回环；质量相关变更必须过本脚本。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -174,6 +175,7 @@ results_path, baseline_path, update, profile, runs, level = sys.argv[1:]
 records = [json.loads(l) for l in open(results_path) if l.strip()]
 
 failures = []
+observations = []
 # 质量门：level≥5 时照片类样本 SSIM≥0.95（DESIGN §9 口径；平涂图形/动图/HEIC 的
 # SSIM 对边缘 ringing 极敏感，实测 q75 webp 也只有 0.86~0.92 而 PSNR>50dB，
 # 绝对门只对照片类有意义——细节见 benchkit/README.md）
@@ -204,25 +206,30 @@ elif os.path.exists(baseline_path):
         print(f"\n▸ 基线档位为 {base.get('profile')}，本次 {profile}：跳过基线比对")
     else:
         old = {r["sample"]: r for r in base["records"]}
-        print("\n▸ 基线比对（劣化阈值 3%）")
+        print("\n▸ 基线比对（体积比 / SSIM 劣化阈值 3%；耗时仅观察）")
         for r in records:
             o = old.get(r["sample"])
             if not o:
                 print(f"  ⚠ {r['sample']}: 基线无记录")
                 continue
-            def worse(name, new, oldv, lower_better):
+            def worse(name, new, oldv, lower_better, target=failures):
                 if new is None or oldv in (None, 0):
                     return
                 delta = (oldv - new) / oldv if lower_better else (new - oldv) / oldv
                 if delta > 0.03:
-                    failures.append(f"{r['sample']}: {name} 劣化 {delta*100:.1f}%")
+                    target.append(f"{r['sample']}: {name} 劣化 {delta*100:.1f}%")
             worse("体积比", r["ratio"], o["ratio"], lower_better=False)
             worse("SSIM", r["ssim"], o["ssim"], lower_better=True)
-            worse("耗时", r["msMedian"], o["msMedian"], lower_better=False)
+            worse("耗时", r["msMedian"], o["msMedian"], lower_better=False, target=observations)
         if not failures:
-            print("  ✓ 三指标均在阈值内")
+            print("  ✓ 体积比 / SSIM 均在阈值内")
 else:
     print("\n▸ 无 baseline.json：本次为首次全量跑，请用 --update-baseline 入库")
+
+if observations:
+    print("\n▸ 耗时观察（受环境影响，不影响退出码）：")
+    for observation in observations:
+        print(f"  - {observation}")
 
 if failures:
     print("\n✗ 回归未通过：")

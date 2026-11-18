@@ -1,3 +1,5 @@
+import { preflightError } from "./profile-edit";
+import { convertFileSrc, invoke as tauriInvoke } from "@tauri-apps/api/core";
 /**
  * 内核 command 的唯一调用入口。
  * 浏览器里（纯 vite dev / vitest）没有 Tauri，降级为占位实现，便于脱离壳调试 UI；
@@ -58,18 +60,37 @@ export interface CompressReport {
 export const isTauri = (): boolean =>
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
-const FALLBACK_PROFILES = ["archive", "default", "jpg", "mail", "screenshot", "web"];
+const FALLBACK_PROFILES = [
+  "archive",
+  "default",
+  "jpg",
+  "mail",
+  "screenshot",
+  "web",
+];
 /** 浏览器降级的内存档案表（页面会话内有效；保存/导入后列表随之变化） */
 const fallbackStore = new Map<string, Profile>();
 
 const baseProfile = (): Profile => ({
   name: "default",
   pipeline: { classify: true, engine: { jpeg: "mozjpeg" } },
-  resize: { maxWidth: null, maxHeight: null, keepRatio: true, mode: "shrinkOnly", cropAnchor: null },
+  resize: {
+    maxWidth: null,
+    maxHeight: null,
+    keepRatio: true,
+    mode: "shrinkOnly",
+    cropAnchor: null,
+  },
   quality: { kind: "level", level: 4, targetBytes: null, minQualityFloor: 3 },
   format: { output: "auto", animated: "keep" },
   metadata: { exif: "privacy", icc: "srgb" },
-  output: { dir: "sibling", dirPath: null, suffixTemplate: "-{profile}", largerPolicy: "keepOriginal", undoManifest: true },
+  output: {
+    dir: "sibling",
+    dirPath: null,
+    suffixTemplate: "-{profile}",
+    largerPolicy: "keepOriginal",
+    undoManifest: true,
+  },
   ui: { notify: true, sound: false, openGUIOnFail: true },
 });
 
@@ -83,9 +104,20 @@ const FALLBACK_PROFILES_DETAIL: Record<string, () => Profile> = {
   }),
   archive: () => ({
     ...baseProfile(),
-    quality: { kind: "lossless", level: null, targetBytes: null, minQualityFloor: 3 },
+    quality: {
+      kind: "lossless",
+      level: null,
+      targetBytes: null,
+      minQualityFloor: 3,
+    },
     format: { output: "jxl", animated: "keep" },
-    resize: { maxWidth: null, maxHeight: null, keepRatio: true, mode: "none", cropAnchor: null },
+    resize: {
+      maxWidth: null,
+      maxHeight: null,
+      keepRatio: true,
+      mode: "none",
+      cropAnchor: null,
+    },
   }),
   jpg: () => ({
     ...baseProfile(),
@@ -93,18 +125,42 @@ const FALLBACK_PROFILES_DETAIL: Record<string, () => Profile> = {
   }),
   mail: () => ({
     ...baseProfile(),
-    resize: { maxWidth: 1920, maxHeight: null, keepRatio: true, mode: "shrinkOnly", cropAnchor: null },
-    quality: { kind: "targetBytes", level: null, targetBytes: 500_000, minQualityFloor: 3 },
+    resize: {
+      maxWidth: 1920,
+      maxHeight: null,
+      keepRatio: true,
+      mode: "shrinkOnly",
+      cropAnchor: null,
+    },
+    quality: {
+      kind: "targetBytes",
+      level: null,
+      targetBytes: 500_000,
+      minQualityFloor: 3,
+    },
   }),
   screenshot: () => ({
     ...baseProfile(),
-    quality: { kind: "lossless", level: null, targetBytes: null, minQualityFloor: 3 },
-    resize: { maxWidth: null, maxHeight: null, keepRatio: true, mode: "none", cropAnchor: null },
+    quality: {
+      kind: "lossless",
+      level: null,
+      targetBytes: null,
+      minQualityFloor: 3,
+    },
+    resize: {
+      maxWidth: null,
+      maxHeight: null,
+      keepRatio: true,
+      mode: "none",
+      cropAnchor: null,
+    },
   }),
 };
 
-async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
-  const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
+async function invoke<T>(
+  cmd: string,
+  args?: Record<string, unknown>,
+): Promise<T> {
   return tauriInvoke<T>(cmd, args);
 }
 
@@ -123,7 +179,7 @@ export async function profilesList(): Promise<string[]> {
 export async function profilesShow(name: string): Promise<Profile> {
   if (!isTauri()) {
     const saved = fallbackStore.get(name);
-    if (saved) return saved;
+    if (saved) return structuredClone(saved);
     const factory = FALLBACK_PROFILES_DETAIL[name] ?? baseProfile;
     return { ...factory(), name };
   }
@@ -133,7 +189,7 @@ export async function profilesShow(name: string): Promise<Profile> {
 export async function profilesSave(profile: Profile): Promise<void> {
   if (!isTauri()) {
     // 浏览器降级：只写内存表（不落盘）
-    fallbackStore.set(profile.name, profile);
+    fallbackStore.set(profile.name, structuredClone(profile));
     return;
   }
   return invoke<void>("profiles_save", { profile });
@@ -147,7 +203,7 @@ const demoReport = (p: string, profile: string): CompressReport => ({
   inputBytes: 766_000,
   outputBytes: 334_000,
   savedBytes: 432_000,
-  savedPct: -56.4,
+  savedPct: 56.4,
   engine: "mozjpeg",
   elapsedMs: 96,
   status: "done",
@@ -162,8 +218,7 @@ export async function ssim(input: string, output: string): Promise<number> {
 /** 本地文件 → 可放进 <img src> 的地址（Tauri asset protocol）；浏览器返回 null */
 export function fileSrc(path: string | null): string | null {
   if (!path || !isTauri()) return null;
-  const prefix = "asset://localhost/";
-  return prefix + encodeURIComponent(path);
+  return convertFileSrc(path);
 }
 
 /** 系统投递信号（Tauri 事件 `yali://open-files`）的浏览器降级订阅表 */
@@ -175,12 +230,7 @@ export function onOpenFiles(handler: () => void): () => void {
     openFileHandlers.add(handler);
     return () => openFileHandlers.delete(handler);
   }
-  let unlisten: (() => void) | undefined;
-  void (async () => {
-    const { listen } = await import("@tauri-apps/api/event");
-    unlisten = await listen("yali://open-files", () => handler());
-  })();
-  return () => unlisten?.();
+  return subscribe("yali://open-files", handler, handler);
 }
 
 /** 取走系统投递的图片路径（冷启动缓冲 + 事件唤醒共用）；取走即清空 */
@@ -189,16 +239,23 @@ export async function takePendingFiles(): Promise<string[]> {
   return invoke<string[]>("take_pending_files");
 }
 
-export async function compress(paths: string[], profile: string): Promise<CompressReport[]> {
+export async function compress(
+  paths: string[],
+  profile: string,
+): Promise<CompressReport[]> {
   if (!isTauri()) {
     const total = paths.length;
     const reports: CompressReport[] = [];
     for (const [index, path] of paths.entries()) {
-      progressHandlers.forEach((h) => h({ path, index, total, status: "started" }));
+      progressHandlers.forEach((h) =>
+        h({ path, index, total, status: "started" }),
+      );
       await new Promise((r) => setTimeout(r, 120));
       const report = demoReport(path, profile);
       reports.push(report);
-      progressHandlers.forEach((h) => h({ path, index, total, status: "done", report }));
+      progressHandlers.forEach((h) =>
+        h({ path, index, total, status: "done", report }),
+      );
     }
     return reports;
   }
@@ -211,12 +268,7 @@ export function onProgress(handler: (e: ProgressEvent) => void): () => void {
     progressHandlers.add(handler);
     return () => progressHandlers.delete(handler);
   }
-  let unlisten: (() => void) | undefined;
-  void (async () => {
-    const { listen } = await import("@tauri-apps/api/event");
-    unlisten = await listen<ProgressEvent>("yali://progress", (ev) => handler(ev.payload));
-  })();
-  return () => unlisten?.();
+  return subscribe("yali://progress", handler);
 }
 
 /**
@@ -239,12 +291,250 @@ export function onFileDrop(handler: (paths: string[]) => void): () => void {
     };
   }
 
+  let disposed = false;
   let unlisten: (() => void) | undefined;
-  void (async () => {
-    const { getCurrentWebview } = await import("@tauri-apps/api/webview");
-    unlisten = await getCurrentWebview().onDragDropEvent((event) => {
-      if (event.payload.type === "drop") handler(event.payload.paths);
-    });
-  })();
-  return () => unlisten?.();
+  void import("@tauri-apps/api/webview")
+    .then(({ getCurrentWebview }) =>
+      getCurrentWebview().onDragDropEvent((event) => {
+        if (event.payload.type === "drop") handler(event.payload.paths);
+      }),
+    )
+    .then((off) => {
+      if (disposed) off();
+      else unlisten = off;
+    })
+    .catch(console.error);
+  return () => {
+    disposed = true;
+    unlisten?.();
+  };
+}
+export interface ImageInfo {
+  path: string;
+  canonicalPath?: string | null;
+  bytes?: number | null;
+  format?: string | null;
+  width?: number | null;
+  height?: number | null;
+  error?: string | null;
+}
+export interface Settings {
+  schemaVersion: number;
+  clipboard: { enabled: boolean; minBytes: number };
+  watch: { enabled: boolean; dirs: string[]; settleMs: number };
+  tray: { enabled: boolean };
+  notify: { enabled: boolean };
+}
+let demoSettings: Settings = {
+  schemaVersion: 1,
+  clipboard: { enabled: false, minBytes: 65536 },
+  watch: { enabled: false, dirs: [], settleMs: 800 },
+  tray: { enabled: true },
+  notify: { enabled: true },
+};
+export const IMAGE_EXTENSIONS = [
+  "png",
+  "jpg",
+  "jpeg",
+  "heic",
+  "heif",
+  "gif",
+  "webp",
+  "avif",
+  "jxl",
+  "tif",
+  "tiff",
+  "bmp",
+];
+export const browserFiles = new Map<
+  string,
+  { url: string; file: File; width?: number; height?: number }
+>();
+export function registerFiles(files: File[]): string[] {
+  return files.map((file) => {
+    const key = `browser:${file.name}:${file.size}:${file.lastModified}`;
+    if (!browserFiles.has(key))
+      browserFiles.set(key, { file, url: URL.createObjectURL(file) });
+    return key;
+  });
+}
+export function releaseFiles(keep: Set<string>) {
+  for (const [key, value] of browserFiles)
+    if (!keep.has(key)) {
+      URL.revokeObjectURL(value.url);
+      browserFiles.delete(key);
+    }
+}
+export async function inspectImages(paths: string[]): Promise<ImageInfo[]> {
+  if (isTauri()) return invoke("inspect_images", { paths });
+  return Promise.all(
+    paths.map(async (path) => {
+      const entry = browserFiles.get(path);
+      if (!entry) return { path, error: "演示中请选择真实图片文件" };
+      if (!entry.width) {
+        await new Promise<void>((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            entry.width = img.naturalWidth;
+            entry.height = img.naturalHeight;
+            resolve();
+          };
+          img.onerror = () => resolve();
+          img.src = entry.url;
+        });
+      }
+      return {
+        path,
+        canonicalPath: path,
+        bytes: entry.file.size,
+        format: entry.file.name.split(".").pop(),
+        width: entry.width,
+        height: entry.height,
+      };
+    }),
+  );
+}
+export async function imagePreview(
+  path: string,
+  maxEdge: 0 | 192 | 1600,
+): Promise<string> {
+  if (!isTauri()) {
+    const entry = browserFiles.get(path);
+    if (!entry || !entry.width)
+      throw new Error("此格式暂不可预览，仍可处理或定位结果");
+    return entry.url;
+  }
+  const cached = await invoke<string>("image_preview", { path, maxEdge });
+  return convertFileSrc(cached);
+}
+export async function chooseImages(): Promise<string[]> {
+  if (!isTauri()) return [];
+  const { open } = await import("@tauri-apps/plugin-dialog");
+  const result = await open({
+    multiple: true,
+    directory: false,
+    filters: [{ name: "图片", extensions: IMAGE_EXTENSIONS }],
+  });
+  return result === null ? [] : Array.isArray(result) ? result : [result];
+}
+export async function chooseDirectory(): Promise<string | null> {
+  if (!isTauri()) throw new Error("目录选择仅在鸭梨桌面应用中可用");
+  const { open } = await import("@tauri-apps/plugin-dialog");
+  const result = await open({ multiple: false, directory: true });
+  return typeof result === "string" ? result : null;
+}
+export async function reveal(path: string) {
+  if (!isTauri()) throw new Error("Finder 定位仅在鸭梨桌面应用中可用");
+  const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
+  await revealItemInDir(path);
+}
+export async function settingsShow(): Promise<Settings> {
+  return isTauri() ? invoke("settings_show") : structuredClone(demoSettings);
+}
+export async function settingsSave(settings: Settings): Promise<void> {
+  if (isTauri()) return invoke("settings_save", { settings });
+  if (
+    !Number.isInteger(settings.clipboard.minBytes) ||
+    settings.clipboard.minBytes < 0 ||
+    settings.clipboard.minBytes > 2 ** 30 ||
+    !Number.isInteger(settings.watch.settleMs) ||
+    settings.watch.settleMs < 0 ||
+    settings.watch.settleMs > 10000
+  )
+    throw new Error("请检查最小体积（0 至 1GiB）与防抖时间（0 至 10000ms）");
+  demoSettings = structuredClone(settings);
+}
+export async function profilesValidate(profile: Profile): Promise<Profile> {
+  if (isTauri()) return invoke("profiles_validate", { profile });
+  const base = baseProfile();
+  for (const key of Object.keys(base) as (keyof Profile)[]) {
+    if (!(key in profile)) throw new Error(`缺少 ${key}`);
+    if (typeof base[key] === "object")
+      for (const field of Object.keys(base[key]))
+        if (!(field in (profile[key] as object)))
+          throw new Error(`缺少 ${key}.${field}`);
+  }
+  if (
+    !["auto", "jpeg", "png", "webp", "avif", "heic", "jxl"].includes(
+      profile.format.output,
+    )
+  )
+    throw new Error("输出格式无效");
+  const error = preflightError(profile);
+  if (error) throw new Error(error);
+  return structuredClone(profile);
+}
+function subscribe<T>(
+  name: string,
+  handler: (event: T) => void,
+  ready?: () => void,
+): () => void {
+  let disposed = false;
+  let off: (() => void) | undefined;
+  void import("@tauri-apps/api/event")
+    .then(({ listen }) => listen<T>(name, (e) => handler(e.payload)))
+    .then((unlisten) => {
+      if (disposed) unlisten();
+      else {
+        off = unlisten;
+        ready?.();
+      }
+    })
+    .catch((e) => console.error(`事件订阅失败 ${name}`, e));
+  return () => {
+    disposed = true;
+    off?.();
+  };
+}
+const batchHandlers = new Set<
+  (event: import("./batches").BatchEvent) => void
+>();
+export function onBatchProgress(
+  handler: (event: import("./batches").BatchEvent) => void,
+) {
+  if (isTauri()) return subscribe("yali://batch-progress", handler);
+  batchHandlers.add(handler);
+  return () => {
+    batchHandlers.delete(handler);
+  };
+}
+export async function compressBatch(
+  request: import("./batches").BatchRequest,
+): Promise<{ batchId: string; outcomes: import("./batches").Outcome[] }> {
+  if (isTauri()) return invoke("compress_batch", { request });
+  await profilesValidate(request.profile);
+  const outcomes: import("./batches").Outcome[] = [];
+  for (const item of request.items) {
+    batchHandlers.forEach((h) =>
+      h({ batchId: request.batchId, ...item, status: "started" }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    const bytes = browserFiles.get(item.path)?.file.size ?? 0;
+    const failure = /fail|失败/i.test(item.path);
+    const unchanged = /larger|未减小/i.test(item.path);
+    const grow = /grow|增加/i.test(item.path);
+    const outputBytes = Math.round(bytes * (grow ? 1.15 : 0.42));
+    const report: CompressReport = {
+      input: item.path,
+      output: unchanged ? null : item.path,
+      inputBytes: bytes,
+      outputBytes: unchanged ? null : outputBytes,
+      savedBytes: unchanged ? null : bytes - outputBytes,
+      savedPct:
+        unchanged || !bytes ? null : ((bytes - outputBytes) / bytes) * 100,
+      engine: "界面演示",
+      elapsedMs: 350,
+      status: unchanged ? "larger_output" : "done",
+    };
+    const outcome: import("./batches").Outcome = failure
+      ? {
+          ...item,
+          status: "failed",
+          error: "演示失败样例：无法读取图片，可重试",
+        }
+      : { ...item, status: report.status, report };
+    outcomes.push(outcome);
+    batchHandlers.forEach((h) => h({ batchId: request.batchId, ...outcome }));
+  }
+  return { batchId: request.batchId, outcomes };
 }

@@ -1,7 +1,7 @@
 # ADR · 架构决策记录
 
 > 规则：任何影响**技术栈、分发形态、命名、构建工具链**的变更，先在此留一份 ADR 再动代码。
-> 命名变更的流程见 `docs/NAMING.md` §1（与本文互相引用）。
+> 命名以 [NAMING](../NAMING.md) 为准。
 > 状态取值：`接受` / `已废弃（superseded by ADR-xxx）` / `备而未用（contingency）` / `已否决`。
 
 ## 索引
@@ -12,6 +12,7 @@
 | [ADR-002](ADR-002-tauri-clt-only.md) | 技术栈：Tauri 2 + CLT-only 工具链 | 接受 |
 | [ADR-003](ADR-003-contingency-appkit-shell.md) | 兜底：Rust 核心 + AppKit-Swift 壳 | 备而未用（未触发） |
 | [ADR-004](ADR-004-pnpm.md) | 前端包管理器：pnpm | 接受 |
+| [ADR-005](ADR-005-shadcn-responsive-ui.md) | GUI：shadcn/ui + Tailwind CSS 4 响应式工作台 | 接受（T-021 已实施，待人工验收） |
 
 ## 新 ADR 模板
 

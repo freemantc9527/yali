@@ -57,7 +57,7 @@ describe("bridge 浏览器降级", () => {
     expect(r.input).toBe("/tmp/photo.jpg");
     expect(r.output).toBe("/tmp/photo-default.jpg");
     expect(r.status).toBe("done");
-    expect(r.savedPct).toBeLessThan(0);
+    expect(r.savedPct).toBeGreaterThan(0);
     expect(r.engine).toBe("mozjpeg");
   });
 });

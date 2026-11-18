@@ -1,7 +1,7 @@
 # T-011 · Profile 管理器（另存 / 导入 / 导出）
 
 goal: GUI 里完成档位生命周期：基于当前档另存新档、粘贴 JSON 导入、导出当前档 JSON
-context: docs/DESIGN.md §5「Profile 管理器：另存/导入导出 JSON」；T-002 Store；T-007 编辑
+context: 当前预设管理规格见 [UI-REDESIGN](../UI-REDESIGN.md)；T-002 Store；T-007 编辑
 constraints:
   - 不引对话框插件（M1 不新增依赖）：导出 = 复制到剪贴板 + 展示文本；导入 = 粘贴文本
   - 档名规则：非空、不含 `/` `\`、不以 `.` 开头（与内核 path_for 一致）

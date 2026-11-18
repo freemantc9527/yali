@@ -18,6 +18,8 @@ serde_json.workspace = true
 anyhow.workspace = true
 tokio.workspace = true
 notify = "8"
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
 
 # 剪贴板（T-016）：NSPasteboard 直接给编码后的 PNG；objc2 系列本就是 Tauri 的传递依赖
 [target.'cfg(target_os = "macos")'.dependencies]

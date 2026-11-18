@@ -18,3 +18,10 @@ export function ratio(before: number, after: number): string {
   const delta = ((after - before) / before) * 100;
   return `${delta > 0 ? "+" : ""}${delta.toFixed(1)}%`;
 }
+
+/** 所有工作台结果从字节计算，正数表示节省。 */
+export function savings(before: number, after: number): string {
+  if (!Number.isFinite(before) || !Number.isFinite(after) || before <= 0) return '不可计算';
+  const pct = (before-after)/before*100;
+  return pct < 0 ? `增加 ${Math.abs(pct).toFixed(1)}%` : `${pct.toFixed(1)}%`;
+}

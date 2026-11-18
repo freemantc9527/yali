@@ -7,6 +7,7 @@ node_modules/
 dist/
 .vite/
 coverage/
+.pnpm-store/
 *.tsbuildinfo
 pnpm-debug.log*
 
@@ -30,3 +31,7 @@ benchkit/local-samples/
 .vscode/
 *.swp
 .alma-snapshots
+
+# AI
+.playwright-mcp/
+.codegraph/

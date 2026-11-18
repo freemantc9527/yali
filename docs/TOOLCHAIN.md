@@ -1,50 +1,36 @@
-# TOOLCHAIN · 构建工具链约束与实证边界
+# TOOLCHAIN · CLT-only 构建边界
 
-> 本项目的**硬约束：全程不依赖 Xcode**（开发机仅 Command Line Tools）。这不是偏好，是选型前提——所有工程决策以此为锚。本文记录实证边界，防止后续 session 重新探测或误引 Xcode 依赖。
+本项目仅依赖 macOS Command Line Tools，不依赖完整 Xcode。[ADR-002](decisions/ADR-002-tauri-clt-only.md) 记录 Tauri 选型，[ADR-003](decisions/ADR-003-contingency-appkit-shell.md) 是未触发的兜底方案。2026-11-17 已实证 `cargo build -p yali-app` 与 `cargo test` 可用，不重复探测。
 
-## 1. 定稿技术栈
+## 1. 环境与命令
 
-**Tauri 2（Rust 核心 + React UI）+ CLT-only 工具链** —— 2026-11-17 终验通过：`cargo build -p yali-app`（含 tauri/objc2/webkit 全依赖图）编译成功，`cargo test` 全绿。决策全文见 `docs/decisions/ADR-002-tauri-clt-only.md`（兜底路径 ADR-003 备而未用）。
-前端包管理器 **pnpm**（ADR-004）。Tauri 的 `before*Command` 钩子 **以 `src-tauri` 为 cwd 执行**，
-所以钩子命令是 `pnpm --dir ../ui …`（T-013 实测：写 `--dir ui` 会报 No such file or directory）。
-tauri CLI 由 `cargo install tauri-cli --version '^2' --locked` 安装（v2.12.5，CLT-only 编译 4m34s 通过）。
+Rust + Tauri 2 + React / Vite；前端使用 pnpm。环境安装与脚本见 [README](../README.md)，验证命令见 [AGENTS](../AGENTS.md)。Tauri CLI 通过 `cargo install tauri-cli --version '^2' --locked` 安装，本机实测版本 2.12.5。
 
-选型排除逻辑（摘要）：
-- 依赖 SwiftUI/SwiftPM 全家桶 ❌——CLT 无 XCTest/swift-testing（`swift test` 不可用）、无 SwiftUIMacros（@State/@Observable 宏不可编译）
-- Electron ❌——包体/内存/老化路径与"原生轻量"定位相反
-- Tauri ✅——官方依赖即 Rust+CLT；测试回环（cargo test + playwright）完整；系统能力经 CLI/小 helper 覆盖
+| 能力 | CLT-only 边界 |
+|---|---|
+| swiftc / swift build / swift run | 已实证可用；仅用于任务批准的独立 helpers，当前目录尚未创建 |
+| swift test | 缺 XCTest / swift-testing，不可用，禁止作为验收命令 |
+| SwiftUI 宏 | 缺 SwiftUIMacros，不能用 @State / @Observable 等宏作为主栈 |
+| AppKit / Vision / ImageIO / UTType | 小工具编译与运行已实证；AppIntents 仅 typecheck |
+| ad-hoc codesign | 可用，开发与 workflow 不需证书 |
+| Developer ID / notarytool | CLT 有工具；证书延后，未交付签名分发 |
+| workflow | 文本模板安装，免 Xcode / 签名 |
+| xcodebuild / actool / Mac App Store | 不在项目工具链与路线内 |
 
-## 2. CLT-only 能力边界（逐项实证）
+## 2. 构建与 Tauri 易错点
 
-| 能力 | 状态 | 备注 |
-|---|---|---|
-| `swift build` / `swift run` / `swiftc` | ✅ | helpers/ 下小型 Swift 工具可用（Vision 封装已实证编译+运行） |
-| `swift test`（XCTest / swift-testing） | ❌ | CLT 缺框架——**任何验收不得出现 swift test** |
-| SwiftUI @State/@Observable 宏 | ❌ | SwiftUIMacros 插件不随 CLT；无宏 SwiftUI 可编译但不实用 |
-| AppKit 纯代码 | ✅ | 托盘拖入等补充能力可用 20 行 helper 实现 |
-| Vision / ImageIO / UTType / AppIntents(typecheck) | ✅ | |
-| ad-hoc 签名 `codesign -s -` | ✅ | 本地开发/workflow 安装不依赖证书 |
-| Developer ID + notarytool | ✅（有证书后） | CLT 自带工具；**证书已决定延后**，不阻塞任何里程碑 |
-| Finder 快速操作（用户级 .workflow） | ✅ | 纯文本模板生成，免 Xcode 免签名 |
-| xcodebuild / 资产目录 actool / Mac App Store | ❌ | 不在路线图上（分发走 Developer ID 直发 + brew） |
+- `before*Command` 的 cwd 是 `src-tauri`，钩子用 `pnpm --dir ../ui …`。
+- `CI=1` 会使 cargo-tauri 的布尔参数解析失败；dev / build 脚本统一 `env -u CI`。
+- `generate_context!` 编译期需要 `src-tauri/icons/icon.png`；图标必须 RGBA8，gray+alpha 会启动 panic。
+- 非 dev 构建硬校验 `frontendDist=../ui/dist`；build.rs 只提供编译占位，整包验收必须有真实 UI。debug 成功不能证明 release 可复现。
+- `capabilities/default.json` 须保留 `core:default`，否则 listen 被 ACL 拒绝，进度 / open-files 事件会静默失效。
+- `bundle.macOS.infoPlist` 路径相对 src-tauri，顶层键整键覆盖。用精确 CFBundleDocumentTypes 覆盖 bundler 对 AVIF / JXL 的 public.image 兜底，`bundle-check.sh` 防漂移。
+- 应用包固定 ASCII `Yali.app`；中文显示通过 CFBundleDisplayName 本地化。
+- 迁移仓库路径后若指纹仍含旧绝对路径，需在授权范围内清理对应编译缓存再重建，不能拿旧产物验收。
+- 16GB 机器可限制 Rust 并发 `-j4`；资源与耗时仅观察。CI 使用相同 CLT-only 命令，不依赖 runner 的完整 Xcode。
 
-## 3. 引擎依赖（Brewfile 钉版，本机已装）
+## 3. 引擎与系统约束
 
-mozjpeg 4.1.5（⚠️ keg-only：brew 的 `cjpeg` 是 libjpeg-turbo 3.2.1 的，mozjpeg 必须用 `(brew --prefix mozjpeg)/bin` 路径）· webp 1.6.0 · jpeg-xl 0.13.0 · libavif 1.4.2 + aom 3.15.3 + svt-av1 4.3.0 · pngquant 3.0.3 · oxipng 10.2.1 · gifsicle 1.98 · gifski 1.34 · vips 8.18.7 · imagemagick 7.1.2（仅度量）
+引擎清单以 [Brewfile](../Brewfile) 为准，具体安装版本以 doctor 为准。mozjpeg 是 keg-only，PATH 中的 cjpeg 可能来自 libjpeg-turbo；运行时探测 `/opt/homebrew/opt/<pkg>` 与 `/usr/local/opt/<pkg>`，不调用可能联网挂起的 brew --prefix。图像处理与度量坑见 [benchkit](../benchkit/README.md)。
 
-## 4. 工程约定（由工具链约束推导）
-
-1. 核心逻辑 100% Rust（SwiftPM 不可作为主栈，见 §1）；Swift 仅允许出现在 `helpers/` 的独立小工具
-2. 验收命令白名单：`cargo test` / `cargo run -p yali-cli` / `pnpm --dir ui test` / `pnpm exec playwright test`（M1 起）/ `benchkit/bench.sh`（T-004 起）
-3. 16GB 内存机：`cargo build -j4`；GUI 整包构建批处理化（Vite dev 秒级回环不受限）
-4. CI 保持与本地一致的 CLT-only 命令集（GitHub macOS runner 虽有 Xcode，不使用，防"CI 能过本地不能过"）
-5. `tauri::generate_context!` 编译期硬依赖 `src-tauri/icons/icon.png`（bundle.active=false 也要）——新克隆先有图标
-6. `tauri::generate_context!` 在**非 dev** 构建时硬校验 `frontendDist`（`../ui/dist`）存在，缺失直接 panic（`tauri-codegen` 的 codegen 阶段，不是运行时）。`ui/dist` 是构建产物不入库，因此 `src-tauri/build.rs` 在 codegen 之前兜一个占位 `index.html`；正式提交前仍应跑 `pnpm --dir ui build` 产出真前端
-7. debug 构建对 `frontendDist` 不校验（`dev_url` 有值即短路）——**不要**因此认为「新克隆能 debug 编译 = 仓库可复现 release」
-8. 打整包：`env -u CI cargo tauri build --bundles app` → `target/release/bundle/macos/Yali.app`，
-   再用 `scripts/bundle-check.sh` 校验 Info.plist。**环境里 `CI=1` 会让 cargo-tauri 报
-   `invalid value '1' for '--ci'`**（clap 把 CI 当布尔参数），所以显式 `env -u CI`
-9. `bundle.macOS.infoPlist` 的路径按 `src-tauri` 目录解析（写 `Info.plist`，不是 `src-tauri/Info.plist`）；
-   它的顶层键会**整键覆盖** bundler 生成的同名键（T-013 用它覆盖 `CFBundleDocumentTypes`）
-10. Tauri 2 的前端 `listen()` 需要 capability：没有 `src-tauri/capabilities/default.json`（`core:default`）时
-   事件订阅会被 ACL 拒绝，且报错只落在 WebView 控制台，`yali://progress` / `yali://open-files` 会静默失效
+NSPasteboard 只在主线程访问，setup 不能 block_on 等主线程回调。剪贴板按 changeCount 和内容摘要去重；watch 忽略自身产物并按 settleMs + (mtime, size) 去重。Finder Services 安装与 pbs 类型约束见 [workflows](../workflows/README.md)。

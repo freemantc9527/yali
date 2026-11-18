@@ -8,7 +8,9 @@ use yali_core::pipeline::{compress_file, CompressReport};
 use yali_core::profile::Profile;
 use yali_core::ProfileStore;
 
+mod batch;
 mod clipboard;
+mod preview;
 mod supported;
 mod tray;
 mod watch;
@@ -108,7 +110,9 @@ fn spawn_clipboard_watcher(app: &tauri::AppHandle) {
         loop {
             tokio::time::sleep(clipboard::POLL_INTERVAL).await;
 
-            let Some(state) = handle.try_state::<RuntimeSettings>() else { continue };
+            let Some(state) = handle.try_state::<RuntimeSettings>() else {
+                continue;
+            };
             if !state.clipboard_enabled() {
                 continue;
             }
@@ -214,6 +218,12 @@ async fn ssim(input: String, output: String) -> Result<f64, String> {
 }
 
 #[tauri::command]
+fn profiles_validate(profile: Profile) -> Result<Profile, String> {
+    profile.validate().map_err(err)?;
+    Ok(profile)
+}
+
+#[tauri::command]
 async fn profiles_save(profile: Profile) -> Result<(), String> {
     profile.validate().map_err(err)?;
     let store = ProfileStore::open().map_err(err)?;
@@ -227,10 +237,7 @@ async fn settings_show() -> Result<yali_core::Settings, String> {
 }
 
 #[tauri::command]
-async fn settings_save(
-    app: tauri::AppHandle,
-    settings: yali_core::Settings,
-) -> Result<(), String> {
+async fn settings_save(app: tauri::AppHandle, settings: yali_core::Settings) -> Result<(), String> {
     settings.validate().map_err(err)?;
     let store = yali_core::SettingsStore::open().map_err(err)?;
     store.save(&settings).map_err(err)?;
@@ -269,65 +276,70 @@ async fn compress(
     paths: Vec<String>,
     profile: String,
 ) -> Result<Vec<CompressReport>, String> {
+    use std::sync::Arc;
     use tauri::Emitter;
-    let profile = ProfileStore::open().map_err(err)?.load(&profile).map_err(err)?;
-    let registry = std::sync::Arc::new(Registry::discover(&profile));
-    registry.warmup().await; // vips 冷启动对冲（坑账本）
-
+    let profile = ProfileStore::open()
+        .map_err(err)?
+        .load(&profile)
+        .map_err(err)?;
     let total = paths.len();
-    let semaphore = std::sync::Arc::new(tokio::sync::Semaphore::new(max_concurrency()));
-    let mut handles = Vec::with_capacity(total);
-
-    for (index, path) in paths.into_iter().enumerate() {
-        let permit = semaphore.clone().acquire_owned().await.map_err(|e| e.to_string())?;
-        let app = app.clone();
-        let registry = registry.clone();
-        let profile = profile.clone();
-        handles.push(tauri::async_runtime::spawn(async move {
-            let _permit = permit;
-            let emit = |status: &'static str, report: Option<CompressReport>, error: Option<String>| {
-                let _ = app.emit(
-                    "yali://progress",
-                    ProgressEvent { path: path.clone(), index, total, status, report, error },
-                );
-            };
-            emit("started", None, None);
-            match compress_file(Path::new(&path), &profile, &registry).await {
-                Ok(report) => {
-                    emit("done", Some(report.clone()), None);
-                    Ok(report)
-                }
-                Err(e) => {
-                    let msg = format!("{e:#}");
-                    emit("failed", None, Some(msg.clone()));
-                    Err(msg)
-                }
-            }
-        }));
+    if total == 0 {
+        return Ok(Vec::new());
     }
-
-    let mut reports = Vec::with_capacity(total);
-    let mut first_error: Option<String> = None;
-    for handle in handles {
-        match handle.await.map_err(|e| e.to_string())? {
-            Ok(report) => reports.push(report),
-            Err(msg) => {
-                if first_error.is_none() {
-                    first_error = Some(msg);
-                }
-            }
+    let request = batch::Request {
+        batch_id: "legacy".into(),
+        profile,
+        items: paths
+            .into_iter()
+            .enumerate()
+            .map(|(index, path)| batch::Item {
+                job_id: index.to_string(),
+                path,
+            })
+            .collect(),
+    };
+    let response = batch::execute(
+        request,
+        Arc::new(move |outcome| {
+            let _ = app.emit(
+                "yali://progress",
+                ProgressEvent {
+                    path: outcome.path,
+                    index: outcome.job_id.parse().unwrap_or(0),
+                    total,
+                    status: if outcome.status == "larger_output" {
+                        "done"
+                    } else {
+                        outcome.status
+                    },
+                    report: outcome.report,
+                    error: outcome.error,
+                },
+            );
+        }),
+    )
+    .await?;
+    let mut reports = Vec::new();
+    for outcome in response.outcomes {
+        if let Some(error) = outcome.error {
+            return Err(error);
         }
-    }
-    if let Some(msg) = first_error {
-        return Err(msg);
+        if let Some(report) = outcome.report {
+            reports.push(report);
+        }
     }
     Ok(reports)
 }
 
 pub fn run() {
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .manage(PendingOpenFiles::default())
         .setup(|app| {
+            if let Ok(cache) = app.path().app_cache_dir() {
+                preview::prune(&cache.join("previews"));
+            }
             let settings = yali_core::SettingsStore::open()
                 .and_then(|store| store.load())
                 .unwrap_or_default();
@@ -352,6 +364,10 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            batch::compress_batch,
+            preview::inspect_images,
+            preview::image_preview,
+            profiles_validate,
             core_version,
             profiles_list,
             profiles_show,
@@ -449,11 +465,22 @@ mod tests {
         std::env::set_var("YALI_HOME", &home);
 
         let names = profiles_list().await.unwrap();
-        assert_eq!(names, vec!["archive", "default", "jpg", "mail", "screenshot", "web"]);
+        assert_eq!(
+            names,
+            vec!["archive", "default", "jpg", "mail", "screenshot", "web"]
+        );
 
         let profile = profiles_show("mail".into()).await.unwrap();
         assert_eq!(profile.name, "mail");
         assert_eq!(profile.quality.kind, yali_core::QualityKind::TargetBytes);
+
+        // 导入允许 Rust serde 默认字段：返回完整对象，前端不能持有缺段的原 JSON。
+        let partial: Profile =
+            serde_json::from_str(r#"{"name":"imported","quality":{"kind":"level","level":4}}"#)
+                .unwrap();
+        let normalized = serde_json::to_value(profiles_validate(partial).unwrap()).unwrap();
+        assert!(normalized["output"]["suffixTemplate"].is_string());
+        assert!(normalized["metadata"]["exif"].is_string());
 
         // profiles_save：改档 → 保存 → 读回；非法值必须被拒且不落盘
         let mut edited = profile.clone();
@@ -475,8 +502,7 @@ mod tests {
         assert_eq!(settings, yali_core::Settings::default());
         let mut edited_settings = settings.clone();
         edited_settings.watch.enabled = true;
-        edited_settings.watch.dirs =
-            vec![home.join("watch").to_string_lossy().into_owned()];
+        edited_settings.watch.dirs = vec![home.join("watch").to_string_lossy().into_owned()];
         // settings_save 需要 AppHandle（托盘联动），测试里直接打内核 store
         yali_core::SettingsStore::open()
             .unwrap()
@@ -487,7 +513,11 @@ mod tests {
         let mut bad_settings = settings.clone();
         bad_settings.schema_version = 99;
         assert!(bad_settings.validate().is_err(), "未来版本号必须被拒");
-        assert_eq!(settings_show().await.unwrap(), edited_settings, "非法保存不应落盘");
+        assert_eq!(
+            settings_show().await.unwrap(),
+            edited_settings,
+            "非法保存不应落盘"
+        );
 
         // 用 benchkit 合成样张跑真实压缩（仓库内已入库，不依赖个人素材）
         let sample = Path::new(env!("CARGO_MANIFEST_DIR")).join("../benchkit/samples/photo.jpg");

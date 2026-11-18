@@ -1,102 +1,254 @@
 import { useState } from "react";
-import type { Profile } from "../lib/bridge";
-import { exportProfileJson, parseProfileJson, renameProfile, validateProfileName } from "../lib/profile-io";
+import { ArrowLeft, Copy, Download, Plus } from "lucide-react";
+import { toast } from "sonner";
+import { profilesShow, profilesValidate, type Profile } from "../lib/bridge";
+import {
+  parseProfileJson,
+  exportProfileJson,
+  renameProfile,
+} from "../lib/profile-io";
+import { profileLabel } from "../lib/profile-labels";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "./ui/alert-dialog";
 
-interface Props {
-  profile: Profile | null;
-  onSave: (profile: Profile) => Promise<void>;
-}
-
-/** Profile 管理器（T-011）：另存 / 导出（剪贴板）/ 导入（粘贴 JSON）。 */
-export function ProfileManager({ profile, onSave }: Props) {
-  const [newName, setNewName] = useState("");
-  const [importText, setImportText] = useState("");
-  const [status, setStatus] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const saveAs = async () => {
-    if (!profile) return;
-    const error = validateProfileName(newName);
-    if (error) {
-      setStatus({ kind: "error", text: error });
-      return;
-    }
-    setBusy(true);
-    try {
-      await onSave(renameProfile(profile, newName));
-      setStatus({ kind: "ok", text: `已另存为 ${newName.trim()}` });
-      setNewName("");
-    } catch (e) {
-      setStatus({ kind: "error", text: e instanceof Error ? e.message : String(e) });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const exportJson = async () => {
-    if (!profile) return;
-    const json = exportProfileJson(profile);
-    try {
-      await navigator.clipboard.writeText(json);
-      setStatus({ kind: "ok", text: "已复制到剪贴板" });
-    } catch {
-      setStatus({ kind: "error", text: "剪贴板不可用（可在控制台查看 JSON）" });
-      console.log(json);
-    }
-  };
-
-  const importJson = async () => {
-    try {
-      const imported = parseProfileJson(importText);
-      await onSave(imported); // 内核 validate 兜底，失败会抛错
-      setStatus({ kind: "ok", text: `已导入 ${imported.name}` });
-      setImportText("");
-    } catch (e) {
-      setStatus({ kind: "error", text: e instanceof Error ? e.message : String(e) });
-    }
-  };
-
+export type PresetMode = "save" | "import" | "export" | null;
+export function ProfileManager({
+  names,
+  onBack,
+  onMode,
+  onExport,
+}: {
+  names: string[];
+  onBack: () => void;
+  onMode: (mode: PresetMode) => void;
+  onExport: (p: Profile) => void;
+}) {
   return (
-    <section className="card" data-testid="profile-manager">
-      <header className="card-head">
-        <h2>Profile 管理</h2>
+    <section className="aux-view">
+      <header className="aux-toolbar">
+        <Button variant="ghost" onClick={onBack}>
+          <ArrowLeft />
+          返回工作台
+        </Button>
+        <h1>管理预设</h1>
       </header>
-
-      <div className="row" style={{ marginTop: 12 }}>
-        <input
-          aria-label="save-as-name"
-          type="text"
-          placeholder="新档名，如 my-web"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-        />
-        <button type="button" onClick={saveAs} disabled={!profile || busy || !newName.trim()}>
-          另存为
-        </button>
-        <button type="button" onClick={exportJson} disabled={!profile}>
-          导出到剪贴板
-        </button>
-      </div>
-
-      <textarea
-        aria-label="import-json"
-        placeholder="粘贴 Profile JSON 后导入"
-        rows={4}
-        value={importText}
-        onChange={(e) => setImportText(e.target.value)}
-        style={{ width: "100%", marginTop: 12, fontFamily: "var(--font-mono, monospace)", fontSize: 12 }}
-      />
-      <div className="row" style={{ marginTop: 8 }}>
-        <button type="button" onClick={importJson} disabled={!importText.trim()}>
-          导入
-        </button>
-        {status && (
-          <span className={status.kind === "ok" ? "status ok" : "status error"} data-testid="manager-status">
-            {status.kind === "ok" ? "✓ " : "✗ "}
-            {status.text}
-          </span>
-        )}
+      <div className="aux-scroll">
+        <div className="settings-container">
+          <p className="hint">
+            已保存预设用于后续处理；本批调整需明确保存才会写入。
+          </p>
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" onClick={() => onMode("save")}>
+              <Plus />
+              另存当前方案
+            </Button>
+            <Button variant="outline" onClick={() => onMode("import")}>
+              <Download />
+              粘贴导入 JSON
+            </Button>
+          </div>
+          <ul className="preset-list">
+            {names.map((name) => (
+              <li key={name}>
+                <div>
+                  <strong>{profileLabel(name)}</strong>
+                  <p className="hint">
+                    {name}
+                    {["default", "jpg"].includes(name)
+                      ? " · Finder 快速操作使用"
+                      : ""}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    void profilesShow(name)
+                      .then(onExport)
+                      .catch((e) => toast.error(String(e)))
+                  }
+                >
+                  <Copy />
+                  导出 JSON
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </section>
+  );
+}
+export function PresetDialog({
+  mode,
+  profile,
+  names,
+  onClose,
+  onSave,
+}: {
+  mode: PresetMode;
+  profile: Profile | null;
+  names: string[];
+  onClose: () => void;
+  onSave: (p: Profile) => Promise<void>;
+}) {
+  const [name, setName] = useState("");
+  const [raw, setRaw] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [replacement, setReplacement] = useState<Profile | null>(null);
+  const save = async (p: Profile) => {
+    setSaving(true);
+    setError("");
+    try {
+      await onSave(p);
+      toast.success("预设已保存");
+      onClose();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setSaving(false);
+      setReplacement(null);
+    }
+  };
+  const submit = async () => {
+    try {
+      const p =
+        mode === "import"
+          ? parseProfileJson(raw)
+          : profile
+            ? renameProfile(profile, name)
+            : null;
+      if (!p) return;
+      const normalized = await profilesValidate(p);
+      if (names.includes(normalized.name)) setReplacement(normalized);
+      else await save(normalized);
+    } catch (e) {
+      setError(String(e));
+    }
+  };
+  const json = profile ? exportProfileJson(profile) : "";
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(json);
+      toast.success("JSON 已复制");
+    } catch {
+      setError("剪贴板不可用，请从下方文本选择并复制，或重试。");
+    }
+  };
+  return (
+    <>
+      <Dialog
+        open={!!mode}
+        onOpenChange={(open) => {
+          if (!open && !saving) onClose();
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {mode === "save"
+                ? "另存为预设"
+                : mode === "import"
+                  ? "粘贴导入预设"
+                  : "导出预设 JSON"}
+            </DialogTitle>
+            <DialogDescription>
+              {mode === "save"
+                ? "保存完整草稿，名称也是命令行使用的档名。"
+                : mode === "import"
+                  ? "先由内核校验，成功保存后才切换当前方案。"
+                  : "完整配置可用于备份或导入；复制失败时可手动选择文本。"}
+            </DialogDescription>
+          </DialogHeader>
+          {mode === "save" && (
+            <Input
+              aria-label="新预设名称"
+              placeholder="例如 my-web"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          )}
+          {mode === "import" && (
+            <Textarea
+              aria-label="导入的预设 JSON"
+              rows={12}
+              value={raw}
+              onChange={(e) => setRaw(e.target.value)}
+            />
+          )}
+          {mode === "export" && (
+            <Textarea
+              aria-label="导出的预设 JSON"
+              readOnly
+              rows={12}
+              value={json}
+            />
+          )}
+          {error && (
+            <p className="field-error" role="alert">
+              {error}
+            </p>
+          )}
+          <DialogFooter>
+            <Button variant="outline" disabled={saving} onClick={onClose}>
+              返回
+            </Button>
+            {mode === "export" ? (
+              <Button onClick={() => void copy()}>复制 JSON</Button>
+            ) : (
+              <Button disabled={saving} onClick={() => void submit()}>
+                {saving ? "保存中…" : "保存预设"}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <AlertDialog
+        open={!!replacement}
+        onOpenChange={(open) => {
+          if (!open) setReplacement(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>替换已保存预设？</AlertDialogTitle>
+            <AlertDialogDescription>
+              已存在「{replacement?.name}」，确认将替换完整配置。
+              {replacement && ["default", "jpg"].includes(replacement.name)
+                ? "这会影响 Finder 快速操作和后续后台入口。"
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>返回</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => replacement && void save(replacement)}
+            >
+              确认替换
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

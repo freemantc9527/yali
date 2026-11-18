@@ -1,7 +1,7 @@
 # T-016 · 剪贴板监听（复制即压）
 
 goal: 复制一张图 → 自动压缩 → 存到「下载」并通知；菜单栏 app 常驻时也工作
-context: `docs/DESIGN.md` §4 入口矩阵「剪贴板监听 | arboard changeCount，菜单栏开关」；`settings.clipboard`（T-014）
+context: `docs/DESIGN.md` §4 入口矩阵「剪贴板监听」；`settings.clipboard`（T-014）
 decision:
   - **不用 arboard**：macOS 只给原始 RGBA，还得自带 PNG 编码器；NSPasteboard 直接给 `public.png`
     （编码后的字节，`minBytes` 体积语义才对得上）。objc2 / objc2-app-kit 本就是 Tauri 的传递依赖

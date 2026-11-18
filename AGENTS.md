@@ -1,52 +1,44 @@
-# Yali · Agent 工作守则
+# Yali · Agent 规则
 
-## 环境事实（勿重新探测）
-- macOS，**无 Xcode，仅 Command Line Tools**：禁止 `swift test` / `xcodebuild` / SwiftUI 宏（CLT 不含 XCTest 与 SwiftUIMacros，已实证，见 `docs/TOOLCHAIN.md` §2）
-- `swiftc` 可用（仅限未来 `helpers/` 下的小型 Swift 工具，如 Vision 封装）
-- 引擎 CLI 路径以 `Brewfile` 为准，禁止假设 PATH（注意 brew 的 `cjpeg` 是 libjpeg-turbo，mozjpeg 在 keg 路径）
-- 前端包管理器是 **pnpm**（ADR-004），文档与命令里不出现 `npm` / `npx`
+用简体中文回复。用户当前指令优先；未经明确要求，不创建分支、commit 或 push，不自动 pull。保留已有工作区修改；删除文件/目录或修改用户、系统配置前须明确确认。
 
-## 构建/测试
-| 目标 | 命令 | 现状 |
-|---|---|---|
-| 内核 | `cargo test -p yali-core`（改内核必跑，目标 <60s） | 可用 |
-| CLI | `cargo run -p yali-cli -- <args>`（安装产物统一叫 `yali`） | 可用 |
-| UI | `pnpm --dir ui test` / `pnpm --dir ui dev` | 可用（T-005 接线） |
-| UI 构建 | `pnpm --dir ui build` → `ui/dist` | 可用 |
-| 整包 | `env -u CI cargo tauri build --bundles app` + `scripts/bundle-check.sh`（T-013 实测） | 可用（tauri-cli 2.12.5） |
-| 金样回归 | `benchkit/bench.sh`（体积/SSIM/耗时三指标，劣化 >3% 即失败） | 可用（T-004） |
-| workflow 安装 | `workflows/install-workflows.sh`（改模板后重跑 + `killall pbs`） | 可用（T-006） |
+## 按需读取
 
-## 命名权威
-所有名称以 `docs/NAMING.md` 注册表为准：bundle `app.yali`、crate `yali-core/yali-cli`、CLI `yali`、env 前缀 `YALI_`、数据目录 `~/Library/Application Support/app.yali/`。品牌语境 Yali/鸭梨，技术语境一律小写。
-`crates/yali-integration`（平台差异收口）与 `crates/yali-vision`（M3）**尚未创建**，是预注册名，不要在未建卡的 PR 里提前落地。
+- 开始先读 `docs/STATE.md` 和当前任务卡，避免重探已确认的环境与验收事实。
+- 产品规格：`docs/DESIGN.md`；UI：`docs/UI-REDESIGN.md`；流程：`docs/WORKFLOW.md`。
+- 构建：`docs/TOOLCHAIN.md`；质量：`benchkit/README.md`；Finder：`workflows/README.md`。只读相关章节。
+- 命名以 `docs/NAMING.md` 为准：bundle `app.yali`，CLI `yali`，环境变量前缀 `YALI_`。不提前创建任务卡尚未启用的 crate 或目录。
 
-## 目录现状（勿假设不存在的东西）
-已存在：`crates/yali-core`、`crates/yali-cli`、`src-tauri/`（含 `capabilities/`、`Info.plist`）、`ui/`、`docs/`（含 `docs/decisions/`、`docs/tasks/`）、`schema/`、`fixtures/`、`benchkit/`、`workflows/`、`scripts/`。
-**尚未存在**（按任务卡创建，见 `docs/STATE.md`）：`helpers/`、`crates/yali-integration`。
-调用前先 `ls`，不要凭记忆引用不存在的路径。
+## CodeGraph 优先
 
-## 硬性规则
-- **默认只本地 commit，禁止 push**：`git push` 必须等用户明确指令（2026-11-17 用户定，任何 PR/卡完成都不例外）
-- 调用 C/Vision/vips API 前，必须先 grep 系统头文件（`/Library/Developer/CommandLineTools/SDKs/*/usr/include/`）或本机实测，**禁止凭记忆写 API 名**（`docs/api-notes/` 尚未建立，等 M3 有了再引用）
-- UI 只做任务卡所列组件，不"顺手优化"视觉；禁止无卡改样式
-- 验收命令输出贴进 PR；标记 `manual-check` 的卡只能提交"待人工验收"
-- 每 PR 对应一个任务卡；不混改
-- `docs/` 只收录本项目自身的设计与决策文档，不引入外部来源材料
+本项目已初始化 `.codegraph/`。理解、定位或修改代码前，先用 `codegraph_explore`，`projectPath` 传仓库绝对路径，query 写具体文件、符号或问题；MCP 不可用时用 `codegraph explore "<问题或符号>"`。
 
-## 已知坑
-- libvips 子进程冷启动 ~5s → 走进程池预热
-- `.workflow` 修改后 Finder 不立即刷新 → `killall pbs`
-- 非 ASCII 的 .app 包名会坑 DMG/updater → 包名固定 `Yali.app`，中文显示走 CFBundleDisplayName 本地化
-- **Tauri 2 没有 `capabilities/default.json` 时前端 `listen()` 被 ACL 拒绝**，事件静默失效（T-013 实测）
-- **NSPasteboard 只能在主线程访问**；`run_on_main_thread` 的回调不要在 `setup` 里 `block_on` 等
-  （主线程正被 setup 占着 → 死锁），要么在异步任务里等，要么改成事件驱动
-- 剪贴板要比 `changeCount` 再比内容摘要：changeCount 变了不等于内容变了（同一张图复制两次）
-- watch 的产物会触发自己的事件（`-default` 又落回被监视目录）→ 产出路径必须进 ignored 集，
-  否则套娃；FSEvents 一个文件多次事件靠 settleMs + (mtime,size) 去重
-- `before*Command` 的 cwd 是 `src-tauri` → 钩子写 `pnpm --dir ../ui …`
-- 环境里 `CI=1` 会让 cargo-tauri 报 `invalid value '1' for '--ci'` → 整包用 `env -u CI`
-- tauri-bundler 会给不认识的扩展名（avif/jxl）兜底 `public.image` → `src-tauri/Info.plist` 精确覆盖，
-  `scripts/bundle-check.sh` 断言 UTI 与 `tauri.conf.json` 不漂移
-- `tauri::generate_context!` 编译期需要 `src-tauri/icons/icon.png`（bundle.active=false 也要）
-- `frontendDist`（`ui/dist`）在**非 dev** 构建时是硬校验：目录不存在直接 panic。`src-tauri/build.rs` 已兜占位页，但提交前务必跑一次 `pnpm --dir ui build` 让产物是真前端
+返回的逐字源码视为已读，不重复读取；未覆盖的文件或片段再用 `rg` / 定向读取。索引缺失或查询失败可退回 `rg`，不自行初始化或重建索引。
+
+## 实施边界
+
+- 只做当前任务范围，UI 禁止无卡改样式；一卡一 PR。`docs/` 仅收录本项目文档。
+- macOS 仅 CLT，无 Xcode；禁止 `swift test`、`xcodebuild`、SwiftUI 宏。Swift 仅限任务批准的 `helpers/` 小工具。
+- 前端统一 pnpm，锁文件入库。引擎路径参照 `Brewfile`，不可假定 PATH 中 `cjpeg` 是 mozjpeg。
+- 调用 C / Vision / vips API 前，先查本机 SDK 头文件或实测，不凭记忆编造接口。
+- NSPasteboard 仅在主线程访问，setup 不同步等待主线程回调；剪贴板同时按 changeCount 与内容摘要去重。
+- watch 必须忽略自身产物，并按 settleMs 与 (mtime, size) 去重，防止自激。
+- workflow 安装会修改用户 Services；模板变更后按任务范围重新安装并刷新 pbs，执行前确认授权。
+
+## 验证与交付
+
+| 修改范围 | 必跑 |
+|---|---|
+| 内核 | `cargo test -p yali-core` |
+| Tauri 壳层 | `cargo test -p yali-app` |
+| UI | `pnpm --dir ui test`、`pnpm --dir ui build` |
+| 整包 | `bash scripts/build.sh`（含真实前端与 bundle 校验） |
+| 压缩质量 | 重建 CLI 后运行 `benchkit/bench.sh`，避免使用旧二进制 |
+
+本地运行 `bash scripts/dev.sh`，浏览器演示加 `--web`。Tauri 钩子从 `src-tauri` 执行，使用 `pnpm --dir ../ui …`。
+
+保留事件 capability、精确 UTI 覆盖和编译期图标。release 必须包含真实 `ui/dist`，不能用 build.rs 占位页作为验收产物。
+
+金样只按体积比 / SSIM 劣化 >3% 判失败，level≥5 单代照片另须 SSIM≥0.95。耗时、内存、CPU 等仅作观察，不阻塞验收，不为波动改基线。
+
+交付附实际命令结果；更新任务卡与 STATE。`manual-check` 未经用户亲验只能标「待人工验收」，不得把浏览器模拟或自动化推定为人工通过。性能观察单独记录工具、环境和测量边界。

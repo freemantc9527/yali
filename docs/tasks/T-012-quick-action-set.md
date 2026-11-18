@@ -1,4 +1,4 @@
-# T-012 · 右键动作三件套（分享场景取舍）
+# T-012 · 右键两条动作（分享场景取舍）
 
 goal: 把右键收敛成两条服务分享场景的动作（压一下 / 转 JPG），并修掉这条路上暴露的质量 bug
 context: docs/DESIGN.md §4 入口矩阵；用户诉求「最常用的就两个：压缩图片、转成 jpg，用于分享」；强迫症约束：快速操作里不超过 3 项
@@ -11,7 +11,7 @@ constraints:
   - pbs 登记必须保类型（FinderOrdering 值必须 int）；卸载要清历史 bid
   - 出厂档新增必须能被老目录补种（`.seed` 签名机制）
 acceptance:
-  - `automator -i <file> <workflow>` 三个动作各自产出正确文件
+  - `automator -i <file> <workflow>` 两个动作各自产出正确文件
   - RGBA PNG → JPG 白底正确（PSNR 45dB vs 白底参考），体积不劣于 mozjpeg 基线
   - GIF → JPG 不再被缩成 128×96（尺寸守卫实测拦住过）
   - `bench.sh --profile jpg` 三指标出表；default/web 基线仍绿
@@ -30,9 +30,11 @@ manual-check: true（Finder 快速操作里两条鸭梨；JPEG 文件右键不�
 ## 用户实测反馈修正（第二轮）
 1. 「压到 500K」下线（有前两条足够）；安装脚本负责清历史 bundle + pbs 残留
 2. 「转 JPG」按 UTI 精确声明，不声明 `public.jpeg` → JPEG 文件右键看不到这条
-3. **PNG 转 JPG 变「底片」**：根因是无条件 `vips flatten`——libvips 对**无 alpha 的
+3. **PNG 转 JPG 变「底片」**：根因是无条件 `vips flatten`，libvips 对**无 alpha 的
    Type:Palette PNG** 做 flatten 会输出 graya 灰白图（实测 PSNR 0.6）。修法三层：
    读 IHDR color type（调色板再看 tRNS）确认真有透明 → 才 flatten；flatten 产物
    color type 必须为 2，否则判失败回落 sips；benchkit 新增 `palette.png` 样张 +
    基线按档位分文件（`baseline-jpg.json`），这条路径从此有回归守护
 4. 附带修：pngquant 对已量化 PNG 退出码 99 → 调色板 PNG→PNG 强制 oxipng 无损（-o 1 快速档）
+
+人工验收：用户已于 2026-11-17 确认两条菜单、JPEG 隐藏转 JPG、多选聚合通知；通知点击行为仍待验。
