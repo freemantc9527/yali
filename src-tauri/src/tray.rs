@@ -43,7 +43,10 @@ fn build(app: &AppHandle) -> tauri::Result<()> {
     let quit = MenuItem::with_id(app, ITEM_QUIT, "退出鸭梨", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&open, &separator, &quit])?;
 
-    let mut builder = TrayIconBuilder::with_id(TRAY_ID)
+    let icon = tauri::image::Image::from_bytes(include_bytes!("../icons/yaliTemplate.png"))?;
+    let builder = TrayIconBuilder::with_id(TRAY_ID)
+        .icon(icon)
+        .icon_as_template(true)
         .tooltip("鸭梨 · 让图片没有压力")
         .menu(&menu)
         .show_menu_on_left_click(false)
@@ -63,9 +66,6 @@ fn build(app: &AppHandle) -> tauri::Result<()> {
             }
         });
 
-    if let Some(icon) = app.default_window_icon() {
-        builder = builder.icon(icon.clone());
-    }
     builder.build(app)?;
     Ok(())
 }

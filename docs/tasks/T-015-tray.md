@@ -5,7 +5,7 @@ context: `docs/DESIGN.md` §4 入口矩阵；`docs/STATE.md` §4 第 2 条；`se
 constraints:
   - 只开 `tauri` 的 `tray-icon` feature，不引新 crate
   - 关窗行为必须跟随 `settings.tray.enabled`：托盘关着就按普通 app 退出，不许出现「窗口没了进程还在但无处唤回」
-  - 图标复用 `default_window_icon()`（T-013 已生成 RGBA 图标集），不另造一套
+  - 初版图标复用 `default_window_icon()`；T-020 已改为独立单色模板图，随系统明暗着色
   - 菜单只放「打开鸭梨 / 退出鸭梨」，剪贴板/watch 开关等 T-016/T-017 有了再加
 acceptance:
   - `cargo test -p yali-app` 覆盖 `close_action(tray)` 三态与菜单 id 前缀
