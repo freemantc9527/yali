@@ -5,6 +5,9 @@ import {
   summary,
   collisionError,
   outputGroups,
+  processingJobs,
+  latestJobs,
+  repeatJobs,
   type Job,
   type State,
 } from "./batches";
@@ -38,6 +41,41 @@ async function submitted() {
   return { state, profile };
 }
 describe("批次业务状态", () => {
+  it("从待处理行执行当前方案时消费原任务，不残留隐藏 pending", async () => {
+    const pending = job();
+    let state = reducer(initialState, { type: "add", jobs: [pending] });
+    const targets = repeatJobs([pending]);
+    state = reducer(state, {
+      type: "submit",
+      jobs: targets,
+      batch: { batchId: "row-action", profile: await profilesShow("default"), jobIds: targets.map((j) => j.jobId), source: "manual" },
+    });
+    expect(state.jobs.filter((j) => j.status === "pending")).toEqual([]);
+    expect(state.jobs).toHaveLength(1);
+    expect(state.jobs[0]).toMatchObject({ jobId: pending.jobId, attempt: 1, status: "queued" });
+  });
+  it("完成压缩后可直接用同一原图开始归档，不需要重新选图", () => {
+    const previous = { ...job(), status: "done" as const, batchId: "b1", report };
+    const next = processingJobs([previous]);
+    expect(next).toHaveLength(1);
+    expect(next[0].path).toBe(report.input);
+    expect(next[0].path).not.toBe(report.output);
+    expect(next[0].jobId).not.toBe(previous.jobId);
+    expect(next[0].retryOf).toBe(previous.jobId);
+    expect(next[0].report).toBeUndefined();
+    expect(previous.report).toEqual(report);
+    expect(processingJobs([previous, job("/new.png", "new")]).map((j) => j.path)).toEqual(["/new.png"]);
+  });
+  it("当前图片只展示最新处理，移除与清空不会让旧任务重新出现或丢掉系统队列", () => {
+    const previous = { ...job(), status: "done" as const, batchId: "b1", report };
+    const repeated = { ...processingJobs([previous])[0], status: "done" as const, batchId: "b2", report };
+    const queued = { ...job("/system.jpg", "system"), source: "system" as const, status: "queued" as const, batchId: "system" };
+    const state = { ...initialState, jobs: [previous, repeated, queued] };
+    expect(latestJobs(state.jobs).map((j) => j.jobId)).toEqual([repeated.jobId, "system"]);
+    expect(reducer(state, { type: "removePath", path: previous.path }).jobs).toEqual([queued]);
+    expect(reducer(state, { type: "removePath", path: queued.path })).toBe(state);
+    expect(reducer(state, { type: "clear", all: true }).jobs).toEqual([queued]);
+  });
   it("本批快照与保存档及可编辑草稿分离", async () => {
     const { state, profile } = await submitted();
     profile.quality.level = 9;
@@ -251,6 +289,12 @@ describe("批次调度边界", () => {
     expect(collisionError(jobs, p, infos)).toContain("冲突");
     p.output.dir = "sibling";
     expect(collisionError(jobs, p, infos)).toBeNull();
+  });
+  it("BMP 自动转 PNG 按实际输出格式检查重名", async () => {
+    const p = await profilesShow("default");
+    const jobs = [job("/a/photo.bmp"), job("/a/photo.png", "j2")];
+    expect(collisionError(jobs, p)).toContain("冲突");
+    expect(collisionError([jobs[0], job("/a/other.png", "j2")], p)).toBeNull();
   });
   it("别的系统批次读取失败不释放当前运行批次", async () => {
     let { state } = await submitted();

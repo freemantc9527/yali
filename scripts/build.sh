@@ -25,7 +25,10 @@ BUILD_DIR="${CARGO_TARGET_DIR:-$ROOT/target}"
 if [[ "$BUILD_DIR" != /* ]]; then
   BUILD_DIR="$ROOT/$BUILD_DIR"
 fi
-CARGO_TARGET_DIR="$BUILD_DIR" env -u CI cargo tauri build --bundles app
+CARGO_TARGET_DIR="$BUILD_DIR" cargo build --release -p yali-cli
+python3 "$ROOT/scripts/package-runtime.py" prepare --build-dir "$BUILD_DIR"
+CARGO_TARGET_DIR="$BUILD_DIR" env -u CI cargo tauri build --bundles app --config "$BUILD_DIR/yali-bundle-input/tauri-bundle.json"
 APP="$BUILD_DIR/release/bundle/macos/Yali.app"
+python3 "$ROOT/scripts/package-runtime.py" finalize --build-dir "$BUILD_DIR" --app "$APP"
 bash "$ROOT/scripts/bundle-check.sh" "$APP"
 echo "构建完成：$APP"

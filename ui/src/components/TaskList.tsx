@@ -6,13 +6,13 @@ import {
   LoaderCircle,
   RotateCcw,
   X,
+  MoreHorizontal,
 } from "lucide-react";
 import type { Job, Status } from "../lib/batches";
-import { imagePreview, type ImageInfo } from "../lib/bridge";
+import { imagePreview, type ImageInfo, type PreviewImage } from "../lib/bridge";
 import { formatBytes, savings } from "../lib/format";
-import { Badge } from "./ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { Button } from "./ui/button";
-import { IconButton } from "./Controls";
 
 export const statusLabels: Record<Status, string> = {
   pending: "待处理",
@@ -35,20 +35,23 @@ export function Thumbnail({
   format?: string | null;
 }) {
   const host = useRef<HTMLDivElement>(null);
-  const [url, setUrl] = useState<string>();
+  const [preview, setPreview] = useState<PreviewImage>();
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     let alive = true;
     let requested = false;
-    setUrl(undefined);
+    let acquired: PreviewImage | undefined;
+    setPreview(undefined);
     setFailed(false);
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting) && !requested) {
           requested = true;
           void imagePreview(path, 192)
-            .then((url) => {
-              if (alive) setUrl(url);
+            .then((result) => {
+              acquired = result;
+              if (alive) setPreview(result);
+              else result.release();
             })
             .catch(() => {
               if (alive) setFailed(true);
@@ -61,6 +64,7 @@ export function Thumbnail({
     if (host.current) observer.observe(host.current);
     return () => {
       alive = false;
+      acquired?.release();
       observer.disconnect();
     };
   }, [path]);
@@ -70,13 +74,14 @@ export function Thumbnail({
       className="thumbnail"
       title={failed ? "此格式暂不可预览，仍可处理或定位结果" : undefined}
     >
-      {url ? (
+      {preview ? (
         <img
-          src={url}
+          src={preview.src}
           alt=""
           loading="lazy"
           onError={() => {
-            setUrl(undefined);
+            preview.release();
+            setPreview(undefined);
             setFailed(true);
           }}
         />
@@ -151,7 +156,7 @@ export function TaskRowView({
             ? `${info.width} × ${info.height} · `
             : ""}
           {info?.format?.toUpperCase() ?? "尺寸未知"}
-          {job.attempt > 1 ? ` · 重试 ${job.attempt - 1}` : ""}
+          {job.attempt > 1 ? ` · 第 ${job.attempt} 次处理` : ""}
         </p>
         {duplicate && (
           <p className="hint path-text">
@@ -168,45 +173,47 @@ export function TaskRowView({
           </details>
         )}
       </div>
-      <div className="file-sizes">
-        <span>
-          {job.report
-            ? formatBytes(job.report.inputBytes)
-            : info?.bytes !== undefined && info.bytes !== null
-              ? formatBytes(info.bytes)
-              : "大小未知"}
-        </span>
-        <span className="size-arrow">→</span>
-        <span>
-          {job.status === "larger_output"
-            ? "保留原图"
-            : job.report?.outputBytes !== undefined &&
-                job.report.outputBytes !== null
-              ? formatBytes(job.report.outputBytes)
-              : job.status === "failed"
-                ? "无结果"
-                : "待处理"}
-        </span>
-      </div>
-      <div className={`file-saving ${increased ? "warning" : ""}`}>
-        {job.status === "larger_output"
-          ? "0%"
-          : job.report?.outputBytes !== undefined &&
-              job.report.outputBytes !== null
-            ? savings(job.report.inputBytes, job.report.outputBytes)
-            : ""}
-      </div>
-      <div className={`task-state state-${job.status}`} title={status}>
-        {job.status === "done" ? (
-          <Check />
-        ) : job.status === "processing" || job.status === "queued" ? (
-          <LoaderCircle className="animate-spin" />
-        ) : job.status === "failed" || job.status === "larger_output" ? (
-          <CircleAlert />
-        ) : null}
-        <Badge variant="outline" className="status-badge">
-          {status}
-        </Badge>
+      <div className="file-result">
+        <div className="file-sizes">
+          <span>
+            {job.report
+              ? formatBytes(job.report.inputBytes)
+              : info?.bytes !== undefined && info.bytes !== null
+                ? formatBytes(info.bytes)
+                : "大小未知"}
+          </span>
+          <span className="size-arrow">→</span>
+          <span>
+            {job.status === "larger_output"
+              ? "保留原图"
+              : job.report?.outputBytes !== undefined &&
+                  job.report.outputBytes !== null
+                ? formatBytes(job.report.outputBytes)
+                : job.status === "failed"
+                  ? "无结果"
+                  : "待处理"}
+          </span>
+        </div>
+        <div className="result-caption">
+          <div className={`file-saving ${increased ? "warning" : ""}`}>
+            {job.status === "larger_output"
+              ? "0%"
+              : job.report?.outputBytes !== undefined &&
+                  job.report.outputBytes !== null
+                ? `${increased ? "" : "减少 "}${savings(job.report.inputBytes, job.report.outputBytes)}`
+                : ""}
+          </div>
+          <div className={`task-state state-${job.status}`} title={status}>
+            {job.status === "done" ? (
+              <Check />
+            ) : job.status === "processing" || job.status === "queued" ? (
+              <LoaderCircle className="animate-spin" />
+            ) : job.status === "failed" || job.status === "larger_output" ? (
+              <CircleAlert />
+            ) : null}
+            <span>{status}</span>
+          </div>
+        </div>
       </div>
       <div className="row-actions">
         {canCompare && (
@@ -214,20 +221,19 @@ export function TaskRowView({
             {job.report?.output ? "对比" : "原图"}
           </Button>
         )}
-        {job.status === "failed" && (
-          <IconButton
-            label={`重试 ${name}`}
-            disabled={!!active}
-            onClick={onRetry}
-          >
-            <RotateCcw />
-          </IconButton>
-        )}
-        {(!active || job.batchId !== active) && job.status !== "queued" && (
-          <IconButton label={`移除 ${name}`} onClick={onRemove}>
-            <X />
-          </IconButton>
-        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" aria-label={`更多操作 ${name}`}><MoreHorizontal /></Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem disabled={!!active || ["queued", "processing"].includes(job.status)} onSelect={onRetry}>
+              <RotateCcw />{job.status === "failed" ? `重试 ${name}` : "使用当前方案处理原图"}
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={!!active || job.status === "queued"} onSelect={onRemove}>
+              <X />从列表移除
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </li>
   );

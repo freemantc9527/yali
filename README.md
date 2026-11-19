@@ -11,7 +11,15 @@
 
 响应式工作台已实现，原生交互仍待[人工验收](docs/tasks/T-021-responsive-workbench.md)。
 
-## 准备环境
+## 使用构建好的 App
+
+将 `Yali.app` 复制到 `/Applications/` 或 `~/Applications/` 后打开，无需 Homebrew、源码、Node 或 Python。右键菜单在 **设置 → 自动化 → Finder 右键操作** 中安装、修复或卸载；若系统未显示菜单，请在系统设置的“服务”或“扩展”中启用鸭梨。
+
+安装右键操作后，CLI 可通过 `~/.yali/bin/yali` 使用，也可直接调用 App 内的 `Contents/MacOS/yali`。稳定入口不自动加入 PATH；覆盖升级无需重新配置，移动 App 后重新打开一次即可修复入口。
+
+个人学习版使用 ad-hoc 签名，没有 Developer ID 或公证。首次打开若被系统拦截，请按 macOS 系统提示在“隐私与安全性”中允许。当前本机产物为 Apple Silicon，最低 macOS 27.2，来自所打包引擎的实际部署目标；低版本系统未经验证。
+
+## 开发环境
 
 需要 macOS 14+、Command Line Tools、Rust、Node.js、pnpm、Python 3 和 Tauri 2 CLI，无需完整 Xcode。安装细节见 [TOOLCHAIN](docs/TOOLCHAIN.md)。
 
@@ -22,7 +30,7 @@ brew bundle --file "Brewfile"
 pnpm --dir ui install --frozen-lockfile
 ```
 
-引擎通过 Homebrew 安装，当前应用包尚未实现完整引擎分发。在新机器使用前也需要安装引擎，可用 `cargo run -p yali-cli -- doctor` 检查。
+开发机通过 Homebrew 安装引擎，可用 `cargo run -p yali-cli -- doctor` 检查。`scripts/build.sh` 把运行所需工具和完整动态依赖装入 App，接收者无需安装这些开发依赖。
 
 ## 本地运行
 
@@ -48,7 +56,9 @@ cargo run -p yali-cli -- compress "/path/to/photo.jpg" --profile default
 bash scripts/build.sh
 ```
 
-脚本构建真实前端与 release 应用，再校验 bundle 标识和图片 UTI；任一步失败即返回非零。默认产物为 `target/release/bundle/macos/Yali.app`，设置 `CARGO_TARGET_DIR` 时跟随该目录。脚本不安装应用，不执行公证或发布。
+脚本构建 CLI、真实前端与 release 应用，收集并重定位引擎和动态库、保留第三方许可证与构建来源、生成 ad-hoc 签名，最后校验 bundle 标识、图片 UTI、包内全部动态依赖和签名。任一步失败即返回非零。默认产物为 `target/release/bundle/macos/Yali.app`，设置 `CARGO_TARGET_DIR` 时跟随该目录；不要绕过脚本把裸 `cargo tauri build` 产物当作分享包。脚本不安装应用，不执行公证或发布。
+
+`python3 scripts/smoke-bundle.py` 复制最终 App 到专用临时目录，以隔离 HOME / 数据根、最简 PATH 和禁止读取 Homebrew / 源码 / 原账户的沙盒，验证四个预设、实际格式转换、强隔离的 workflow shell 节点及正常系统上下文中的两条完整 Automator workflow（macOS 禁止沙盒进程使用 Automator.framework）。完成后清理测试副本；加 `--keep` 保留用于原生 GUI 验收。此自动验收不替代 Finder 菜单可见性与原生交互亲验。
 
 ## 验证与贡献
 

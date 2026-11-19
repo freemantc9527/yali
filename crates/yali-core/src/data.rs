@@ -76,11 +76,14 @@ fn copy_missing_file(mut source: impl std::io::Read, destination: &Path) -> Resu
 }
 
 /// 编码中间文件也写入数据根；独立工作目录避免同名输入互相覆盖。
-pub struct TempDir(PathBuf);
+pub struct TempDir(PathBuf, std::fs::File);
 
 impl TempDir {
     pub fn new() -> Result<Self> {
-        Self::in_dir(&root()?.join("cache/tmp"))
+        let cache = crate::cache::root()?;
+        crate::cache::prune_at(&cache, false)?;
+        let _guard = crate::cache::lock(&cache)?;
+        Self::in_dir(&cache.join("tmp"))
     }
 
     fn in_dir(parent: &Path) -> Result<Self> {
@@ -92,7 +95,9 @@ impl TempDir {
         let dir = parent.join(format!("{}-{stamp}-{next}", std::process::id()));
         std::fs::create_dir_all(parent)?;
         std::fs::create_dir(&dir)?;
-        Ok(Self(dir))
+        let lease = std::fs::File::create(dir.join(".inuse"))?;
+        lease.lock()?;
+        Ok(Self(dir, lease))
     }
 
     pub fn path(&self) -> &Path {
@@ -102,13 +107,44 @@ impl TempDir {
 
 impl Drop for TempDir {
     fn drop(&mut self) {
+        let _lease = &self.1;
+        let cache = self.0.parent().filter(|p| p.file_name().is_some_and(|n| n == "tmp"))
+            .and_then(|p| p.parent()).filter(|p| p.file_name().is_some_and(|n| n == "cache"));
+        let _guard = cache.and_then(|root| crate::cache::lock(root).ok());
         let _ = std::fs::remove_dir_all(&self.0);
+        if let Some(root) = cache.filter(|_| _guard.is_some()) {
+            let _ = crate::cache::prune_locked(root, false, crate::cache::LIMIT_BYTES, crate::cache::MAX_AGE, std::time::SystemTime::now());
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn temporary_workspaces_are_protected_and_crash_leftovers_expire() {
+        let root = std::env::temp_dir().join(format!("yali-workspace-{}", std::process::id()));
+        let cache = root.join("cache");
+        let workspace = TempDir::in_dir(&cache.join("tmp")).unwrap();
+        let path = workspace.path().to_path_buf();
+        std::fs::write(path.join("content"), [1; 8]).unwrap();
+        assert_eq!(crate::cache::prune_at(&cache, true).unwrap().protected_bytes, 8);
+        assert!(path.join("content").exists());
+        drop(workspace);
+        assert!(!path.exists(), "正常结束立即删除工作区");
+
+        let abandoned = cache.join("tmp/legacy-abandoned");
+        std::fs::create_dir_all(&abandoned).unwrap();
+        std::fs::write(abandoned.join("content"), [1; 8]).unwrap();
+        crate::cache::prune_at(&cache, true).unwrap();
+        assert!(abandoned.exists(), "没有租约的旧目录在过期前保持安全");
+        let expired = std::time::SystemTime::now() - crate::cache::MAX_AGE - std::time::Duration::from_secs(1);
+        std::fs::File::open(&abandoned).unwrap().set_times(std::fs::FileTimes::new().set_modified(expired)).unwrap();
+        assert_eq!(crate::cache::prune_at(&cache, false).unwrap().bytes, 0);
+        assert!(!abandoned.exists());
+        std::fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn interrupted_import_does_not_publish_partial_files_and_can_retry() {

@@ -10,6 +10,9 @@ use anyhow::{anyhow, bail, Context, Result};
 
 /// 解析 ffmpeg：PATH → Homebrew 标准位置（Services 上下文 PATH 极简）
 fn ffmpeg_path() -> Option<PathBuf> {
+    if crate::runtime::contents().is_some() {
+        return crate::runtime::bundled_binary("ffmpeg");
+    }
     if let Ok(path) = std::env::var("PATH") {
         for dir in path.split(':').filter(|s| !s.is_empty()) {
             let candidate = Path::new(dir).join("ffmpeg");
@@ -26,7 +29,7 @@ fn ffmpeg_path() -> Option<PathBuf> {
 
 /// 两图 SSIM（0..=1，1 表示完全一致）；两侧尺寸必须一致
 pub async fn ssim(a: &Path, b: &Path) -> Result<f64> {
-    let ffmpeg = ffmpeg_path().ok_or_else(|| anyhow!("ffmpeg 不可用（brew install ffmpeg）"))?;
+    let ffmpeg = ffmpeg_path().ok_or_else(|| anyhow!("ffmpeg 不可用，请重新构建或安装完整鸭梨应用"))?;
     if let Ok(v) = run_ssim(&ffmpeg, a, b).await {
         return Ok(v);
     }
@@ -44,6 +47,7 @@ pub async fn ssim(a: &Path, b: &Path) -> Result<f64> {
 
 async fn run_ssim(ffmpeg: &Path, a: &Path, b: &Path) -> Result<f64> {
     let out = tokio::process::Command::new(ffmpeg)
+        .envs(crate::runtime::command_environment(ffmpeg))
         .args(["-hide_banner", "-loglevel", "info", "-i"])
         .arg(a)
         .arg("-i")

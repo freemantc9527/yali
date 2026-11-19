@@ -3,11 +3,15 @@
 //! 设计权威：docs/DESIGN.md；Profile 字段：docs/DESIGN.md §2；
 //! JSON Schema（文档与外部校验器事实源）：schema/profile.schema.json。
 
+pub mod cache;
 pub mod data;
 pub mod engines;
 pub mod metrics;
 pub mod pipeline;
 pub mod profile;
+pub mod runtime;
+#[cfg(target_os = "macos")]
+pub mod services;
 pub mod settings;
 pub mod store;
 pub mod undo;

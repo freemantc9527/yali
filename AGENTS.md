@@ -21,10 +21,11 @@
 - macOS 仅 CLT，无 Xcode；禁止 `swift test`、`xcodebuild`、SwiftUI 宏。Swift 仅限任务批准的 `helpers/` 小工具。
 - 前端统一 pnpm，锁文件入库。引擎路径参照 `Brewfile`，不可假定 PATH 中 `cjpeg` 是 mozjpeg。
 - 配置、预设、撤销记录、缓存与日志统一通过 `yali_core::data` 解析数据根；旧配置迁移须完整写入并同步临时文件后，以不覆盖目标的原子操作发布，失败后可重试。
+- 缓存发布、统计与回收统一走 `yali_core::cache`；预览 / 临时工作区持跨进程租约，前端卸载时释放预览。不得绕过活动锁清理文件，不跟随符号链接。
 - 调用 C / Vision / vips API 前，先查本机 SDK 头文件或实测，不凭记忆编造接口。
 - NSPasteboard 仅在主线程访问，setup 不同步等待主线程回调；剪贴板同时按 changeCount 与内容摘要去重。
 - watch 必须忽略自身产物，并按 settleMs 与 (mtime, size) 去重，防止自激。
-- workflow 安装会修改用户 Services；模板变更后按任务范围重新安装并刷新 pbs，执行前确认授权。
+- workflow 安装会修改用户 Services；模板变更后按任务范围重新安装并通过公开 API 刷新 Services，执行前确认授权；不改写 pbs 私有偏好，不重启 Finder。
 
 ## 验证与交付
 

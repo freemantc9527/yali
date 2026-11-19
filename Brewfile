@@ -12,6 +12,7 @@ brew "oxipng"         # PNG 无损优化 + pngquant 后处理
 brew "gifsicle"       # GIF（GPL，子进程调用，不链接）
 brew "gifski"         # GIF 高质量编码（Rust）
 brew "vips"           # 缩放/转码主力（LGPL，子进程/动态）
+brew "ffmpeg"         # GUI 比较 SSIM；工具与完整动态依赖随 App 打包
 brew "imagemagick"    # 仅 benchkit 度量用（SSIM），不进产品分发
 
 # 开发工具（不进 bundle，开发机自备）：rust 工具链、node、pnpm（前端包管理器，见 docs/decisions/ADR-004-pnpm.md）

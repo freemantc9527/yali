@@ -51,6 +51,13 @@ impl EngineKind {
     }
 
     fn resolve_binary(self, binary: &str) -> Option<PathBuf> {
+        if self == Self::Sips {
+            return Path::new("/usr/bin/sips").is_file().then(|| PathBuf::from("/usr/bin/sips"));
+        }
+        // 包内缺件不回落开发机引擎，防止构建残缺被 Homebrew 掩盖。
+        if crate::runtime::contents().is_some() {
+            return crate::runtime::bundled_binary(binary);
+        }
         let (_, pkg) = self.spec();
         // YALI_ENGINES_PATH 优先（冒号分隔，逐目录找目标二进制）
         if let Ok(extra) = std::env::var("YALI_ENGINES_PATH") {
@@ -140,7 +147,9 @@ fn version_of(kind: EngineKind, path: &Path) -> Option<String> {
         EngineKind::Sips => return None,             // sips 无版本参数
         _ => (["--version"], false),
     };
-    let out = std::process::Command::new(path).args(args).output().ok()?;
+    let out = std::process::Command::new(path)
+        .envs(crate::runtime::command_environment(path))
+        .args(args).output().ok()?;
     let text = if use_stderr {
         String::from_utf8_lossy(&out.stderr)
     } else {
@@ -153,6 +162,7 @@ fn version_of(kind: EngineKind, path: &Path) -> Option<String> {
 /// 运行引擎子进程（tokio，捕获 stdout/stderr）
 pub(crate) async fn run_engine(program: &Path, args: &[String]) -> Result<std::process::Output> {
     tokio::process::Command::new(program)
+        .envs(crate::runtime::command_environment(program))
         .args(args)
         .output()
         .await

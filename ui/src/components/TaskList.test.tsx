@@ -75,7 +75,7 @@ describe("任务结果展示", () => {
       error: "无法读取图片",
     });
     expect(html).toContain("无法读取图片");
-    expect(html).toContain("重试 图片.jpg");
+    expect(html).toContain("更多操作 图片.jpg");
   });
   it("处理中没有伪造单图百分比", () => {
     const html = render({ ...job, status: "processing", report: undefined });

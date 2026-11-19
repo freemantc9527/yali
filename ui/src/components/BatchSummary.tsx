@@ -1,7 +1,7 @@
-import { CheckCircle2, FolderOpen, Sparkles } from "lucide-react";
+import { FolderOpen, Sparkles } from "lucide-react";
 import type { Job } from "../lib/batches";
 import { summary, outputGroups } from "../lib/batches";
-import { formatBytes, savings } from "../lib/format";
+import { formatBytes } from "../lib/format";
 import { reveal } from "../lib/bridge";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
@@ -40,37 +40,22 @@ export function BatchSummary({
   );
   return (
     <footer className="batch-footer">
-      <div className="batch-status">
-        <CheckCircle2 />
-        <div>
-          <strong>
-            {busy
-              ? `已处理 ${s.processed} / ${jobs.length} 张`
-              : s.processed
-                ? `成功 ${s.success} 张${s.unchanged ? ` · 未减小 ${s.unchanged}` : ""}${s.failed ? ` · 失败 ${s.failed}` : ""}`
-                : pending
-                  ? `${pending} 张图片待处理`
-                  : "让图片没有压力"}
-          </strong>
-          <p className="hint">
-            {busy ? "本批参数已固定，可继续添加图片" : outputHint}
-          </p>
+      <div className="batch-copy" role="status" aria-live="polite">
+        <div className="batch-headline">
+          <span>{busy
+            ? `已处理 ${s.processed} / ${jobs.length} 张`
+            : pending ? `${pending} 张待处理`
+            : s.processed ? `完成 ${s.success + s.unchanged} 张` : "添加图片，开始处理"}</span>
+          {!busy && !pending && s.failed > 0 && <span className="warning">失败 {s.failed} 张</span>}
+          {!busy && !pending && s.unchanged > 0 && <span>未减小 {s.unchanged} 张</span>}
+          {!busy && !pending && s.input > 0 && (
+            <span className={s.saved < 0 ? "warning" : "batch-saving"}>
+              {s.saved >= 0 ? "节省 " : "增加 "}{formatBytes(Math.abs(s.saved))}
+              {`（${Math.abs(s.percent ?? 0).toFixed(1)}%）`}
+            </span>
+          )}
         </div>
-      </div>
-      <div className="batch-numbers">
-        {s.input > 0 && (
-          <>
-            <strong>
-              {s.saved >= 0 ? "共省 " : "净增加 "}
-              {formatBytes(Math.abs(s.saved))}
-            </strong>
-            <p className="hint">
-              {formatBytes(s.input)} → {formatBytes(s.output)} ·{" "}
-              {savings(s.input, s.output)}
-              {s.failed ? " · 已处理结果" : ""}
-            </p>
-          </>
-        )}
+        <p className="hint">{busy ? "正在处理原图，可继续添加图片" : outputHint}</p>
       </div>
       <div className="footer-actions">
         {groups.length > 1 ? (
@@ -103,10 +88,10 @@ export function BatchSummary({
           {busy
             ? `处理中 · ${s.processed}/${jobs.length}`
             : pending
-              ? `压一下 · ${pending} 张`
+              ? `开始处理 ${pending} 张`
               : jobs.length
-                ? "再压一批"
-                : "压一下"}
+                ? `重新处理 ${jobs.length} 张`
+                : "开始处理"}
         </Button>
       </div>
     </footer>

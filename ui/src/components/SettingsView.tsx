@@ -30,6 +30,8 @@ import { Field, IconButton } from "./Controls";
 import { NumberField } from "./ProfileForm";
 import { Slider } from "./ui/slider";
 import { FONT_SCALE_STEPS } from "../lib/settings";
+import { QuickActionsSettings } from "./QuickActionsSettings";
+import { CacheSettings } from "./CacheSettings";
 
 export function SettingsView({
   version,
@@ -186,6 +188,8 @@ export function SettingsView({
                       />
                     </label>
                     <Separator />
+                    <CacheSettings />
+                    <Separator />
                     <div className="setting-row">
                       <div>
                         <strong>鸭梨 Yali</strong>
@@ -195,6 +199,8 @@ export function SettingsView({
                   </fieldset>
                 </TabsContent>
                 <TabsContent value="automation">
+                  <QuickActionsSettings />
+                  <Separator />
                   <fieldset disabled={busy} className="settings-fields">
                     <p className="hint">
                       自动化使用已保存的 default 预设，与工作台本批草稿独立。
@@ -304,7 +310,7 @@ export function SettingsView({
                   </fieldset>
                 </TabsContent>
               </Tabs>
-              <p className="hint">修改仅在点击保存后生效。</p>
+              <p className="hint">参数调整在点击保存后生效；缓存清理、右键操作安装与卸载立即执行。</p>
             </>
           )}
         </div>

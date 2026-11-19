@@ -31,6 +31,12 @@ Rust + Tauri 2 + React / Vite；前端使用 pnpm。环境安装与脚本见 [RE
 
 ## 3. 引擎与系统约束
 
+T-023 / ADR-006：分享包必须用 `bash scripts/build.sh` 生成。脚本先构建 release CLI，递归收集引擎 / dylib 与 libvips HEIF、JXL 插件，重定位到包内 `@loader_path`，使用 Tauri `externalBin` 携带工具，再从内向外 ad-hoc 签名。`scripts/package-runtime.py check` 校验所有动态依赖不指向 Homebrew / 源码目录。裸 `cargo tauri build` 不再作为自包含分享包验收。
+
+构建输入位于 `${CARGO_TARGET_DIR:-target}/yali-bundle-input/`，不进版本库；运行时只依赖最终 App。`Resources/yali-runtime.json` 记录架构与所有依赖的最高部署目标，Info.plist 的 LSMinimumSystemVersion 跟随该实际要求。本机依赖最高为 macOS 27.2，当前仅验证 Apple Silicon；需要兼容 macOS 14 时须针对该部署目标重新构建引擎，而非降低 plist 声明。
+
+个人学习版不要求 Developer ID / 公证，不清除 quarantine，不引导关闭 Gatekeeper。`codesign --verify --deep --strict` 验证本机 ad-hoc 完整性，不能据此声称通过 Gatekeeper / 公证。
+
 引擎清单以 [Brewfile](../Brewfile) 为准，具体安装版本以 doctor 为准。mozjpeg 是 keg-only，PATH 中的 cjpeg 可能来自 libjpeg-turbo；运行时探测 `/opt/homebrew/opt/<pkg>` 与 `/usr/local/opt/<pkg>`，不调用可能联网挂起的 brew --prefix。图像处理与度量坑见 [benchkit](../benchkit/README.md)。
 
 NSPasteboard 只在主线程访问，setup 不能 block_on 等主线程回调。剪贴板按 changeCount 和内容摘要去重；watch 忽略自身产物并按 settleMs + (mtime, size) 去重。Finder Services 安装与 pbs 类型约束见 [workflows](../workflows/README.md)。

@@ -428,7 +428,10 @@ impl Registry {
             EngineKind::Vips,
             EngineKind::Sips,
         ];
-        let probes: HashMap<_, _> = kinds.iter().map(|k| (*k, k.probe())).collect();
+        let bundled = crate::runtime::contents().is_some();
+        let probes: HashMap<_, _> = kinds.iter()
+            .filter(|k| !bundled || **k != EngineKind::Svgo)
+            .map(|k| (*k, k.probe())).collect();
         let path_of = |k: EngineKind| probes.get(&k).and_then(|p| p.path.clone());
 
         let mut encoders: Vec<Box<dyn Encoder>> = Vec::new();
@@ -494,6 +497,7 @@ impl Registry {
             InputFormat::Webp => OutputFormat::Webp,
             InputFormat::Svg => OutputFormat::Svg,
             InputFormat::Tiff => OutputFormat::Jpeg,
+            InputFormat::Bmp => OutputFormat::Png,
             InputFormat::Avif => OutputFormat::Avif,
             InputFormat::Heic => OutputFormat::Heic,
             InputFormat::Jxl => OutputFormat::Jxl,
@@ -520,7 +524,9 @@ impl Registry {
             .values()
             .filter_map(|p| p.path.clone())
             .map(|path| tokio::spawn(async move {
-                let _ = tokio::process::Command::new(&path).arg("--version").output().await;
+                let _ = tokio::process::Command::new(&path)
+                    .envs(crate::runtime::command_environment(&path))
+                    .arg("--version").output().await;
             }))
             .collect();
         for t in tasks {

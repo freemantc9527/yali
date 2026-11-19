@@ -63,3 +63,4 @@ if fail:
 print(f"✓ bundle 校验通过：{len(docs)} 类图片，{len(plist_utis)} 个具体 UTI，无 abstract 类型")
 print("  " + ", ".join(sorted(plist_utis)))
 PY
+python3 scripts/package-runtime.py check --app "$APP"

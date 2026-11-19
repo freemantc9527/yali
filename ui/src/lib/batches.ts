@@ -56,6 +56,36 @@ export const initialState: State = {
 export const terminal = (status: Status) =>
   ["done", "larger_output", "failed"].includes(status);
 export const id = () => crypto.randomUUID();
+
+/** 主按钮当前可提交的图片。 */
+export function processingJobs(jobs: Job[]): Job[] {
+  const pending = jobs.filter((job) => job.status === "pending" && job.source === "manual");
+  return pending.length ? pending : repeatJobs(jobs.filter((job) => terminal(job.status)));
+}
+
+export function latestJobs(jobs: Job[]): Job[] {
+  const latest = new Map<string, Job>();
+  for (const job of jobs) latest.set(job.path, job);
+  return [...latest.values()];
+}
+
+export function repeatJobs(jobs: Job[]): Job[] {
+  // 尚未执行的行复用原 ID，让 submit 消费它；已完成的行才创建新 attempt。
+  return latestJobs(jobs).map((job) => job.status === "pending" ? {
+    ...job,
+    source: "manual",
+  } : ({
+    ...job,
+    jobId: id(),
+    batchId: null,
+    source: "manual",
+    status: "pending",
+    attempt: job.attempt + 1,
+    retryOf: job.jobId,
+    report: undefined,
+    error: undefined,
+  }));
+}
 export type Action =
   | { type: "add"; jobs: Job[] }
   | { type: "submit"; batch: Batch; jobs?: Job[] }
@@ -65,7 +95,8 @@ export type Action =
   | { type: "batchError"; batchId: string; error: string }
   | { type: "profile"; batchId: string; profile: Profile }
   | { type: "remove"; jobId: string }
-  | { type: "clear" }
+  | { type: "clear"; all?: boolean }
+  | { type: "removePath"; path: string }
   | { type: "view"; batchId: string };
 
 function apply(jobs: Job[], event: BatchEvent, authoritative = false): Job[] {
@@ -157,6 +188,9 @@ export function reducer(state: State, action: Action): State {
             : b,
         ),
       };
+    case "removePath":
+      if (state.jobs.some((j) => j.path === action.path && ["queued", "processing"].includes(j.status))) return state;
+      return { ...state, jobs: state.jobs.filter((j) => j.path !== action.path) };
     case "remove":
       return {
         ...state,
@@ -171,7 +205,7 @@ export function reducer(state: State, action: Action): State {
       const jobs = state.jobs.filter(
         (job) =>
           (job.source === "system" && job.status === "queued") ||
-          (job.batchId !== state.view && job.status !== "pending"),
+          (!action.all && job.batchId !== state.view && job.status !== "pending"),
       );
       return {
         ...state,
@@ -231,10 +265,10 @@ export function collisionError(
     const inputFormat = (
       infos?.get(job.path)?.format ?? name.split(".").pop()
     )?.toLowerCase();
-    // 与 Registry::auto_of 一致：输出枚举没有 TIFF，自动路由到 JPEG。
+    // 与 Registry::auto_of 一致：TIFF → JPEG，BMP → PNG。
     const autoFormat = ["tiff", "tif"].includes(inputFormat ?? "")
       ? "jpeg"
-      : inputFormat;
+      : inputFormat === "bmp" ? "png" : inputFormat;
     const format =
       profile.format.output === "auto"
         ? inputFormat === "gif" && profile.format.animated === "webp"

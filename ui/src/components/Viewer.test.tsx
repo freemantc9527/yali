@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { clampPos, Viewer } from "./Viewer";
+import { clampPos, fitImage, Viewer } from "./Viewer";
 import { TooltipProvider } from "./ui/tooltip";
 import type { Job } from "../lib/batches";
 const job: Job = {
@@ -28,14 +28,26 @@ describe("对比查看器", () => {
     expect(clampPos(140)).toBe(100);
     expect(clampPos(50)).toBe(50);
   });
-  it("大画布提供返回与缩放，底部没有滑杆和说明区", () => {
+  it("适应窗口同时约束宽高，不放大小图，原始尺寸保留实际像素", () => {
+    expect(fitImage({ width: 800, height: 1600 }, { width: 600, height: 300 })).toEqual({ width: 150, height: 300 });
+    expect(fitImage({ width: 1600, height: 800 }, { width: 600, height: 300 })).toEqual({ width: 600, height: 300 });
+    expect(fitImage({ width: 100, height: 50 }, { width: 600, height: 300 })).toEqual({ width: 100, height: 50 });
+    expect(fitImage({ width: 1600, height: 800 }, { width: 600, height: 300 }, true)).toEqual({ width: 1600, height: 800 });
+    expect(fitImage({ width: 1600, height: 800 }, { width: 0, height: -32 })).toEqual({ width: 1, height: 1 });
+  });
+  it("提供明确的显示尺寸与对比方式，底部没有滑杆和说明区", () => {
     const html = renderToStaticMarkup(
       <TooltipProvider>
         <Viewer job={job} jobs={[job]} onSelect={() => {}} onClose={() => {}} />
       </TooltipProvider>,
     );
     expect(html).toContain("返回工作台");
-    expect(html).toContain("100%");
+    expect(html).toContain("原始尺寸");
+    expect(html).not.toContain("100%");
+    expect(html).not.toContain("lucide-zoom-in");
+    expect(html).toContain("适应窗口");
+    expect(html).toContain("并排");
+    expect(html).toContain("叠加");
     expect(html).not.toContain("compare-footer");
     expect(html).not.toContain("原图与处理后分割位置");
     expect(html).not.toContain("viewer-backdrop");

@@ -52,10 +52,13 @@
 
 | 项 | 值 |
 |---|---|
-| 应用数据根 | `~/Library/Application Support/app.yali/` |
+| 应用数据根 | `~/.yali/`，`YALI_HOME` 可重定向 |
 | Profile / 设置 | `…/profiles/*.json` · `…/settings.json` |
 | 指标 / 日志（规划） | `…/metrics.sqlite` · `…/logs/` |
-| 撤销清单 | 目标目录内 `.yali-undo.json` |
+| 撤销清单 | `~/.yali/data/undo/`，兼容旧旁置 `.yali-undo.json` |
+| 包内 CLI | `Yali.app/Contents/MacOS/yali` |
+| 稳定 CLI 入口 | `~/.yali/bin/yali`，指向已安装 App 内 CLI，见 ADR-006 |
+| Finder workflow | `~/Library/Services/鸭梨 · 压一下.workflow` / `鸭梨 · 转 JPG.workflow` |
 | 环境变量 | `YALI_PROFILE` · `YALI_ENGINES_PATH` · `YALI_HOME` |
 
 ## 6. 书写规则

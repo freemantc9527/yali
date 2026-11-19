@@ -8,11 +8,19 @@ import {
   profilesShow,
   settingsSave,
   settingsShow,
+  quickActionsStatus,
+  quickActionsInstall,
+  quickActionsUninstall,
   takePendingFiles,
 } from "./bridge";
 
 // node 环境没有 Tauri 注入，全部走浏览器降级分支——这正是 vitest 需要的可测性。
 describe("bridge 浏览器降级", () => {
+  it("浏览器不会伪装成可安装系统右键菜单", async () => {
+    expect(await quickActionsStatus()).toMatchObject({ installed: false, canInstall: false });
+    await expect(quickActionsInstall()).rejects.toThrow("仅在鸭梨桌面应用中可用");
+    await expect(quickActionsUninstall()).rejects.toThrow("仅在鸭梨桌面应用中可用");
+  });
   it("识别非 Tauri 环境", () => {
     expect(isTauri()).toBe(false);
   });

@@ -13,6 +13,7 @@
 | [ADR-003](ADR-003-contingency-appkit-shell.md) | 兜底：Rust 核心 + AppKit-Swift 壳 | 备而未用（未触发） |
 | [ADR-004](ADR-004-pnpm.md) | 前端包管理器：pnpm | 接受 |
 | [ADR-005](ADR-005-shadcn-responsive-ui.md) | GUI：shadcn/ui + Tailwind CSS 4 响应式工作台 | 接受（T-021 已实施，待人工验收） |
+| [ADR-006](ADR-006-self-contained-app.md) | 自包含个人学习版 App、内嵌 CLI 与右键操作管理 | 接受 |
 
 ## 新 ADR 模板
 

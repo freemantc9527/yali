@@ -20,6 +20,7 @@ pub enum InputFormat {
     Webp,
     Svg,
     Tiff,
+    Bmp,
     Avif,
     Heic,
     Jxl,
@@ -34,6 +35,7 @@ impl std::fmt::Display for InputFormat {
             InputFormat::Webp => "webp",
             InputFormat::Svg => "svg",
             InputFormat::Tiff => "tiff",
+            InputFormat::Bmp => "bmp",
             InputFormat::Avif => "avif",
             InputFormat::Heic => "heic",
             InputFormat::Jxl => "jxl",
@@ -69,6 +71,8 @@ pub fn sniff(path: &Path) -> Result<InputFormat> {
         InputFormat::Jxl
     } else if b.starts_with(b"II*") || b.starts_with(b"MM") {
         InputFormat::Tiff
+    } else if b.starts_with(b"BM") {
+        InputFormat::Bmp
     } else {
         // SVG：文本型，允许 BOM/空白前缀（只读头 4KB，不整读）
         let mut head = Vec::new();
@@ -152,8 +156,9 @@ pub async fn compress_file(
     // 128×85），属数据损坏级问题。
     let mut decoded: Option<PathBuf> = None;
     let (mut base_input, mut base_fmt) = (input.to_path_buf(), input_fmt);
-    if matches!(input_fmt, InputFormat::Heic | InputFormat::Avif | InputFormat::Jxl)
-        && target_fmt != Registry::auto_of(input_fmt)
+    if input_fmt == InputFormat::Bmp
+        || (matches!(input_fmt, InputFormat::Heic | InputFormat::Avif | InputFormat::Jxl)
+            && target_fmt != Registry::auto_of(input_fmt))
     {
         let png = decode_to_png_via_sips(input, workspace.path(), registry).await?;
         base_input = png.clone();
@@ -184,7 +189,9 @@ pub async fn compress_file(
 
     // 调色板 PNG → PNG：强制无损引擎（oxipng），不做二次量化
     if base_fmt == InputFormat::Png && target_fmt == crate::profile::OutputFormat::Png {
-        if png_png_engine_choice(png_color_type(&base_input)) == crate::engines::EngineKind::Oxipng {
+        // BMP 默认转无损 PNG，避免对照片先量化而达不到 pngquant 最低质量。
+        if input_fmt == InputFormat::Bmp
+            || png_png_engine_choice(png_color_type(&base_input)) == crate::engines::EngineKind::Oxipng {
             forced_encoder = Some(crate::engines::EngineKind::Oxipng);
         }
     }
@@ -777,6 +784,7 @@ mod tests {
             (&[0xFF, 0xD8, 0xFF, 0xE0], InputFormat::Jpeg),
             (&[0x89, b'P', b'N', b'G', 0x0D, 0x0A], InputFormat::Png),
             (b"GIF89a", InputFormat::Gif),
+            (b"BM\x00\x00\x00\x00", InputFormat::Bmp),
         ];
         for (magic, expect) in cases {
             let p = dir.join(format!("s{:?}.bin", expect));

@@ -56,6 +56,22 @@ enum Cmd {
     },
     /// 环境自检（引擎路径/版本，报 issue 时先跑这个）
     Doctor,
+    /// Finder 快速操作（使用 App 内嵌 CLI；无需开发环境）
+    #[cfg(target_os = "macos")]
+    Services {
+        #[command(subcommand)]
+        action: ServicesAction,
+    },
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Subcommand)]
+enum ServicesAction {
+    Status,
+    Install,
+    Uninstall,
+    #[command(hide = true)]
+    Refresh,
 }
 
 #[derive(Subcommand)]
@@ -239,6 +255,30 @@ async fn run_batch(
 async fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.cmd {
+        #[cfg(target_os = "macos")]
+        Cmd::Services { action } => {
+            let changed = !matches!(action, ServicesAction::Status);
+            let status = match action {
+                ServicesAction::Status => yali_core::services::status()?,
+                ServicesAction::Install => yali_core::services::install()?,
+                ServicesAction::Uninstall => yali_core::services::uninstall()?,
+                ServicesAction::Refresh => {
+                    yali_core::services::refresh();
+                    return Ok(());
+                }
+            };
+            if changed {
+                // AppKit 退出阶段会向 stdout 写 XPC 日志，隔离在子进程以保持 JSON 输出纯净。
+                let refreshed = std::process::Command::new(std::env::current_exe()?)
+                    .args(["services", "refresh"])
+                    .output();
+                if !refreshed.is_ok_and(|out| out.status.success()) {
+                    eprintln!("右键文件已更新，系统刷新失败；请重新打开鸭梨后刷新。");
+                }
+            }
+            println!("{}", serde_json::to_string_pretty(&status)?);
+            Ok(())
+        }
         Cmd::Compress { files, profile, quiet, notify } => {
             let profile = load_profile(&profile)?;
             run_batch(files, profile, quiet, notify).await
@@ -334,10 +374,11 @@ async fn main() -> Result<()> {
             }
             // 输入格式嗅探可用性提示
             println!();
-            println!("支持输入：{:?}", [
+            let supported: Vec<_> = [
                 InputFormat::Jpeg, InputFormat::Png, InputFormat::Gif, InputFormat::Webp,
-                InputFormat::Svg, InputFormat::Avif, InputFormat::Heic, InputFormat::Jxl,
-            ]);
+                InputFormat::Svg, InputFormat::Tiff, InputFormat::Bmp, InputFormat::Avif, InputFormat::Heic, InputFormat::Jxl,
+            ].into_iter().filter(|fmt| registry.pick(*fmt, OutputFormat::Auto).is_ok()).collect();
+            println!("支持输入：{supported:?}");
             Ok(())
         }
     }

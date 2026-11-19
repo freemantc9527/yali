@@ -52,6 +52,9 @@ import {
   id,
   collisionError,
   summary,
+  latestJobs,
+  processingJobs,
+  repeatJobs,
   type Job,
 } from "./lib/batches";
 import { preflightError } from "./lib/profile-edit";
@@ -105,6 +108,7 @@ export default function App() {
   const [view, setView] = useState<View>("workbench");
   const [filter, setFilter] = useState("all");
   const [inspector, setInspector] = useState(() => window.innerWidth >= 960);
+  const [showHistory, setShowHistory] = useState(false);
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
   const [comparing, setComparing] = useState<string | null>(null);
   const [infos, setInfos] = useState(new Map<string, ImageInfo>());
@@ -130,7 +134,12 @@ export default function App() {
   const batchJobs = state.jobs.filter(
     (j) => j.batchId === state.view && state.view !== null,
   );
-  const workspaceJobs = [...batchJobs, ...pending];
+  const workspaceJobs = showHistory
+    ? latestJobs([...batchJobs, ...pending])
+    : latestJobs(state.jobs);
+  const summaryJobs = !showHistory && state.active
+    ? state.jobs.filter((job) => job.batchId === state.active)
+    : workspaceJobs;
   const filtered = workspaceJobs.filter(
     (j) =>
       filter === "all" ||
@@ -394,21 +403,18 @@ export default function App() {
     setError("");
     submitting.current = false;
     setValidating(false);
+    setShowHistory(false);
   };
   const start = () => {
     if (!draftProfile || busy) return;
-    if (!pending.length) {
-      dispatch({ type: "clear" });
-      setFilter("all");
-      void add();
-      return;
-    }
-    const run = () => startJobs(pending, structuredClone(draftProfile));
-    const repeated = pending.some((j) => attemptedPaths.current.has(j.path));
+    const targets = processingJobs(pending.length ? pending : workspaceJobs);
+    if (!targets.length) return;
+    const run = () => startJobs(targets, structuredClone(draftProfile));
+    const repeated = targets.some((j) => attemptedPaths.current.has(j.path));
     if (repeated)
       setConfirm({
-        title: "处理已添加过的图片？",
-        description: "同名处理结果可能被替换，原图保留。仅处理当前待处理项。",
+        title: `按“${profileLabel(draftProfile.name)}”重新处理 ${targets.length} 张原图？`,
+        description: "使用原图执行当前方案。同名结果可能被替换，其他名称的结果与原图保留。",
         action: run,
       });
     else void run();
@@ -416,21 +422,11 @@ export default function App() {
   const retry = (jobs: Job[]) => {
     if (!draftProfile || busy) return;
     setConfirm({
-      title: `重试 ${jobs.length} 张失败图片？`,
+      title: `使用当前方案处理 ${jobs.length} 张原图？`,
       description:
         "使用当前本批草稿建立新任务；旧结果保留。同名处理结果可能被替换，原图保留。",
       action: async () => {
-        const next = jobs.map((j) => ({
-          ...j,
-          jobId: id(),
-          batchId: null,
-          status: "pending" as const,
-          attempt: j.attempt + 1,
-          retryOf: j.jobId,
-          report: undefined,
-          error: undefined,
-          source: "manual" as const,
-        }));
+        const next = repeatJobs(jobs);
         const problem =
           preflightError(draftProfile) ??
           collisionError(next, draftProfile, infos);
@@ -501,9 +497,7 @@ export default function App() {
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   }, [view]);
-  const compareJobs = state.jobs.filter(
-    (j) => !!j.report && j.batchId === state.view,
-  );
+  const compareJobs = workspaceJobs.filter((j) => !!j.report);
   const viewed = state.jobs.find((j) => j.jobId === comparing);
   const filters = [
     "all",
@@ -518,9 +512,9 @@ export default function App() {
     : (visibleBatch?.profile ?? draftProfile);
   const outputHint =
     outputProfile?.output.dir === "sibling"
-      ? "结果存到原图所在文件夹，原图保留"
+      ? "原图保留 · 结果在原图文件夹"
       : outputProfile?.output.dir === "downloads"
-        ? "结果存到下载文件夹，原图保留"
+        ? "原图保留 · 结果在下载文件夹"
         : outputProfile?.output.dir === "custom"
           ? `保存到 ${outputProfile.output.dirPath}`
           : "保存位置跟随调用环境";
@@ -636,15 +630,16 @@ export default function App() {
                     {state.batches.length > 1 && (
                       <Choice
                         label="会话批次"
-                        value={state.view ?? state.batches.at(-1)!.batchId}
+                        value={showHistory ? state.view ?? "latest" : "latest"}
                         onChange={(batchId) => {
-                          dispatch({ type: "view", batchId });
+                          setShowHistory(batchId !== "latest");
+                          if (batchId !== "latest") dispatch({ type: "view", batchId });
                           setFilter("all");
                         }}
-                        options={state.batches.map((b, i) => [
+                        options={[["latest", "当前图片"], ...state.batches.map((b, i): [string, string] => [
                           b.batchId,
                           `本次会话 · 第 ${i + 1} 批${b.source === "system" ? "（系统投递）" : ""}`,
-                        ])}
+                        ])]}
                       />
                     )}
                   </div>
@@ -652,7 +647,11 @@ export default function App() {
                     variant="ghost"
                     size="sm"
                     disabled={busy || !workspaceJobs.length}
-                    onClick={() => dispatch({ type: "clear" })}
+                    onClick={() => {
+                      dispatch({ type: "clear", all: !showHistory });
+                      setShowHistory(false);
+                      setFilter("all");
+                    }}
                   >
                     <Trash2 />
                     <span>清空列表</span>
@@ -756,9 +755,8 @@ export default function App() {
                     </div>
                     <div className="list-column-labels">
                       <span>文件</span>
-                      <span>原始大小 → 处理后</span>
-                      <span>节省</span>
-                      <span>状态</span>
+                      <span>处理结果</span>
+                      <span>操作</span>
                     </div>
                   </>
                 )}
@@ -786,7 +784,7 @@ export default function App() {
                         onCompare={compare}
                         onRetry={(j) => retry([j])}
                         onRemove={(j) =>
-                          dispatch({ type: "remove", jobId: j.jobId })
+                          dispatch(showHistory ? { type: "remove", jobId: j.jobId } : { type: "removePath", path: j.path })
                         }
                       />
                       {!filtered.length && (
@@ -829,15 +827,15 @@ export default function App() {
               </CollapsibleContent>
             </Collapsible>
             <BatchSummary
-              jobs={batchJobs}
-              busy={busy && state.view === state.active}
+              jobs={summaryJobs}
+              busy={busy && (!showHistory || state.view === state.active)}
               pending={pending.length}
               disabled={
                 busy ||
                 adding > 0 ||
                 !draftProfile ||
                 !!(draftProfile && preflightError(draftProfile)) ||
-                (!pending.length && !batchJobs.length)
+                !workspaceJobs.length
               }
               onStart={start}
               outputHint={outputHint}

@@ -182,12 +182,6 @@ export async function ssim(input: string, output: string): Promise<number> {
   return invoke<number>("ssim", { input, output });
 }
 
-/** 本地文件 → 可放进 <img src> 的地址（Tauri asset protocol）；浏览器返回 null */
-export function fileSrc(path: string | null): string | null {
-  if (!path || !isTauri()) return null;
-  return convertFileSrc(path);
-}
-
 /** 系统投递信号（Tauri 事件 `yali://open-files`）的浏览器降级订阅表 */
 const openFileHandlers = new Set<() => void>();
 
@@ -365,16 +359,50 @@ export async function inspectImages(paths: string[]): Promise<ImageInfo[]> {
 }
 export async function imagePreview(
   path: string,
-  maxEdge: 0 | 192 | 1600,
-): Promise<string> {
+  maxEdge: 0 | 192,
+): Promise<PreviewImage> {
   if (!isTauri()) {
+    await inspectImages([path]);
     const entry = browserFiles.get(path);
     if (!entry || !entry.width)
       throw new Error("此格式暂不可预览，仍可处理或定位结果");
-    return entry.url;
+    return { src: entry.url, release() {} };
   }
-  const cached = await invoke<string>("image_preview", { path, maxEdge });
-  return convertFileSrc(cached);
+  const cached = await invoke<{ path: string; leaseId: string }>("image_preview", { path, maxEdge });
+  let released = false;
+  return {
+    src: convertFileSrc(cached.path),
+    release() {
+      if (released) return;
+      released = true;
+      void invoke("release_preview", { leaseId: cached.leaseId }).catch(console.error);
+    },
+  };
+}
+
+export interface PreviewImage { src: string; release: () => void }
+
+/** 两种显示尺寸共用真实图源；只有 WebView 解码失败时才转换无缩放 PNG。 */
+export async function displayImage(path: string): Promise<PreviewImage> {
+  if (!isTauri()) return imagePreview(path, 0);
+  const source = await invoke<string>("image_source", { path });
+  const src = `${convertFileSrc(source)}?v=${Date.now()}`;
+  const image = new Image();
+  image.src = src;
+  try {
+    await image.decode();
+    return { src, release() {} };
+  } catch {
+    return imagePreview(path, 0);
+  }
+}
+
+export interface CacheStatus { bytes: number; protectedBytes: number; limitBytes: number }
+export async function cacheStatus(): Promise<CacheStatus> {
+  return isTauri() ? invoke("cache_status") : { bytes: 0, protectedBytes: 0, limitBytes: 256 * 1024 * 1024 };
+}
+export async function cacheClear(): Promise<CacheStatus> {
+  return isTauri() ? invoke("cache_clear") : cacheStatus();
 }
 export async function chooseImages(): Promise<string[]> {
   if (!isTauri()) return [];
@@ -399,6 +427,32 @@ export async function reveal(path: string) {
 }
 export async function settingsShow(): Promise<Settings> {
   return isTauri() ? invoke("settings_show") : structuredClone(demoSettings);
+}
+
+export interface QuickActionsStatus {
+  installed: boolean;
+  needsRepair: boolean;
+  canInstall: boolean;
+  cliPath: string;
+  message: string;
+}
+
+export async function quickActionsStatus(): Promise<QuickActionsStatus> {
+  if (!isTauri()) return {
+    installed: false, needsRepair: false, canInstall: false, cliPath: "",
+    message: "请在鸭梨桌面应用中安装右键操作。",
+  };
+  return invoke("quick_actions_status");
+}
+
+export async function quickActionsInstall(): Promise<QuickActionsStatus> {
+  if (!isTauri()) throw new Error("右键操作安装仅在鸭梨桌面应用中可用");
+  return invoke("quick_actions_install");
+}
+
+export async function quickActionsUninstall(): Promise<QuickActionsStatus> {
+  if (!isTauri()) throw new Error("右键操作卸载仅在鸭梨桌面应用中可用");
+  return invoke("quick_actions_uninstall");
 }
 export async function settingsSave(settings: Settings): Promise<void> {
   if (isTauri()) return invoke("settings_save", { settings });

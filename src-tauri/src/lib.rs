@@ -145,9 +145,10 @@ fn spawn_clipboard_watcher(app: &tauri::AppHandle) {
 #[cfg(target_os = "macos")]
 async fn handle_clipboard_image(app: &tauri::AppHandle, png: Vec<u8>) {
     let _ = app; // 预留：后续把结果推进 GUI 任务列表
-    let Ok(dir) = clipboard::cache_dir() else {
+    let Ok(workspace) = yali_core::data::TempDir::new() else {
         return;
     };
+    let dir = workspace.path();
     if std::fs::create_dir_all(&dir).is_err() {
         return;
     }
@@ -333,15 +334,41 @@ async fn compress(
     Ok(reports)
 }
 
+#[tauri::command]
+fn quick_actions_status() -> Result<yali_core::services::Status, String> {
+    yali_core::services::status().map_err(err)
+}
+
+#[tauri::command]
+fn quick_actions_install() -> Result<yali_core::services::Status, String> {
+    let status = yali_core::services::install().map_err(err)?;
+    yali_core::services::refresh();
+    Ok(status)
+}
+
+#[tauri::command]
+fn quick_actions_uninstall() -> Result<yali_core::services::Status, String> {
+    let status = yali_core::services::uninstall().map_err(err)?;
+    yali_core::services::refresh();
+    Ok(status)
+}
+
 pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(PendingOpenFiles::default())
+        .manage(preview::PreviewLeases::default())
         .setup(|app| {
-            if let Ok(root) = yali_core::data::root() {
-                preview::prune(&root.join("cache/previews"));
+            if let Err(e) = yali_core::services::repair_existing_link() {
+                eprintln!("CLI 入口修复失败: {e:#}");
             }
+            tauri::async_runtime::spawn(async {
+                loop {
+                    if let Err(e) = preview::maintain(false).await { eprintln!("缓存回收失败：{e}"); }
+                    tokio::time::sleep(std::time::Duration::from_secs(300)).await;
+                }
+            });
             let settings = yali_core::SettingsStore::open()
                 .and_then(|store| store.load())
                 .unwrap_or_default();
@@ -369,6 +396,10 @@ pub fn run() {
             batch::compress_batch,
             preview::inspect_images,
             preview::image_preview,
+            preview::image_source,
+            preview::release_preview,
+            preview::cache_status,
+            preview::cache_clear,
             profiles_validate,
             core_version,
             profiles_list,
@@ -376,6 +407,9 @@ pub fn run() {
             profiles_save,
             settings_show,
             settings_save,
+            quick_actions_status,
+            quick_actions_install,
+            quick_actions_uninstall,
             take_pending_files,
             ssim,
             compress

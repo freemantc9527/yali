@@ -4,7 +4,6 @@
 //! 而 NSPasteboard 直接给 `public.png`（已经是编码后的字节，体积语义就是用户看到的体积）。
 //! objc2 / objc2-app-kit 原本就在依赖树里（Tauri 带来），这里只是把它们变成直接依赖。
 
-use std::path::PathBuf;
 use std::time::Duration;
 
 use yali_core::profile::{DirKind, Profile};
@@ -66,11 +65,6 @@ pub fn fnv1a(bytes: &[u8]) -> u64 {
     hash
 }
 
-/// 剪贴板图片的落盘位置（YALI_HOME 重定向便于测试）
-pub fn cache_dir() -> anyhow::Result<PathBuf> {
-    Ok(yali_core::data::root()?.join("cache/clipboard"))
-}
-
 /// 剪贴板模式的输出档：存到「下载」、不带后缀、不写撤销清单
 /// （剪贴板源图是临时文件，撤销没有意义；产品决定见 T-016 卡）
 pub fn output_profile(base: Profile) -> Profile {
@@ -129,8 +123,8 @@ pub use system::SystemPasteboard;
 /// TIFF → PNG（sips，系统自带；失败就放弃这张图，不猜）
 #[cfg(target_os = "macos")]
 pub fn tiff_to_png(tiff: &[u8]) -> Option<Vec<u8>> {
-    let dir = cache_dir().ok()?.join("conversion");
-    std::fs::create_dir_all(&dir).ok()?;
+    let workspace = yali_core::data::TempDir::new().ok()?;
+    let dir = workspace.path();
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_nanos())
