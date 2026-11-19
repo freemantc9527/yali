@@ -77,13 +77,9 @@ pub fn output_profile(base: Profile) -> Profile {
 }
 
 pub fn notify(body: &str) {
-    let escaped = body.replace('\\', "\\\\").replace('"', "\\\"");
-    let script = format!(
-        "display notification \"{escaped}\" with title \"鸭梨\" subtitle \"剪贴板图片已压好\""
-    );
-    let _ = std::process::Command::new("/usr/bin/osascript")
-        .args(["-e", &script])
-        .output();
+    if let Err(e) = yali_core::runtime::notify("剪贴板图片已压好", body) {
+        eprintln!("{e:#}");
+    }
 }
 
 #[cfg(target_os = "macos")]

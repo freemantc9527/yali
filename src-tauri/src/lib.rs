@@ -10,6 +10,8 @@ use yali_core::ProfileStore;
 
 mod batch;
 mod clipboard;
+#[cfg(target_os = "macos")]
+pub mod notification;
 mod preview;
 mod supported;
 mod tray;

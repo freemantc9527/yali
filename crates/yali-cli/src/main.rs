@@ -185,15 +185,11 @@ fn notification_text(s: &BatchSummary) -> Option<String> {
     }
 }
 
-/// osascript 发通知（失败不影响压缩结果）
+/// App 原生通知（失败不影响压缩结果）
 fn notify(text: &str) {
-    let escaped = text.replace('\\', "\\\\").replace('"', "\\\"");
-    let script = format!(
-        "display notification \"{escaped}\" with title \"鸭梨\" subtitle \"图片压完了\""
-    );
-    let _ = std::process::Command::new("/usr/bin/osascript")
-        .args(["-e", &script])
-        .output();
+    if let Err(e) = yali_core::runtime::notify("图片压完了", text) {
+        eprintln!("{e:#}");
+    }
 }
 
 async fn run_batch(

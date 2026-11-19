@@ -24,8 +24,10 @@ tauri-plugin-opener = "2"
 # 剪贴板（T-016）：NSPasteboard 直接给编码后的 PNG；objc2 系列本就是 Tauri 的传递依赖
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
-objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSPasteboard"] }
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSData"] }
+block2 = "0.6"
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSPasteboard", "NSApplication"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSData", "NSBundle", "NSDate", "NSRunLoop"] }
+objc2-user-notifications = { version = "0.3", default-features = false, features = ["std", "block2", "UNNotificationContent", "UNNotificationRequest", "UNNotificationTrigger", "UNUserNotificationCenter"] }
 
 [lib]
 name = "yali_app_lib"

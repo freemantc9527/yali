@@ -3,5 +3,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
+    #[cfg(target_os = "macos")]
+    if let Some(result) = yali_app_lib::notification::run_if_requested() {
+        if let Err(e) = result {
+            eprintln!("{e:#}");
+            std::process::exit(1);
+        }
+        return;
+    }
     yali_app_lib::run()
 }
