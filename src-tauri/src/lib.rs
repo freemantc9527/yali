@@ -145,7 +145,9 @@ fn spawn_clipboard_watcher(app: &tauri::AppHandle) {
 #[cfg(target_os = "macos")]
 async fn handle_clipboard_image(app: &tauri::AppHandle, png: Vec<u8>) {
     let _ = app; // 预留：后续把结果推进 GUI 任务列表
-    let dir = clipboard::cache_dir();
+    let Ok(dir) = clipboard::cache_dir() else {
+        return;
+    };
     if std::fs::create_dir_all(&dir).is_err() {
         return;
     }
@@ -337,8 +339,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .manage(PendingOpenFiles::default())
         .setup(|app| {
-            if let Ok(cache) = app.path().app_cache_dir() {
-                preview::prune(&cache.join("previews"));
+            if let Ok(root) = yali_core::data::root() {
+                preview::prune(&root.join("cache/previews"));
             }
             let settings = yali_core::SettingsStore::open()
                 .and_then(|store| store.load())
@@ -465,14 +467,11 @@ mod tests {
         std::env::set_var("YALI_HOME", &home);
 
         let names = profiles_list().await.unwrap();
-        assert_eq!(
-            names,
-            vec!["archive", "default", "jpg", "mail", "screenshot", "web"]
-        );
+        assert_eq!(names, vec!["archive", "default", "jpg", "thumbnail"]);
 
-        let profile = profiles_show("mail".into()).await.unwrap();
-        assert_eq!(profile.name, "mail");
-        assert_eq!(profile.quality.kind, yali_core::QualityKind::TargetBytes);
+        let profile = profiles_show("thumbnail".into()).await.unwrap();
+        assert_eq!(profile.name, "thumbnail");
+        assert_eq!(profile.resize.max_width, Some(1024));
 
         // 导入允许 Rust serde 默认字段：返回完整对象，前端不能持有缺段的原 JSON。
         let partial: Profile =
@@ -485,6 +484,8 @@ mod tests {
         // profiles_save：改档 → 保存 → 读回；非法值必须被拒且不落盘
         let mut edited = profile.clone();
         edited.name = "mail2".into();
+        edited.quality.kind = yali_core::QualityKind::TargetBytes;
+        edited.quality.level = None;
         edited.quality.target_bytes = Some(300_000);
         profiles_save(edited).await.unwrap();
         let back = profiles_show("mail2".into()).await.unwrap();

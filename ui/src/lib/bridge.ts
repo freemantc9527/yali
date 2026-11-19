@@ -1,4 +1,5 @@
 import { preflightError } from "./profile-edit";
+import { FONT_SCALE_STEPS } from "./settings";
 import { convertFileSrc, invoke as tauriInvoke } from "@tauri-apps/api/core";
 /**
  * 内核 command 的唯一调用入口。
@@ -60,14 +61,7 @@ export interface CompressReport {
 export const isTauri = (): boolean =>
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
-const FALLBACK_PROFILES = [
-  "archive",
-  "default",
-  "jpg",
-  "mail",
-  "screenshot",
-  "web",
-];
+const FALLBACK_PROFILES = ["default", "jpg", "thumbnail", "archive"];
 /** 浏览器降级的内存档案表（页面会话内有效；保存/导入后列表随之变化） */
 const fallbackStore = new Map<string, Profile>();
 
@@ -94,14 +88,9 @@ const baseProfile = (): Profile => ({
   ui: { notify: true, sound: false, openGUIOnFail: true },
 });
 
-/** 浏览器降级：与 fixtures/ 五档字段一致，便于脱离 Tauri 验证表单联动 */
+/** 浏览器降级：与四个出厂 fixtures 字段一致 */
 const FALLBACK_PROFILES_DETAIL: Record<string, () => Profile> = {
   default: baseProfile,
-  web: () => ({
-    ...baseProfile(),
-    format: { output: "webp", animated: "webp" },
-    quality: { kind: "level", level: 5, targetBytes: null, minQualityFloor: 3 },
-  }),
   archive: () => ({
     ...baseProfile(),
     quality: {
@@ -123,35 +112,13 @@ const FALLBACK_PROFILES_DETAIL: Record<string, () => Profile> = {
     ...baseProfile(),
     format: { output: "jpeg", animated: "keep" },
   }),
-  mail: () => ({
+  thumbnail: () => ({
     ...baseProfile(),
     resize: {
-      maxWidth: 1920,
-      maxHeight: null,
+      maxWidth: 1024,
+      maxHeight: 1024,
       keepRatio: true,
       mode: "shrinkOnly",
-      cropAnchor: null,
-    },
-    quality: {
-      kind: "targetBytes",
-      level: null,
-      targetBytes: 500_000,
-      minQualityFloor: 3,
-    },
-  }),
-  screenshot: () => ({
-    ...baseProfile(),
-    quality: {
-      kind: "lossless",
-      level: null,
-      targetBytes: null,
-      minQualityFloor: 3,
-    },
-    resize: {
-      maxWidth: null,
-      maxHeight: null,
-      keepRatio: true,
-      mode: "none",
       cropAnchor: null,
     },
   }),
@@ -320,13 +287,15 @@ export interface ImageInfo {
 }
 export interface Settings {
   schemaVersion: number;
+  fontScalePercent: number;
   clipboard: { enabled: boolean; minBytes: number };
   watch: { enabled: boolean; dirs: string[]; settleMs: number };
   tray: { enabled: boolean };
   notify: { enabled: boolean };
 }
 let demoSettings: Settings = {
-  schemaVersion: 1,
+  schemaVersion: 2,
+  fontScalePercent: 100,
   clipboard: { enabled: false, minBytes: 65536 },
   watch: { enabled: false, dirs: [], settleMs: 800 },
   tray: { enabled: true },
@@ -433,6 +402,8 @@ export async function settingsShow(): Promise<Settings> {
 }
 export async function settingsSave(settings: Settings): Promise<void> {
   if (isTauri()) return invoke("settings_save", { settings });
+  if (!FONT_SCALE_STEPS.includes(settings.fontScalePercent))
+    throw new Error("字体大小须为 80 / 100 / 120 / 150 / 180 / 200%");
   if (
     !Number.isInteger(settings.clipboard.minBytes) ||
     settings.clipboard.minBytes < 0 ||

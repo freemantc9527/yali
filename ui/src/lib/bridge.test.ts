@@ -6,6 +6,8 @@ import {
   onOpenFiles,
   profilesList,
   profilesShow,
+  settingsSave,
+  settingsShow,
   takePendingFiles,
 } from "./bridge";
 
@@ -19,27 +21,21 @@ describe("bridge 浏览器降级", () => {
     expect(await coreVersion()).toBe("browser-dev");
   });
 
-  it("列出五档出厂 profile（与 fixtures 对齐）", async () => {
+  it("仅列出四档出厂 profile（与 fixtures 对齐）", async () => {
     expect(await profilesList()).toEqual([
       "archive",
       "default",
       "jpg",
-      "mail",
-      "screenshot",
-      "web",
+      "thumbnail",
     ]);
   });
 
-  it("各档降级字段与 fixtures 一致（web=level 5+webp，mail=targetBytes）", async () => {
-    const web = await profilesShow("web");
-    expect(web.name).toBe("web");
-    expect(web.quality.level).toBe(5);
-    expect(web.format.output).toBe("webp");
-
-    const mail = await profilesShow("mail");
-    expect(mail.quality.kind).toBe("targetBytes");
-    expect(mail.quality.targetBytes).toBe(500_000);
-    expect(mail.resize.maxWidth).toBe(1920);
+  it("缩小尺寸限制最长边 1024，归档仍为无损 JXL", async () => {
+    const thumbnail = await profilesShow("thumbnail");
+    expect(thumbnail.resize.maxWidth).toBe(1024);
+    expect(thumbnail.resize.maxHeight).toBe(1024);
+    expect(thumbnail.resize.keepRatio).toBe(true);
+    expect(thumbnail.resize.mode).toBe("shrinkOnly");
 
     const archive = await profilesShow("archive");
     expect(archive.quality.kind).toBe("lossless");
@@ -50,6 +46,19 @@ describe("bridge 浏览器降级", () => {
     const off = onOpenFiles(() => {});
     expect(await takePendingFiles()).toEqual([]);
     off();
+  });
+
+  it("字号只接受六个固定档，失败保存不改变已有设置", async () => {
+    const original = await settingsShow();
+    for (const percent of [80, 100, 120, 150, 180, 200]) {
+      await settingsSave({ ...original, fontScalePercent: percent });
+      expect((await settingsShow()).fontScalePercent).toBe(percent);
+    }
+    for (const percent of [79, 81, 110, 175, 201]) {
+      await expect(settingsSave({ ...original, fontScalePercent: percent })).rejects.toThrow("80 / 100 / 120 / 150 / 180 / 200%");
+      expect((await settingsShow()).fontScalePercent).toBe(200);
+    }
+    await settingsSave(original);
   });
 
   it("compress 降级返回完整报告结构（供 UI 演示）", async () => {

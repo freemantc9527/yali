@@ -70,7 +70,7 @@ enum SettingsAction {
 
 #[derive(Subcommand)]
 enum ProfilesAction {
-    /// 列出磁盘上所有档（首启自动播种六档出厂 fixtures）
+    /// 列出磁盘上所有档（首启自动播种四档出厂 fixtures）
     List,
     /// 从磁盘读取指定档，输出 JSON
     Show { name: String },

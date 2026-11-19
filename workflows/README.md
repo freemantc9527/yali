@@ -25,7 +25,7 @@ CLI 查找顺序：YALI_BIN → PATH → target/release、target/debug。模板�
 - 每个动作声明具体 UTI；只用 public.image 在普通目录不匹配。「转 JPG」不声明 public.jpeg。
 - Services PATH 仅 /usr/bin:/bin；CLI 自带 Homebrew 固定目录兜底，不在运行时调用可能联网阻塞的 brew --prefix。
 - 出厂档按 `.seed` 签名补种，不复活用户主动删除的预设。
-- 通知聚合成功、未减小与失败；未减小不落盘。`yali undo <目录>` 读取同目录 `.yali-undo.json`。
+- 通知聚合成功、未减小与失败；未减小不落盘。`yali undo <目录>` 读取 `~/.yali/data/undo/` 中对应目录的撤销记录，兼容旧版同目录 `.yali-undo.json`。
 
 ## 验收状态
 

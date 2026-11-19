@@ -21,7 +21,9 @@ describe("本批参数表单", () => {
     expect(html).not.toContain('aria-label="处理预设"');
   });
   it("目标大小与无损模式不显示强度滑杆", async () => {
-    const mail = render(await profilesShow("mail"));
+    const target = await profilesShow("default");
+    target.quality = { ...target.quality, kind: "targetBytes", level: null, targetBytes: 500_000 };
+    const mail = render(target);
     expect(mail).toContain("目标大小");
     expect(mail).toContain("受画质下限影响");
     expect(mail).not.toContain('aria-label="压缩强度"');

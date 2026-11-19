@@ -145,6 +145,7 @@ pub async fn compress_file(
         std::fs::create_dir_all(&out_dir)
             .with_context(|| format!("创建输出目录失败: {}", out_dir.display()))?;
     }
+    let workspace = crate::data::TempDir::new()?;
 
     // 容器解码：HEIC/AVIF/JXL → 其他格式时先用 sips（macOS 原生）解成 PNG。
     // 不能走 vips：libvips 的 heif loader 会拿到内嵌缩略图（实测 1920×1280 只解出
@@ -154,7 +155,7 @@ pub async fn compress_file(
     if matches!(input_fmt, InputFormat::Heic | InputFormat::Avif | InputFormat::Jxl)
         && target_fmt != Registry::auto_of(input_fmt)
     {
-        let png = decode_to_png_via_sips(input, &out_dir, registry).await?;
+        let png = decode_to_png_via_sips(input, workspace.path(), registry).await?;
         base_input = png.clone();
         base_fmt = InputFormat::Png;
         decoded = Some(png);
@@ -171,7 +172,7 @@ pub async fn compress_file(
     let mut forced_encoder: Option<crate::engines::EngineKind> = None;
     if base_fmt == InputFormat::Png && target_fmt == crate::profile::OutputFormat::Jpeg {
         if png_has_alpha(&base_input) {
-            match flatten_alpha_to_white(&base_input, &out_dir).await {
+            match flatten_alpha_to_white(&base_input, workspace.path()).await {
                 Ok(Some(flat)) => {
                     aux_file = Some(flat);
                     base_input = aux_file.clone().unwrap();
@@ -194,10 +195,11 @@ pub async fn compress_file(
     };
 
     // 预缩放（照片类）：maxWidth/maxHeight 且 mode != none → vipsthumbnail 中转
-    let encode_input: PathBuf = match pre_scaled_copy(&base_input, base_fmt, profile, registry).await? {
-        Some(tmp) => tmp,
-        None => base_input.clone(),
-    };
+    let encode_input: PathBuf =
+        match pre_scaled_copy(&base_input, base_fmt, profile, registry, workspace.path()).await? {
+            Some(tmp) => tmp,
+            None => base_input.clone(),
+        };
 
     // 编码：level 档单次；targetBytes 走 ≤5 轮 level 二分（收敛 [target-10KB, target]，
     // 受 minQualityFloor 保护）；lossless 单次
@@ -355,12 +357,13 @@ pub async fn compress_file(
     })
 }
 
-/// 预缩放：vipsthumbnail（从不放大，天然 shrinkOnly）→ 无损 PNG 中转
+/// 预缩放：vipsthumbnail → 无损 PNG 中转，shrinkOnly 必须显式禁止放大。
 async fn pre_scaled_copy(
     input: &Path,
     input_fmt: InputFormat,
     profile: &Profile,
     registry: &Registry,
+    dir: &Path,
 ) -> Result<Option<PathBuf>> {
     if profile.resize.mode == crate::profile::ResizeMode::None {
         return Ok(None);
@@ -376,11 +379,7 @@ async fn pre_scaled_copy(
         .ok_or_else(|| anyhow::anyhow!("预缩放需要 vips（brew install vips）"))?;
     // 注意：vipsthumbnail 不认 dotfile 输出路径（会把图片写到 stdout），
     // 中转文件必须是非隐藏名
-    let dir = input.parent().unwrap_or(Path::new("."));
-    let stem = input
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("img");
+    let stem = input.file_stem().and_then(|s| s.to_str()).unwrap_or("img");
     let tmp = dir.join(format!("yali-{}-{stem}-resize.png", std::process::id()));
     let mut size_spec = String::new();
     if let Some(w) = profile.resize.max_width {
@@ -389,6 +388,9 @@ async fn pre_scaled_copy(
     size_spec.push('x');
     if let Some(h) = profile.resize.max_height {
         size_spec.push_str(&h.to_string());
+    }
+    if profile.resize.mode == crate::profile::ResizeMode::ShrinkOnly {
+        size_spec.push('>');
     }
     let plan = crate::engines::registry::SubprocessPlan {
         program: vips,
@@ -692,6 +694,22 @@ mod tests {
     use std::sync::Mutex;
 
     static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    #[tokio::test]
+    async fn thumbnail_shrinks_large_images_but_never_enlarges_small_ones() {
+        let mut profile: Profile = serde_json::from_str(include_str!("../../../fixtures/thumbnail.json")).unwrap();
+        let registry = Registry::discover(&profile);
+        let dir = std::env::temp_dir().join(format!("yali-thumbnail-test-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let input = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../benchkit/samples/photo.jpg");
+        let first = pre_scaled_copy(&input, InputFormat::Jpeg, &profile, &registry, &dir).await.unwrap().unwrap();
+        assert_eq!(probe_dims(&first).await, Some((1024, 683)));
+        profile.resize.max_width = Some(2048);
+        profile.resize.max_height = Some(2048);
+        let second = pre_scaled_copy(&first, InputFormat::Png, &profile, &registry, &dir).await.unwrap().unwrap();
+        assert_eq!(probe_dims(&second).await, Some((1024, 683)), "shrinkOnly 不得放大小图");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
 
     /// 造一个只含 chunk 结构的假 PNG 头（解析只看结构，不校验 CRC）
     fn fake_png(color_type: u8, with_trns: bool) -> Vec<u8> {

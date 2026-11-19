@@ -28,13 +28,17 @@ import {
 } from "./ui/alert-dialog";
 import { Field, IconButton } from "./Controls";
 import { NumberField } from "./ProfileForm";
+import { Slider } from "./ui/slider";
+import { FONT_SCALE_STEPS } from "../lib/settings";
 
 export function SettingsView({
   version,
   onBack,
+  onFontScaleChange,
 }: {
   version: string;
   onBack: () => void;
+  onFontScaleChange: (percent: number) => void;
 }) {
   const [saved, setSaved] = useState<Settings | null>(null);
   const [draft, setDraft] = useState<Settings | null>(null);
@@ -77,6 +81,7 @@ export function SettingsView({
     try {
       await settingsSave(draft);
       setSaved(structuredClone(draft));
+      onFontScaleChange(draft.fontScalePercent);
       toast.success("设置已保存");
     } catch (e) {
       setError(String(e));
@@ -129,6 +134,27 @@ export function SettingsView({
                 </TabsList>
                 <TabsContent value="general">
                   <fieldset disabled={busy} className="settings-fields">
+                    <div className="setting-row font-scale-row">
+                      <div>
+                        <strong id="font-scale-label">字体大小</strong>
+                        <p className="hint">默认 100%。</p>
+                      </div>
+                      <div className="font-scale-control">
+                        <Slider
+                          aria-label={`字体大小，${draft.fontScalePercent}%`}
+                          aria-valuetext={`${draft.fontScalePercent}%`}
+                          min={0}
+                          max={FONT_SCALE_STEPS.length - 1}
+                          step={1}
+                          value={[FONT_SCALE_STEPS.indexOf(draft.fontScalePercent)]}
+                          disabled={busy}
+                          onValueChange={([index]) => setDraft({ ...draft, fontScalePercent: FONT_SCALE_STEPS[index] })}
+                        />
+                        <div className="font-scale-ticks" aria-hidden="true">
+                          {FONT_SCALE_STEPS.map((percent) => <span key={percent}>{percent}%</span>)}
+                        </div>
+                      </div>
+                    </div>
                     <label className="setting-row">
                       <div>
                         <strong>菜单栏常驻</strong>

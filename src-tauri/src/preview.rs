@@ -4,7 +4,6 @@ use std::{
     path::{Path, PathBuf},
     sync::OnceLock,
 };
-use tauri::Manager;
 
 static PREVIEW_LIMIT: OnceLock<tokio::sync::Semaphore> = OnceLock::new();
 
@@ -119,16 +118,10 @@ pub async fn generate(path: String, max_edge: u32, cache: PathBuf) -> Result<Str
 }
 
 #[tauri::command]
-pub async fn image_preview(
-    app: tauri::AppHandle,
-    path: String,
-    max_edge: u32,
-) -> Result<String, String> {
-    let cache = app
-        .path()
-        .app_cache_dir()
+pub async fn image_preview(path: String, max_edge: u32) -> Result<String, String> {
+    let cache = yali_core::data::root()
         .map_err(|e| e.to_string())?
-        .join("previews");
+        .join("cache/previews");
     generate(path, max_edge, cache).await
 }
 

@@ -10,13 +10,17 @@ Yali 是 macOS 14+ 本地图片压缩与转换工具：Finder 快速操作静默
 
 ## 2. 数据契约
 
-Profile 的完整字段与默认档见 [Schema](../schema/profile.schema.json) 和 [fixtures](../fixtures/)；存储于 `~/Library/Application Support/app.yali/profiles/*.json`，camelCase、拒绝未知字段、原子写。`YALI_HOME` 可重定向数据根。
+Profile 的完整字段与默认档见 [Schema](../schema/profile.schema.json) 和 [fixtures](../fixtures/)；存储于 `~/.yali/profiles/*.json`，camelCase、拒绝未知字段、原子写。`YALI_HOME` 可重定向整个数据根。
 
-六档：default（日常压缩）、web（网页图片）、jpg（转 JPG）、mail（目标大小）、archive（JPEG 的 JXL 无损包裹）、screenshot（截图无损）。Finder 只绑定 default / jpg。GUI 本批草稿不自动写盘，明确保存后才影响后续入口；CLI / workflow 下次调用读取新文件，不依赖预设广播同步。
+四档按显示顺序：default（日常压缩）、jpg（转 JPG）、thumbnail（缩小尺寸，最长边 1024px，锁定宽高比、不放大小图）、archive（无损归档，JPEG 的 JXL 无损包裹）。thumbnail 保留内部标识以兼容已有引用，上一版未修改的 320px 默认档读取时升级，用户改过的预设保留。Finder 只绑定 default / jpg。旧版 web/mail/screenshot 原版不再列为预设，修改过的档保留为自定义预设。GUI 本批草稿不自动写盘，明确保存后才影响后续入口；CLI / workflow 下次调用读取新文件。
 
 Schema 字段不等于已实现能力：metadata.exif/icc、pipeline.classify、resize.cropAnchor、output.largerPolicy 的完整执行效果尚未验证；GUI 保留值，不增加保证生效的控件。内容分类与智能裁剪属 M3。
 
-应用配置独立存于同根 `settings.json`：schemaVersion=1；默认 clipboard=false、minBytes=65536；watch=false、dirs=[]、settleMs=800；tray=true、notify=true。缺文件 / 缺字段用默认；语法坏先备份 `.bad-<毫秒>` 再回落；未知字段、类型错误或未来版本报错且不覆盖。GUI 显式保存后应用，详细契约与历史证据见 [T-014](tasks/T-014-settings-store.md)。
+应用配置独立存于同根 `settings.json`：schemaVersion=2，fontScalePercent=100（只接受 80 / 100 / 120 / 150 / 180 / 200 六档）；默认 clipboard=false、minBytes=65536；watch=false、dirs=[]、settleMs=800；tray=true、notify=true。v1 读取时补齐字号、升级内存版本；旧的范围内连续字号归入最近固定档，下次保存才写回。缺文件 / 缺字段用默认；语法坏先备份 `.bad-<毫秒>` 再回落；未知字段、类型错误或未来版本报错且不覆盖。GUI 显式保存后应用。
+
+应用数据统一存于 `~/.yali/`：`profiles/`、`settings.json`、`data/undo/`、`cache/previews/`、`cache/clipboard/`、`cache/tmp/`；后续文件日志也必须使用该根。首次访问复制旧 `~/Library/Application Support/app.yali/` 的缺失文件，保留旧目录、不覆盖新文件、不迁移可再生缓存；先完整写入同分区临时文件并同步，再以不覆盖目标的原子操作发布，复制中断后可重试。图片产物仍按预设输出；产物的原子写入临时文件与产物同目录，完成即重命名，不作为应用数据保留。撤销清单按输出目录区分，兼容读取旧的图片旁清单。实现与验收见 [T-022](tasks/T-022-preferences-storage.md)。
+
+WebView 使用非持久 WebKit 数据存储；设置和预设持久化走 core，不依赖网页 localStorage。旧 Library 数据的本机清理按明确清单执行，验证复制完整后才删除；macOS 自身可能维护文件选择器偏好等系统文件，不作为应用业务设置使用。
 
 ## 3. 压缩管道与算法规格
 
@@ -68,7 +72,7 @@ NSServices 为备选方向，未实现。GUI 不汇集 CLI / watch / 剪贴板�
 | `src-tauri` | commands、batch、preview、open-file、托盘、剪贴板、watch；capabilities 与精确 Info.plist |
 | `ui` | React / Vite / shadcn / Tailwind，bridge 集中原生调用，reducer 管理会话批次 |
 | `scripts` / `workflows` | dev / build / bundle-check；两条 Finder 动作的模板与安装 |
-| `benchkit` / `schema` / `fixtures` | 合成质量回归、数据契约、六档出厂预设 |
+| `benchkit` / `schema` / `fixtures` | 合成质量回归、数据契约、四档出厂预设与升级识别样本 |
 
 引擎当前通过子进程调用，GUI 批内并发 `min(cores-1,4)`。预览只生成应用缓存副本；原图与真实结果路径不被预览替换。
 

@@ -31,9 +31,9 @@ pub async fn ssim(a: &Path, b: &Path) -> Result<f64> {
         return Ok(v);
     }
     // ffmpeg 解不了（HEIC/JXL）：sips 转 PNG 再比
-    let dir = std::env::temp_dir();
-    let pa = dir.join(format!("yali-ssim-a-{}.png", std::process::id()));
-    let pb = dir.join(format!("yali-ssim-b-{}.png", std::process::id()));
+    let workspace = crate::data::TempDir::new()?;
+    let pa = workspace.path().join("ssim-a.png");
+    let pb = workspace.path().join("ssim-b.png");
     to_png(a, &pa).await?;
     to_png(b, &pb).await?;
     let result = run_ssim(&ffmpeg, &pa, &pb).await;

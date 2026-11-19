@@ -6,6 +6,7 @@
 
 - 压缩与转换：JPEG、PNG、WebP、AVIF、JPEG XL、HEIC、GIF 等，支持目标大小、负优化拦截和撤销清单。
 - 桌面工作台：批量队列、本批参数、预设管理、应用设置、图片对比与 SSIM。
+- 内置四个预设：日常压缩 / 转 JPG / 缩小尺寸 / 无损归档。缩小尺寸默认最长边 1024px，锁定宽高比、不放大小图；字号滑杆提供 80 / 100 / 120 / 150 / 180 / 200% 六档，默认 100%。
 - 系统入口：Finder「压一下 / 转 JPG」、Dock / 打开方式投递、剪贴板监听、监视文件夹和菜单栏托盘。
 
 响应式工作台已实现，原生交互仍待[人工验收](docs/tasks/T-021-responsive-workbench.md)。
@@ -38,6 +39,8 @@ CLI 可单独使用：
 cargo run -p yali-cli -- profiles show default
 cargo run -p yali-cli -- compress "/path/to/photo.jpg" --profile default
 ```
+
+预设、设置、撤销记录和缓存统一位于 `~/.yali/`；`YALI_HOME` 可重定向整个数据根。首次启动会复制旧版应用目录内的缺失配置，保留旧文件。压缩后的图片仍保存到预设指定的位置。
 
 ## 打包构建
 

@@ -18,7 +18,6 @@ import {
 import type { Job } from "../lib/batches";
 import { fileName } from "./TaskList";
 import { Button } from "./ui/button";
-import { Slider } from "./ui/slider";
 import { IconButton } from "./Controls";
 
 export const clampPos = (value: number) => Math.min(100, Math.max(0, value));
@@ -270,31 +269,6 @@ export function Viewer({
           </div>
         )}
       </div>
-      <footer className="compare-footer">
-        {!different && report.output && (
-          <Slider
-            aria-label="原图与处理后分割位置"
-            min={0}
-            max={100}
-            step={1}
-            value={[pos]}
-            onValueChange={([value]) => setPos(value)}
-          />
-        )}
-        <p className="hint">
-          {different
-            ? "尺寸不同，使用并排视图。"
-            : zoom
-              ? "100% 模式，可滚动查看细节。"
-              : "拖动分割线或用滑杆方向键调整。"}
-          {isTauri()
-            ? " 适应视图使用本地 PNG 预览副本。"
-            : " 界面演示，前后使用同一原图，未执行本地压缩。"}
-          {infos.some((i) => i.format === "gif")
-            ? " 动图仅展示静态预览，未检查全部帧。"
-            : ""}
-        </p>
-      </footer>
     </section>
   );
 }

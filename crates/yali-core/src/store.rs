@@ -1,9 +1,9 @@
 //! ProfileStore：磁盘档的加载 / 保存 / 列举 / 出厂播种。
 //!
-//! 数据目录：`~/Library/Application Support/app.yali/profiles/*.json`；
+//! 数据目录：`~/.yali/profiles/*.json`；
 //! 测试与沙盒用 `YALI_HOME` 重定向（`dir()` = `$YALI_HOME/profiles`）。
 //! 保存为原子写：先写同目录临时文件，再 rename 覆盖（DESIGN §2 同步机制的前提）。
-//! 首次访问自动播种六档出厂 fixtures（`fixtures/*.json`）；出厂档集合新增时
+//! 首次访问自动播种四档出厂 fixtures（`fixtures/*.json`）；出厂档集合新增时
 //! 按 `.seed` 签名给老目录补种缺失档，签名一致则不复活用户删掉的档。
 
 use std::fs;
@@ -17,11 +17,22 @@ use crate::profile::Profile;
 /// 出厂档：文件名 → 内嵌 JSON。JSON Schema 见 schema/profile.schema.json。
 pub const FACTORY_PROFILES: &[(&str, &str)] = &[
     ("default", include_str!("../../../fixtures/default.json")),
-    ("web", include_str!("../../../fixtures/web.json")),
     ("jpg", include_str!("../../../fixtures/jpg.json")),
+    (
+        "thumbnail",
+        include_str!("../../../fixtures/thumbnail.json"),
+    ),
     ("archive", include_str!("../../../fixtures/archive.json")),
+];
+
+// 旧出厂档仅用于识别升级前的原版档；用户改过的档仍作为自定义预设保留。
+const RETIRED_PROFILES: &[(&str, &str)] = &[
+    ("web", include_str!("../../../fixtures/web.json")),
     ("mail", include_str!("../../../fixtures/mail.json")),
-    ("screenshot", include_str!("../../../fixtures/screenshot.json")),
+    (
+        "screenshot",
+        include_str!("../../../fixtures/screenshot.json"),
+    ),
 ];
 
 #[derive(Debug, Clone)]
@@ -32,15 +43,12 @@ pub struct ProfileStore {
 impl ProfileStore {
     /// 解析 profiles 数据目录（尊重 `YALI_HOME` 重定向）
     pub fn dir() -> Result<PathBuf> {
-        if let Ok(home) = std::env::var("YALI_HOME") {
-            return Ok(PathBuf::from(home).join("profiles"));
-        }
-        let home = std::env::var("HOME").context("HOME 环境变量未设置，无法定位数据目录")?;
-        Ok(PathBuf::from(home).join("Library/Application Support/app.yali/profiles"))
+        Ok(crate::data::root()?.join("profiles"))
     }
 
     /// 默认存储（磁盘数据目录，缺档时播种出厂档）
     pub fn open() -> Result<Self> {
+        crate::data::import_legacy()?;
         let dir = Self::dir()?;
         let store = Self { dir };
         store.ensure_seeded()?;
@@ -96,6 +104,13 @@ impl ProfileStore {
             let path = entry.path();
             if path.extension().and_then(|e| e.to_str()) == Some("json") {
                 if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
+                    if let Some((_, raw)) = RETIRED_PROFILES.iter().find(|(name, _)| *name == stem)
+                    {
+                        let factory: Profile = serde_json::from_str(raw)?;
+                        if self.load(stem).is_ok_and(|profile| profile == factory) {
+                            continue;
+                        }
+                    }
                     names.push(stem.to_string());
                 }
             }
@@ -115,6 +130,7 @@ impl ProfileStore {
     /// 签名一致时什么都不动——用户主动删掉的出厂档不会被强行复活。
     fn ensure_seeded(&self) -> Result<()> {
         fs::create_dir_all(&self.dir)?;
+        self.upgrade_resize_default()?;
         let marker = self.dir.join(".seed");
         let signature = Self::factory_signature();
         if fs::read_to_string(&marker).map(|v| v.trim().to_string()).ok().as_deref() == Some(signature.as_str()) {
@@ -127,6 +143,21 @@ impl ProfileStore {
             }
         }
         fs::write(&marker, signature + "\n")?;
+        Ok(())
+    }
+
+    /// 只升级上一版未修改的 320px 出厂档，自定义参数保持原值。
+    fn upgrade_resize_default(&self) -> Result<()> {
+        let Some((_, raw)) = FACTORY_PROFILES.iter().find(|(name, _)| *name == "thumbnail") else {
+            return Ok(());
+        };
+        let current: Profile = serde_json::from_str(raw)?;
+        let mut previous = current.clone();
+        previous.resize.max_width = Some(320);
+        previous.resize.max_height = Some(320);
+        if self.load("thumbnail").is_ok_and(|profile| profile == previous) {
+            self.save(&current)?;
+        }
         Ok(())
     }
 }
@@ -173,12 +204,20 @@ mod tests {
         for name in ["archive", "default", "mail", "screenshot", "web"] {
             fs::write(profiles.join(format!("{name}.json")), default_raw).unwrap();
         }
-        fs::write(profiles.join(".seed"), "5:archive,default,mail,screenshot,web\n").unwrap();
+        fs::write(
+            profiles.join(".seed"),
+            "5:archive,default,mail,screenshot,web\n",
+        )
+        .unwrap();
 
         let store = ProfileStore::with_dir(&profiles);
         store.ensure_seeded().unwrap();
-        assert!(profiles.join("jpg.json").exists(), "出厂档集合新增后必须补种");
-        assert_eq!(store.list().unwrap().len(), 6, ".seed 不应被当成档");
+        assert!(
+            profiles.join("jpg.json").exists(),
+            "出厂档集合新增后必须补种"
+        );
+        assert!(profiles.join("thumbnail.json").exists());
+        assert_eq!(store.list().unwrap().len(), 7, ".seed 不应被当成档");
     }
 
     #[test]
@@ -186,9 +225,51 @@ mod tests {
         let dir = temp_dir("noresurrect");
         let store = ProfileStore::with_dir(&dir);
         store.ensure_seeded().unwrap();
-        fs::remove_file(dir.join("web.json")).unwrap();
+        fs::remove_file(dir.join("thumbnail.json")).unwrap();
         store.ensure_seeded().unwrap();
-        assert!(!dir.join("web.json").exists(), "签名未变时不应复活被删的档");
+        assert!(
+            !dir.join("thumbnail.json").exists(),
+            "签名未变时不应复活被删的档"
+        );
+    }
+
+    #[test]
+    fn upgrade_hides_retired_factory_defaults_and_preserves_custom_edits() {
+        let dir = temp_dir("retired");
+        let store = ProfileStore::with_dir(&dir);
+        for (name, raw) in RETIRED_PROFILES {
+            fs::write(dir.join(format!("{name}.json")), raw).unwrap();
+        }
+        store.ensure_seeded().unwrap();
+        assert_eq!(
+            store.list().unwrap(),
+            vec!["archive", "default", "jpg", "thumbnail"]
+        );
+        assert!(dir.join("web.json").exists(), "旧档原件留存");
+        let mut custom = store.load("web").unwrap();
+        custom.quality.level = Some(6);
+        store.save(&custom).unwrap();
+        assert!(store.list().unwrap().contains(&"web".into()));
+    }
+
+    #[test]
+    fn resize_default_upgrade_updates_320_and_preserves_custom_parameters() {
+        let dir = temp_dir("resize-upgrade");
+        let store = ProfileStore::with_dir(&dir);
+        store.ensure_seeded().unwrap();
+        let mut old = store.load("thumbnail").unwrap();
+        old.resize.max_width = Some(320);
+        old.resize.max_height = Some(320);
+        store.save(&old).unwrap();
+        store.ensure_seeded().unwrap();
+        let upgraded = store.load("thumbnail").unwrap();
+        assert_eq!(upgraded.resize.max_width, Some(1024));
+        assert_eq!(upgraded.resize.max_height, Some(1024));
+        assert!(upgraded.resize.keep_ratio);
+        old.quality.level = Some(6);
+        store.save(&old).unwrap();
+        store.ensure_seeded().unwrap();
+        assert_eq!(store.load("thumbnail").unwrap(), old);
     }
 
     #[test]
@@ -210,8 +291,8 @@ mod tests {
         let names = store.list().unwrap();
         assert_eq!(
             names,
-            vec!["archive", "default", "jpg", "mail", "screenshot", "web"],
-            "首启应播种六档出厂 fixtures"
+            vec!["archive", "default", "jpg", "thumbnail"],
+            "首启应播种四档出厂 fixtures"
         );
         for name in names {
             store.load(&name).unwrap(); // 播种出的每档都必须能通过解析 + 校验

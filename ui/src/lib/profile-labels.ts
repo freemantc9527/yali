@@ -1,10 +1,8 @@
 export const labels: Record<string, string> = {
   default: "日常压缩",
-  web: "网页图片",
   jpg: "转 JPG",
-  mail: "邮件附件",
+  thumbnail: "缩小尺寸",
   archive: "无损归档",
-  screenshot: "截图无损",
 };
 export const profileLabel = (name: string) => labels[name] ?? name;
 const order = Object.keys(labels);

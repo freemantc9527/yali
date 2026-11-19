@@ -20,6 +20,7 @@
 - 只做当前任务范围，UI 禁止无卡改样式；一卡一 PR。`docs/` 仅收录本项目文档。
 - macOS 仅 CLT，无 Xcode；禁止 `swift test`、`xcodebuild`、SwiftUI 宏。Swift 仅限任务批准的 `helpers/` 小工具。
 - 前端统一 pnpm，锁文件入库。引擎路径参照 `Brewfile`，不可假定 PATH 中 `cjpeg` 是 mozjpeg。
+- 配置、预设、撤销记录、缓存与日志统一通过 `yali_core::data` 解析数据根；旧配置迁移须完整写入并同步临时文件后，以不覆盖目标的原子操作发布，失败后可重试。
 - 调用 C / Vision / vips API 前，先查本机 SDK 头文件或实测，不凭记忆编造接口。
 - NSPasteboard 仅在主线程访问，setup 不同步等待主线程回调；剪贴板同时按 changeCount 与内容摘要去重。
 - watch 必须忽略自身产物，并按 settleMs 与 (mtime, size) 去重，防止自激。

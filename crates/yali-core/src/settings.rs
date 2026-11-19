@@ -1,6 +1,6 @@
 //! 应用级设置：`settings.json`（不是压图参数，压图参数在 Profile）。
 //!
-//! 数据位置：`~/Library/Application Support/app.yali/settings.json`；
+//! 数据位置：`~/.yali/settings.json`；
 //! 测试与沙盒用 `YALI_HOME` 重定向（与 ProfileStore 同源）。
 //!
 //! 三种异常的处理刻意分开（T-014）：
@@ -17,7 +17,8 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
 /// 当前 settings schema 版本（字段增删时必须 +1 并写迁移）
-pub const SETTINGS_SCHEMA_VERSION: u32 = 1;
+pub const SETTINGS_SCHEMA_VERSION: u32 = 2;
+pub const FONT_SCALE_STEPS: [u16; 6] = [80, 100, 120, 150, 180, 200];
 
 fn default_schema_version() -> u32 {
     SETTINGS_SCHEMA_VERSION
@@ -35,11 +36,17 @@ fn default_true() -> bool {
     true
 }
 
+fn default_font_scale() -> u16 {
+    100
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Settings {
     #[serde(default = "default_schema_version")]
     pub schema_version: u32,
+    #[serde(default = "default_font_scale")]
+    pub font_scale_percent: u16,
     #[serde(default)]
     pub clipboard: ClipboardSettings,
     #[serde(default)]
@@ -54,6 +61,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             schema_version: SETTINGS_SCHEMA_VERSION,
+            font_scale_percent: default_font_scale(),
             clipboard: ClipboardSettings::default(),
             watch: WatchSettings::default(),
             tray: TraySettings::default(),
@@ -76,6 +84,9 @@ impl Settings {
         }
         if self.clipboard.min_bytes > 1 << 30 {
             anyhow::bail!("settings.clipboard.minBytes 过大（上限 1GiB）");
+        }
+        if !FONT_SCALE_STEPS.contains(&self.font_scale_percent) {
+            anyhow::bail!("settings.fontScalePercent 必须为 80 / 100 / 120 / 150 / 180 / 200");
         }
         if self.watch.settle_ms > 10_000 {
             anyhow::bail!("settings.watch.settleMs 上限 10000ms");
@@ -160,17 +171,14 @@ pub struct SettingsStore {
 }
 
 impl SettingsStore {
-    /// `$YALI_HOME/settings.json` 或 `~/Library/Application Support/app.yali/settings.json`
+    /// `$YALI_HOME/settings.json` 或 `~/.yali/settings.json`
     pub fn path() -> Result<PathBuf> {
-        if let Ok(home) = std::env::var("YALI_HOME") {
-            return Ok(PathBuf::from(home).join("settings.json"));
-        }
-        let home = std::env::var("HOME").context("HOME 环境变量未设置，无法定位配置文件")?;
-        Ok(PathBuf::from(home).join("Library/Application Support/app.yali/settings.json"))
+        Ok(crate::data::root()?.join("settings.json"))
     }
 
     /// 默认位置（父目录不存在会建）
     pub fn open() -> Result<Self> {
+        crate::data::import_legacy()?;
         let path = Self::path()?;
         if let Some(dir) = path.parent() {
             fs::create_dir_all(dir)
@@ -193,14 +201,22 @@ impl SettingsStore {
         let raw = match fs::read_to_string(&self.path) {
             Ok(raw) => raw,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Settings::default()),
-            Err(e) => {
-                return Err(e).with_context(|| format!("读取 {} 失败", self.path.display()))
-            }
+            Err(e) => return Err(e).with_context(|| format!("读取 {} 失败", self.path.display())),
         };
 
         match serde_json::from_str::<Settings>(&raw) {
-            Ok(settings) => {
+            Ok(mut settings) => {
+                // 旧版连续字号归入最近固定档；越界值和未来版本仍按原规则报错。
+                if settings.schema_version <= SETTINGS_SCHEMA_VERSION
+                    && (80..=200).contains(&settings.font_scale_percent)
+                {
+                    settings.font_scale_percent = *FONT_SCALE_STEPS.iter()
+                        .min_by_key(|percent| percent.abs_diff(settings.font_scale_percent))
+                        .unwrap();
+                }
                 settings.validate()?;
+                // v1 → v2：新增字号默认为 100%，只在下一次保存时写回。
+                settings.schema_version = SETTINGS_SCHEMA_VERSION;
                 Ok(settings)
             }
             Err(e) if e.classify() == serde_json::error::Category::Data => {
@@ -327,12 +343,53 @@ mod tests {
     #[test]
     fn missing_fields_fall_back_to_defaults() {
         let (dir, store) = store("partial");
-        fs::write(dir.join("settings.json"), r#"{"clipboard":{"enabled":true}}"#).unwrap();
+        fs::write(
+            dir.join("settings.json"),
+            r#"{"clipboard":{"enabled":true}}"#,
+        )
+        .unwrap();
         let s = store.load().unwrap();
         assert!(s.clipboard.enabled);
         assert_eq!(s.clipboard.min_bytes, 64 * 1024);
         assert_eq!(s.watch, WatchSettings::default());
         assert!(s.notify.enabled);
+    }
+
+    #[test]
+    fn v1_settings_migrate_and_font_scale_survives_restart() {
+        let (dir, store) = store("font-scale");
+        fs::write(
+            dir.join("settings.json"),
+            r#"{"schemaVersion":1,"tray":{"enabled":false}}"#,
+        )
+        .unwrap();
+        let mut settings = store.load().unwrap();
+        assert_eq!(settings.schema_version, 2);
+        assert_eq!(settings.font_scale_percent, 100);
+        assert!(!settings.tray.enabled);
+        settings.font_scale_percent = 180;
+        store.save(&settings).unwrap();
+        assert_eq!(store.load().unwrap().font_scale_percent, 180);
+        for percent in [0, 79, 81, 110, 175, 201] {
+            settings.font_scale_percent = percent;
+            assert!(store.save(&settings).is_err());
+        }
+        assert_eq!(store.load().unwrap().font_scale_percent, 180);
+    }
+
+    #[test]
+    fn continuous_legacy_font_scales_snap_to_nearest_step() {
+        let (dir, store) = store("font-steps");
+        for percent in FONT_SCALE_STEPS {
+            let mut settings = Settings::default();
+            settings.font_scale_percent = percent;
+            store.save(&settings).unwrap();
+            assert_eq!(store.load().unwrap(), settings);
+        }
+        fs::write(dir.join("settings.json"), r#"{"schemaVersion":2,"fontScalePercent":175,"tray":{"enabled":false}}"#).unwrap();
+        let settings = store.load().unwrap();
+        assert_eq!(settings.font_scale_percent, 180);
+        assert!(!settings.tray.enabled);
     }
 
     #[test]
@@ -369,9 +426,9 @@ mod tests {
     #[test]
     fn future_schema_version_is_rejected() {
         let (dir, store) = store("future");
-        fs::write(dir.join("settings.json"), r#"{"schemaVersion":2}"#).unwrap();
+        fs::write(dir.join("settings.json"), r#"{"schemaVersion":3}"#).unwrap();
         let err = store.load().unwrap_err().to_string();
-        assert!(err.contains("schemaVersion=2"), "版本过新必须报错: {err}");
+        assert!(err.contains("schemaVersion=3"), "版本过新必须报错: {err}");
         assert!(dir.join("settings.json").exists(), "不能覆盖未来的配置");
     }
 

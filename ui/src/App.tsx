@@ -11,7 +11,7 @@ import {
   MoreHorizontal,
   PanelRight,
   Plus,
-  Settings2,
+  Settings as SettingsIcon,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -71,6 +71,7 @@ import {
   profilesValidate,
   registerFiles,
   releaseFiles,
+  settingsShow,
   takePendingFiles,
   IMAGE_EXTENSIONS,
   type ImageInfo,
@@ -96,6 +97,7 @@ type Confirmation = {
 export default function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [version, setVersion] = useState("读取中");
+  const [fontScale, setFontScale] = useState(100);
   const [names, setNames] = useState<string[]>([]);
   const [selectedProfileName, setSelectedProfileName] = useState("default");
   const [savedProfile, setSavedProfile] = useState<Profile | null>(null);
@@ -168,6 +170,13 @@ export default function App() {
   useEffect(() => {
     void loadInitial();
   }, [loadInitial]);
+  useEffect(() => {
+    void settingsShow().then((settings) => setFontScale(settings.fontScalePercent))
+      .catch((e) => setError(`读取设置失败：${String(e)}`));
+  }, []);
+  useEffect(() => {
+    document.documentElement.style.fontSize = `${fontScale}%`;
+  }, [fontScale]);
   useEffect(
     () => onBatchProgress((event) => dispatch({ type: "event", event })),
     [],
@@ -587,7 +596,7 @@ export default function App() {
                 <PanelRight />
               </IconButton>
               <IconButton label="应用设置" onClick={() => enter("settings")}>
-                <Settings2 />
+                <SettingsIcon />
               </IconButton>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -850,7 +859,7 @@ export default function App() {
               />
             )}
             {view === "settings" && (
-              <SettingsView version={version} onBack={back} />
+              <SettingsView version={version} onBack={back} onFontScaleChange={setFontScale} />
             )}
             {view === "compare" && viewed?.report && (
               <Viewer

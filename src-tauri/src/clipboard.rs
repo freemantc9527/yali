@@ -67,12 +67,8 @@ pub fn fnv1a(bytes: &[u8]) -> u64 {
 }
 
 /// 剪贴板图片的落盘位置（YALI_HOME 重定向便于测试）
-pub fn cache_dir() -> PathBuf {
-    if let Ok(home) = std::env::var("YALI_HOME") {
-        return PathBuf::from(home).join("cache/clipboard");
-    }
-    let home = std::env::var("HOME").unwrap_or_default();
-    PathBuf::from(home).join("Library/Caches/app.yali/clipboard")
+pub fn cache_dir() -> anyhow::Result<PathBuf> {
+    Ok(yali_core::data::root()?.join("cache/clipboard"))
 }
 
 /// 剪贴板模式的输出档：存到「下载」、不带后缀、不写撤销清单
@@ -133,7 +129,7 @@ pub use system::SystemPasteboard;
 /// TIFF → PNG（sips，系统自带；失败就放弃这张图，不猜）
 #[cfg(target_os = "macos")]
 pub fn tiff_to_png(tiff: &[u8]) -> Option<Vec<u8>> {
-    let dir = std::env::temp_dir().join(format!("yali-clip-{}", std::process::id()));
+    let dir = cache_dir().ok()?.join("conversion");
     std::fs::create_dir_all(&dir).ok()?;
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

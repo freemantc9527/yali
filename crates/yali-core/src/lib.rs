@@ -3,6 +3,7 @@
 //! 设计权威：docs/DESIGN.md；Profile 字段：docs/DESIGN.md §2；
 //! JSON Schema（文档与外部校验器事实源）：schema/profile.schema.json。
 
+pub mod data;
 pub mod engines;
 pub mod metrics;
 pub mod pipeline;
