@@ -11,6 +11,9 @@ coverage/
 *.tsbuildinfo
 pnpm-debug.log*
 
+# Python 发布脚本测试
+__pycache__/
+
 # Tauri
 src-tauri/gen/
 *.app

@@ -58,6 +58,8 @@ bash scripts/build.sh
 
 脚本构建 CLI、真实前端与 release 应用，收集并重定位引擎和动态库、保留第三方许可证与构建来源、生成 ad-hoc 签名，最后校验 bundle 标识、图片 UTI、包内全部动态依赖和签名。任一步失败即返回非零。默认产物为 `target/release/bundle/macos/Yali.app`，设置 `CARGO_TARGET_DIR` 时跟随该目录；不要绕过脚本把裸 `cargo tauri build` 产物当作分享包。脚本不安装应用，不执行公证或发布。
 
+本地打包仅供自用与本地验证，不用于发布。发布包由 GitHub Actions 分别构建 Apple Silicon / Intel 两个架构，公开后可在 [Releases](https://github.com/freemantc9527/yali/releases) 下载；操作流程见 [RELEASING](docs/RELEASING.md)。首次云端运行与 Intel 完整链路仍待验证，当前支持范围以上述实际验收为准。
+
 `python3 scripts/smoke-bundle.py` 复制最终 App 到专用临时目录，以隔离 HOME / 数据根、最简 PATH 和禁止读取 Homebrew / 源码 / 原账户的沙盒，验证四个预设、实际格式转换、强隔离的 workflow shell 节点及正常系统上下文中的两条完整 Automator workflow（macOS 禁止沙盒进程使用 Automator.framework）。完成后清理测试副本；加 `--keep` 保留用于原生 GUI 验收。此自动验收不替代 Finder 菜单可见性与原生交互亲验。
 
 ## 验证与贡献

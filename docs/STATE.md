@@ -11,9 +11,25 @@
 | M1 | 原 GUI 与 open-file 已实现；T-021 响应式重设计已实施，原生交互待人工验收 |
 | M2 | 设置、托盘、剪贴板、watch 已实现；托盘菜单与监听场景仍待人工验收；T-018 失败件队列、T-019 统计页未实施 |
 | 品牌 | T-020 应用与菜单栏图标已获用户确认（2026-11-18） |
-| M3 / M4 | 智能分类、参数标定、Vision、正式分发与 updater 未实施 |
+| M3 / M4 | 智能分类、参数标定、Vision、正式分发与 updater 未实施；T-028 macOS 双架构构建 / Release 草稿已本地实施，云端待验 |
 
-## 2. 本轮交付：T-026
+## 2. 本轮交付：T-028
+
+详情见 [T-028](tasks/T-028-macos-release.md)、[ADR-007](decisions/ADR-007-github-macos-release.md) 与 [RELEASING](RELEASING.md)。新增 GitHub Actions macOS 双架构原生构建：手动运行仅生成测试产物；推送合法版本标签时，两架构全部通过后创建 Release 草稿，公开发布仍需维护者核对。
+
+- 复用自包含打包、隔离运行与质量门槛，增加 zip 回读、版本 / main 来源检查、双架构同源码核对、构建记录及 SHA256SUMS；构建任务只读，仅草稿任务使用自动 GITHUB_TOKEN 写 Release，无新增凭据。
+- 隔离候选副本 Rust 95 项、UI 72 项、发布脚本 10 项通过；actionlint 通过。完整 App 及 zip 回读、111 个 Mach-O 依赖与签名、10 类 UTI、真实隔离运行、default / jpg 六张金样通过。沙箱内 sips / 嵌套 sandbox-exec 受限，获准在沙箱外复验通过，未改质量基线。
+- 工作流已完成本地实施；用户已授权提交、合并 main 并推送远端，云端运行仍待单独执行。Intel 全链路和公开下载后的原生行为待验证。当前实际产品版本仍为 `0.0.1`，本机 arm64 包最低系统仍为 macOS 27.2；不能以本轮本地通过声称双架构已发布。
+- 用户补充发布边界：本地包仅供自用与验证；Release 资产只来自 GitHub Actions 同次运行的 Apple Silicon / Intel 包。汇总增加云端来源检查，补充后发布脚本 14 项测试通过；Release 草稿公开后用户才能在 Releases 页下载，当前没有已公开版本或下载产物。
+
+### 前轮交付：T-027
+
+详情见 [T-027](tasks/T-027-versioning-workflow.md)。按完整路线粗估约六成，核心工具接近完整、M2 尚未闭环，原生人工验收与正式分发仍有缺口；此为工程判断，不是验收通过率。
+
+- 新增 [VERSIONING](VERSIONING.md)，明确预发布阶段、版本递增与同步、提交格式、`dev` / `main`、逐项授权及发布检查。
+- 首个可分享版本建议 `0.1.0-alpha.1`；实际版本仍为 `0.0.1`。本轮只改文档，不建分支、提交、推送或发布，不改变已有人工待验状态。
+
+### 前轮交付：T-026
 
 详情见 [T-026](tasks/T-026-native-notifications.md)。CLI 与剪贴板完成通知改由 App 自己通过 macOS UserNotifications 发送，使用 `app.yali` 身份和应用图标；按用户要求不实现点击回调或自定义按钮。CLI 调用 App 的短时通知模式，发完退出，不创建工作台。
 
@@ -85,12 +101,13 @@
 - [ ] T-022 原生字号保存与重启恢复、四个内置预设、对比分割线拖动与旧配置导入，详见卡片。
 - [ ] T-015 托盘菜单展开 / 唤回，T-016 剪贴板，T-017 watch 的实际交互与文件写完后处理。
 - [ ] 产物在微信 / 浏览器 / Preview 的兼容抽验。通知点击沿用系统默认行为，用户已取消自定义回调要求。
+- [ ] T-028 工作流经用户授权提交、推送并合入后，执行 GitHub 双架构完整运行；Intel 原生交互、公开下载后的 Gatekeeper 行为和发布人工核对仍待完成。
 
 先完成相关人工验收，再推进 T-018 → T-019；M2 出口检查 20 图右键聚合通知，耗时只观察。`rusqlite` 尚未引入；`helpers/`、`crates/yali-integration`、M3 `calibration.json` 尚未创建，需任务卡后实施。
 
 ## 4. 按需阅读
 
 - 产品与命名：[DESIGN](DESIGN.md)、[NAMING](NAMING.md)；决策理由：[ADR](decisions/README.md)。
-- 执行与验证：[AGENTS](../AGENTS.md)、[WORKFLOW](WORKFLOW.md)；本地运行：[README](../README.md)。
+- 执行与验证：[AGENTS](../AGENTS.md)、[WORKFLOW](WORKFLOW.md)；版本与源码交付：[VERSIONING](VERSIONING.md)、[RELEASING](RELEASING.md)；本地运行：[README](../README.md)。
 - 构建与 Tauri 坑：[TOOLCHAIN](TOOLCHAIN.md)；图像与质量坑：[benchkit](../benchkit/README.md)；Finder 安装坑：[workflows](../workflows/README.md)。
 - 平台方向：[CROSSPLATFORM](CROSSPLATFORM.md)，未排期。
