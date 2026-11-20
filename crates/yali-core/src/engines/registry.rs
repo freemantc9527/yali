@@ -23,6 +23,7 @@ pub struct EncodeRequest {
     pub output_fmt: OutputFormat,
     pub level: Option<u8>,
     pub lossless: bool,
+    pub recommended: bool,
 }
 
 /// 子进程执行计划
@@ -78,7 +79,7 @@ impl Encoder for MozjpegEncoder {
                 ],
             });
         }
-        let q = mapping::jpeg_quality(need_level(req)?);
+        let q = if req.recommended { 75 } else { mapping::jpeg_quality(need_level(req)?) };
         Ok(SubprocessPlan {
             program: self.cjpeg.clone(),
             args: vec![
@@ -195,16 +196,16 @@ impl Encoder for PngquantEncoder {
         if level < 3 {
             bail!("level {level} 属于无损档，应走 oxipng");
         }
-        let range = format!(
+        let range = if req.recommended { "94-98".into() } else { format!(
             "{}-{}",
             mapping::pngquant_quality_min(level),
             mapping::pngquant_quality_max(level)
-        );
+        ) };
         Ok(SubprocessPlan {
             program: self.pngquant.clone(),
             args: vec![
                 "--quality".into(), range,
-                "--speed".into(), mapping::pngquant_speed(level).to_string(),
+                "--speed".into(), if req.recommended { "1".into() } else { mapping::pngquant_speed(level).to_string() },
                 "--force".into(),
                 "--output".into(), req.output.to_string_lossy().into(),
                 req.input.to_string_lossy().into(),
@@ -235,7 +236,7 @@ impl Encoder for OxipngEncoder {
         Ok(SubprocessPlan {
             program: self.oxipng.clone(),
             args: vec![
-                "-o".into(), mapping::oxipng_optimization(level, req.lossless).to_string(),
+                "-o".into(), if req.recommended { "2".into() } else { mapping::oxipng_optimization(level, req.lossless).to_string() },
                 "--strip".into(), "safe".into(),
                 "--out".into(), req.output.to_string_lossy().into(),
                 req.input.to_string_lossy().into(),
@@ -348,7 +349,7 @@ impl Encoder for SipsEncoder {
             bail!("HEIC 无损未定义（M3 任务）");
         }
         let (fmt, q) = if req.output_fmt == OutputFormat::Jpeg {
-            ("jpeg", mapping::jpeg_quality(need_level(req)?))
+            ("jpeg", if req.recommended { 75 } else { mapping::jpeg_quality(need_level(req)?) })
         } else {
             ("heic", mapping::webp_quality(need_level(req)?))
         };
@@ -536,17 +537,23 @@ impl Registry {
 }
 
 /// 执行子进程计划；非零退出报 stderr 尾部
+#[derive(Debug)]
+pub(crate) struct EngineExit(pub Option<i32>);
+
+impl std::fmt::Display for EngineExit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "退出码 {:?}", self.0)
+    }
+}
+impl std::error::Error for EngineExit {}
+
 pub async fn run_plan(plan: &SubprocessPlan) -> Result<()> {
     let out = super::run_engine(&plan.program, &plan.args).await?;
     if !out.status.success() {
         let stderr = String::from_utf8_lossy(&out.stderr);
         let tail: String = stderr.lines().rev().take(4).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>().join("\n");
-        bail!(
-            "引擎 {} 退出码 {:?}: {}",
-            plan.program.display(),
-            out.status.code(),
-            tail
-        );
+        return Err(anyhow::Error::new(EngineExit(out.status.code()))
+            .context(format!("引擎 {}: {}", plan.program.display(), tail)));
     }
     Ok(())
 }

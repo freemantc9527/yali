@@ -1,4 +1,5 @@
 import { preflightError } from "./profile-edit";
+import { version as appVersion } from "../../package.json";
 import { FONT_SCALE_STEPS } from "./settings";
 import { convertFileSrc, invoke as tauriInvoke } from "@tauri-apps/api/core";
 /**
@@ -75,7 +76,7 @@ const baseProfile = (): Profile => ({
     mode: "shrinkOnly",
     cropAnchor: null,
   },
-  quality: { kind: "level", level: 4, targetBytes: null, minQualityFloor: 3 },
+  quality: { kind: "recommended", level: 4, targetBytes: null, minQualityFloor: 3 },
   format: { output: "auto", animated: "keep" },
   metadata: { exif: "privacy", icc: "srgb" },
   output: {
@@ -132,7 +133,7 @@ async function invoke<T>(
 }
 
 export async function coreVersion(): Promise<string> {
-  if (!isTauri()) return "browser-dev";
+  if (!isTauri()) return appVersion;
   return invoke<string>("core_version");
 }
 

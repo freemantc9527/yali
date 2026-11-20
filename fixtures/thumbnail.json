@@ -8,7 +8,7 @@
     "mode": "shrinkOnly",
     "cropAnchor": null
   },
-  "quality": { "kind": "level", "level": 4, "targetBytes": null, "minQualityFloor": 3 },
+  "quality": { "kind": "recommended", "level": 4, "targetBytes": null, "minQualityFloor": 3 },
   "format": { "output": "auto", "animated": "keep" },
   "metadata": { "exif": "privacy", "icc": "srgb" },
   "output": {

@@ -41,7 +41,7 @@
       "additionalProperties": false,
       "required": ["kind", "level", "targetBytes", "minQualityFloor"],
       "properties": {
-        "kind": { "enum": ["level", "targetBytes", "lossless"], "description": "三态：档位 / 目标大小二分 / 无损" },
+        "kind": { "enum": ["recommended", "level", "targetBytes", "lossless"], "description": "推荐 / 手动档位 / 目标大小二分 / 无损" },
         "level": { "type": ["integer", "null"], "minimum": 1, "maximum": 10, "description": "kind=level 时必填" },
         "targetBytes": { "type": ["integer", "null"], "minimum": 1, "description": "kind=targetBytes 时必填（字节）" },
         "minQualityFloor": { "type": "integer", "minimum": 1, "maximum": 10, "description": "只在 targetBytes 下生效：二分下探的保护线" }

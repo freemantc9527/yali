@@ -18,6 +18,7 @@ benchkit/bench.sh --update-baseline  # 有意的质量变更后重写当前档�
 - 输出表格：每样 × 引擎的 体积比 / SSIM / 耗时中位数（3 轮取中位，单图口径）
 - 与 `baseline-<profile>.json` 比对：体积比↑ / SSIM↓ 任一劣化 >3% → 退出码非零；耗时仅输出观察提示
 - 质量门（[DESIGN §9](../docs/DESIGN.md#9-质量与验证)）：level≥5 时**单代照片类样本** SSIM≥0.95
+- 推荐模式同样对单代照片要求 SSIM≥0.95。T-029 将默认 JPEG 从 q60 调为 q75、PNG 改为高质量量化后无损优化；default / jpg 基线随这次明确的画质取舍更新，体积增大须结合 SSIM 记录，不能当作旧基线无退化。
 
 ## 样张（全部合成，合规红线）
 

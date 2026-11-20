@@ -71,9 +71,18 @@ impl ProfileStore {
         let path = self.path_for(name)?;
         let raw = fs::read_to_string(&path)
             .with_context(|| format!("读取 profile '{name}' 失败: {}", path.display()))?;
-        let profile: Profile = serde_json::from_str(&raw)
+        let mut profile: Profile = serde_json::from_str(&raw)
             .map_err(|e| anyhow::anyhow!("profile '{name}' 解析失败: {e}"))?;
         profile.validate().map_err(|e| anyhow::anyhow!("profile '{name}' 校验失败: {e}"))?;
+        // 在读取时升级完全未改动的旧出厂档，不改写用户文件；回退旧版本仍可读取。
+        if let Some((_, raw)) = FACTORY_PROFILES.iter().find(|(factory, _)| *factory == name) {
+            let current: Profile = serde_json::from_str(raw)?;
+            if current.quality.kind == crate::profile::QualityKind::Recommended {
+                let mut previous = current.clone();
+                previous.quality.kind = crate::profile::QualityKind::Level;
+                if profile == previous { profile = current; }
+            }
+        }
         Ok(profile)
     }
 
@@ -155,7 +164,9 @@ impl ProfileStore {
         let mut previous = current.clone();
         previous.resize.max_width = Some(320);
         previous.resize.max_height = Some(320);
-        if self.load("thumbnail").is_ok_and(|profile| profile == previous) {
+        let mut legacy = previous.clone();
+        legacy.quality.kind = crate::profile::QualityKind::Level;
+        if self.load("thumbnail").is_ok_and(|profile| profile == previous || profile == legacy) {
             self.save(&current)?;
         }
         Ok(())
@@ -182,6 +193,25 @@ mod tests {
         let mut p: Profile = serde_json::from_str(raw).unwrap();
         p.name = name.into();
         p
+    }
+
+    #[test]
+    fn recommended_upgrade_preserves_custom_profiles_and_original_files() {
+        let dir = temp_dir("recommended");
+        let store = ProfileStore::with_dir(&dir);
+        for name in ["default", "jpg", "thumbnail"] {
+            let mut previous: Profile = serde_json::from_str(FACTORY_PROFILES.iter()
+                .find(|(n, _)| *n == name).unwrap().1).unwrap();
+            previous.quality.kind = crate::profile::QualityKind::Level;
+            store.save(&previous).unwrap();
+            let original = fs::read(store.path_for(name).unwrap()).unwrap();
+            assert_eq!(store.load(name).unwrap().quality.kind, crate::profile::QualityKind::Recommended);
+            assert_eq!(fs::read(store.path_for(name).unwrap()).unwrap(), original);
+            previous.output.suffix_template = "-custom".into();
+            store.save(&previous).unwrap();
+            assert_eq!(store.load(name).unwrap(), previous);
+        }
+        fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]

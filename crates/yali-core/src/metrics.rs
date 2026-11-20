@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{anyhow, bail, Context, Result};
 
 /// 解析 ffmpeg：PATH → Homebrew 标准位置（Services 上下文 PATH 极简）
-fn ffmpeg_path() -> Option<PathBuf> {
+pub(crate) fn ffmpeg_path() -> Option<PathBuf> {
     if crate::runtime::contents().is_some() {
         return crate::runtime::bundled_binary("ffmpeg");
     }

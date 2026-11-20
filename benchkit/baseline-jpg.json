@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-17T15:37:51+08:00",
+  "generatedAt": "2026-11-20T11:37:09+08:00",
   "profile": "jpg",
   "runsPerSample": 3,
   "records": [
@@ -8,30 +8,30 @@
       "engine": "mozjpeg",
       "status": "done",
       "inputBytes": 531019,
-      "outputBytes": 49178,
-      "ratio": 0.0926,
-      "ssim": 0.964656,
-      "msMedian": 94
+      "outputBytes": 79768,
+      "ratio": 0.1502,
+      "ssim": 0.970086,
+      "msMedian": 344
     },
     {
       "sample": "ui.png",
       "engine": "mozjpeg",
       "status": "done",
       "inputBytes": 34757,
-      "outputBytes": 13710,
-      "ratio": 0.3945,
-      "ssim": 0.994731,
-      "msMedian": 171
+      "outputBytes": 15530,
+      "ratio": 0.4468,
+      "ssim": 0.996273,
+      "msMedian": 248
     },
     {
       "sample": "palette.png",
       "engine": "mozjpeg",
       "status": "done",
       "inputBytes": 921669,
-      "outputBytes": 49677,
-      "ratio": 0.0539,
-      "ssim": 0.895077,
-      "msMedian": 98
+      "outputBytes": 90626,
+      "ratio": 0.0983,
+      "ssim": 0.905197,
+      "msMedian": 163
     },
     {
       "sample": "anim.gif",
@@ -41,27 +41,27 @@
       "outputBytes": 22976,
       "ratio": 0.0238,
       "ssim": 0.636048,
-      "msMedian": 97
+      "msMedian": 153
     },
     {
       "sample": "transparent.png",
       "engine": "mozjpeg",
       "status": "done",
       "inputBytes": 32978,
-      "outputBytes": 11724,
-      "ratio": 0.3555,
-      "ssim": 0.913298,
-      "msMedian": 145
+      "outputBytes": 13969,
+      "ratio": 0.4236,
+      "ssim": 0.914403,
+      "msMedian": 206
     },
     {
       "sample": "photo_heic.heic",
       "engine": "mozjpeg",
       "status": "done",
       "inputBytes": 263571,
-      "outputBytes": 47549,
-      "ratio": 0.1804,
-      "ssim": 0.922609,
-      "msMedian": 430
+      "outputBytes": 77506,
+      "ratio": 0.2941,
+      "ssim": 0.934891,
+      "msMedian": 507
     }
   ]
 }

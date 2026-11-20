@@ -9,10 +9,11 @@ use serde::{Deserialize, Serialize};
 
 // ---------------- 枚举 ----------------
 
-/// quality.kind 三态：level(1-10) / targetBytes / lossless
+/// quality.kind：recommended / level(1-10) / targetBytes / lossless
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum QualityKind {
+    Recommended,
     #[default]
     Level,
     #[serde(rename = "targetBytes")]

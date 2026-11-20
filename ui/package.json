@@ -1,7 +1,7 @@
 {
   "name": "yali-ui",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.1.0-alpha.1",
   "type": "module",
   "description": "Yali 参数控制台（前端，私有包不发布）",
   "scripts": {

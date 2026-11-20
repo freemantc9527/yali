@@ -132,7 +132,9 @@ export function ProfileForm({
             ? "无损模式"
             : p.quality.kind === "targetBytes"
               ? "目标大小模式"
-              : "平衡画质与体积"}
+              : p.quality.kind === "recommended"
+                ? "推荐压缩"
+                : "手动压缩强度"}
           {dirty && <span className="draft-mark"> · 已调整</span>}
         </p>
       </div>
@@ -149,84 +151,6 @@ export function ProfileForm({
             )}
           />
         </Field>
-        <Field label="质量模式" id="quality-kind">
-          <Choice
-            id="quality-kind"
-            label="质量模式"
-            value={p.quality.kind}
-            disabled={busy}
-            onChange={(kind) =>
-              onChange(
-                withQuality(p, {
-                  kind,
-                  ...(kind === "level" && p.quality.level === null
-                    ? { level: 4 }
-                    : {}),
-                  ...(kind === "targetBytes" && p.quality.targetBytes === null
-                    ? { targetBytes: 500000 }
-                    : {}),
-                }),
-              )
-            }
-            options={[
-              ["level", "压缩强度"],
-              ["targetBytes", "目标大小"],
-              ["lossless", "无损"],
-            ]}
-          />
-        </Field>
-        {p.quality.kind === "level" && (
-          <Field
-            label={`压缩强度 ${p.quality.level} / 10`}
-            hint="编码参数因格式而异，不预测结果体积。"
-          >
-            <Slider
-              aria-label="压缩强度"
-              value={[p.quality.level ?? 4]}
-              min={1}
-              max={10}
-              step={1}
-              disabled={busy}
-              onValueChange={([level]) => onChange(withQuality(p, { level }))}
-            />
-            <div className="range-labels">
-              <span>更清晰</span>
-              <span>更小体积</span>
-            </div>
-          </Field>
-        )}
-        {p.quality.kind === "targetBytes" && (
-          <Field
-            label="目标大小"
-            hint={`目标为参考，受画质下限影响；保留下限 ${p.quality.minQualityFloor}。`}
-          >
-            <div className="input-pair">
-              <NumberField
-                label="目标大小"
-                value={p.quality.targetBytes}
-                scale={unit === "KB" ? 1000 : 1000000}
-                onChange={(targetBytes) =>
-                  onChange(withQuality(p, { targetBytes }))
-                }
-              />
-              <Choice
-                label="大小单位"
-                value={unit}
-                disabled={busy}
-                onChange={setUnit}
-                options={[
-                  ["KB", "KB"],
-                  ["MB", "MB"],
-                ]}
-              />
-            </div>
-          </Field>
-        )}
-        {p.quality.kind === "lossless" && (
-          <p className="hint">
-            使用当前格式的无损编码方案；格式转换不保证可逆归档。
-          </p>
-        )}
         <Field label="图片尺寸" id="resize-mode">
           <Choice
             id="resize-mode"
@@ -320,14 +244,98 @@ export function ProfileForm({
             </>
           )}
         </Field>
-        <Collapsible className="advanced-fields">
+        <Collapsible
+          key={p.name}
+          className="advanced-fields"
+          defaultOpen={p.quality.kind !== "recommended" && p.quality.kind !== "lossless"}
+        >
           <CollapsibleTrigger asChild>
             <Button variant="ghost" className="advanced-trigger">
               <ChevronDown />
-              更多设置
+              高级设置
             </Button>
           </CollapsibleTrigger>
           <CollapsibleContent className="advanced-content">
+            <Field label="质量模式" id="quality-kind">
+              <Choice
+                id="quality-kind"
+                label="质量模式"
+                value={p.quality.kind}
+                disabled={busy}
+                onChange={(kind) =>
+                  onChange(
+                    withQuality(p, {
+                      kind,
+                      ...(kind === "level" && p.quality.level === null
+                        ? { level: 4 }
+                        : {}),
+                      ...(kind === "targetBytes" && p.quality.targetBytes === null
+                        ? { targetBytes: 500000 }
+                        : {}),
+                    }),
+                  )
+                }
+                options={[
+                  ["recommended", "推荐，兼顾画质与体积"],
+                  ["level", "压缩强度"],
+                  ["targetBytes", "目标大小"],
+                  ["lossless", "无损"],
+                ]}
+              />
+            </Field>
+            {p.quality.kind === "level" && (
+              <Field
+                label={`压缩强度 ${p.quality.level} / 10`}
+                hint="编码参数因格式而异，不预测结果体积。"
+              >
+                <Slider
+                  aria-label="压缩强度"
+                  value={[p.quality.level ?? 4]}
+                  min={1}
+                  max={10}
+                  step={1}
+                  disabled={busy}
+                  onValueChange={([level]) => onChange(withQuality(p, { level }))}
+                />
+                <div className="range-labels">
+                  <span>更清晰</span>
+                  <span>更小体积</span>
+                </div>
+              </Field>
+            )}
+            {p.quality.kind === "targetBytes" && (
+              <Field
+                label="目标大小"
+                hint={`目标为参考，受画质下限影响；保留下限 ${p.quality.minQualityFloor}。`}
+              >
+                <div className="input-pair">
+                  <NumberField
+                    label="目标大小"
+                    value={p.quality.targetBytes}
+                    scale={unit === "KB" ? 1000 : 1000000}
+                    onChange={(targetBytes) =>
+                      onChange(withQuality(p, { targetBytes }))
+                    }
+                  />
+                  <Choice
+                    label="大小单位"
+                    value={unit}
+                    disabled={busy}
+                    onChange={setUnit}
+                    options={[
+                      ["KB", "KB"],
+                      ["MB", "MB"],
+                    ]}
+                  />
+                </div>
+              </Field>
+            )}
+            {p.quality.kind === "lossless" && (
+              <p className="hint">
+                使用当前格式的无损编码方案；格式转换不保证可逆归档。
+              </p>
+            )}
+
             <Field label="动图策略">
               <Choice
                 label="动图策略"

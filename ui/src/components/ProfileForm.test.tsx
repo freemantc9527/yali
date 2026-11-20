@@ -29,12 +29,19 @@ describe("本批参数表单", () => {
     expect(mail).not.toContain('aria-label="压缩强度"');
     const archive = render(await profilesShow("archive"));
     expect(archive).not.toContain('aria-label="压缩强度"');
-    expect(archive).toContain("不保证可逆归档");
+    expect(archive).toContain("无损模式");
   });
   it("运行时参数只读", async () => {
     const html = render(await profilesShow("default"), true);
     expect(html).toContain("<fieldset disabled");
     expect(html).toContain("本批参数已冻结");
+  });
+  it("推荐压缩默认折叠参数，不要求用户调强度", async () => {
+    const html = render(await profilesShow("default"));
+    expect(html).toContain("推荐压缩");
+    expect(html).toContain("高级设置");
+    expect(html).not.toContain('aria-label="质量模式"');
+    expect(html).not.toContain('aria-label="压缩强度"');
   });
   it("保留特殊尺寸策略并明确展示", async () => {
     const p = await profilesShow("default");

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-17T15:37:40+08:00",
+  "generatedAt": "2026-11-20T11:37:09+08:00",
   "profile": "default",
   "runsPerSample": 3,
   "records": [
@@ -8,30 +8,30 @@
       "engine": "mozjpeg",
       "status": "done",
       "inputBytes": 531019,
-      "outputBytes": 49178,
-      "ratio": 0.0926,
-      "ssim": 0.964656,
-      "msMedian": 95
+      "outputBytes": 79768,
+      "ratio": 0.1502,
+      "ssim": 0.970086,
+      "msMedian": 344
     },
     {
       "sample": "ui.png",
-      "engine": "pngquant",
+      "engine": "pngquant+oxipng",
       "status": "done",
       "inputBytes": 34757,
-      "outputBytes": 4696,
-      "ratio": 0.1351,
-      "ssim": 0.999801,
-      "msMedian": 52
+      "outputBytes": 4489,
+      "ratio": 0.1292,
+      "ssim": 0.999881,
+      "msMedian": 251
     },
     {
       "sample": "palette.png",
       "engine": "oxipng",
       "status": "done",
       "inputBytes": 921669,
-      "outputBytes": 800966,
-      "ratio": 0.869,
+      "outputBytes": 802076,
+      "ratio": 0.8702,
       "ssim": 1.0,
-      "msMedian": 345
+      "msMedian": 650
     },
     {
       "sample": "anim.gif",
@@ -41,17 +41,17 @@
       "outputBytes": 661199,
       "ratio": 0.6842,
       "ssim": 0.8227,
-      "msMedian": 159
+      "msMedian": 161
     },
     {
       "sample": "transparent.png",
-      "engine": "pngquant",
+      "engine": "pngquant+oxipng",
       "status": "done",
       "inputBytes": 32978,
-      "outputBytes": 5276,
-      "ratio": 0.16,
-      "ssim": 0.932026,
-      "msMedian": 50
+      "outputBytes": 5473,
+      "ratio": 0.166,
+      "ssim": 0.932151,
+      "msMedian": 259
     },
     {
       "sample": "photo_heic.heic",
@@ -61,7 +61,7 @@
       "outputBytes": 257639,
       "ratio": 0.9775,
       "ssim": 0.98904,
-      "msMedian": 163
+      "msMedian": 169
     }
   ]
 }

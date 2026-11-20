@@ -14,6 +14,8 @@ Profile 的完整字段与默认档见 [Schema](../schema/profile.schema.json) �
 
 四档按显示顺序：default（日常压缩）、jpg（转 JPG）、thumbnail（缩小尺寸，最长边 1024px，锁定宽高比、不放大小图）、archive（无损归档，JPEG 的 JXL 无损包裹）。thumbnail 保留内部标识以兼容已有引用，上一版未修改的 320px 默认档读取时升级，用户改过的预设保留。Finder 只绑定 default / jpg。旧版 web/mail/screenshot 原版不再列为预设，修改过的档保留为自定义预设。GUI 本批草稿不自动写盘，明确保存后才影响后续入口；CLI / workflow 下次调用读取新文件。
 
+default / jpg / thumbnail 使用 `quality.kind=recommended`：JPEG q75 与 jpegtran 无损候选择小；PNG quality 94–98 / speed 1 后接 oxipng -o 2；已量化或动画 PNG 走无损优化，量化明确退出 99 时回退无损。只读升级完全匹配旧出厂配置的档，不改写旧文件；自定义档与手动 level / targetBytes 语义保留。推荐模式不使用 level 字段，保留其值便于切换手动模式。GUI 的质量参数位于高级折叠，推荐档默认关闭。细节与验收见 [T-029](tasks/T-029-recommended-compression.md)。
+
 Schema 字段不等于已实现能力：metadata.exif/icc、pipeline.classify、resize.cropAnchor、output.largerPolicy 的完整执行效果尚未验证；GUI 保留值，不增加保证生效的控件。内容分类与智能裁剪属 M3。
 
 应用配置独立存于同根 `settings.json`：schemaVersion=2，fontScalePercent=100（只接受 80 / 100 / 120 / 150 / 180 / 200 六档）；默认 clipboard=false、minBytes=65536；watch=false、dirs=[]、settleMs=800；tray=true、notify=true。v1 读取时补齐字号、升级内存版本；旧的范围内连续字号归入最近固定档，下次保存才写回。缺文件 / 缺字段用默认；语法坏先备份 `.bad-<毫秒>` 再回落；未知字段、类型错误或未来版本报错且不覆盖。GUI 显式保存后应用。
@@ -34,6 +36,7 @@ WebView 使用非持久 WebKit 数据存储；设置和预设持久化走 core�
   - GIF：gifsicle `colors = round((10-L)/9×223)+32`，optimizationLevel 3
   - SVG：svgo 默认插件集
   - WebP 输出：`quality = 100 - 5×level`
+- **recommended** 使用上述固定 JPEG / PNG 参数，其他格式沿用旧 level 4。候选与主产物均验证格式、尺寸和实际解码；无损候选只基于实际编码输入，避免取消缩放。jpegtran 保留原有标记，完整元数据策略仍按 §2 的未验证边界记录；可选优化失败保留有效主产物，主编码失败报错。
 - **目标大小二分**：`target = KB×1000`；初始比例 `min(target/size, 1)`；≤5 轮二分（偏大记上界/偏小记下界取中点），收敛区间 `[target-10KB, target]`；受 `minQualityFloor` 保护
 - **负优化拦截**：输出 ≥ 输入 → 不落盘，状态 `larger_output`，UI 标 ⚠
 - **无损归档**：`cjxl --lossless_jpeg=1` 包裹，`djxl` 可逐比特还原原 JPEG

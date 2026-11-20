@@ -14,7 +14,7 @@
     "cropAnchor": null
   },
   "quality": {
-    "kind": "level",
+    "kind": "recommended",
     "level": 4,
     "targetBytes": null,
     "minQualityFloor": 3

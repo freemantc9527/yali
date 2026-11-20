@@ -33,7 +33,7 @@ fn profile_fixtures_cover_four_factory_profiles() {
         let raw = fixture_raw(name);
         let profile: Profile = serde_json::from_str(&raw).unwrap();
         match *name {
-            "default" => assert_eq!(profile.quality.kind, yali_core::QualityKind::Level),
+            "default" => assert_eq!(profile.quality.kind, yali_core::QualityKind::Recommended),
             "thumbnail" => {
                 assert_eq!(profile.resize.max_width, Some(1024));
                 assert_eq!(profile.resize.max_height, Some(1024));
@@ -45,7 +45,7 @@ fn profile_fixtures_cover_four_factory_profiles() {
                 assert_eq!(profile.format.output, yali_core::OutputFormat::Jxl);
             }
             "jpg" => {
-                assert_eq!(profile.quality.kind, yali_core::QualityKind::Level);
+                assert_eq!(profile.quality.kind, yali_core::QualityKind::Recommended);
                 assert_eq!(profile.format.output, yali_core::OutputFormat::Jpeg);
             }
             _ => unreachable!(),

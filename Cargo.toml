@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/yali-core", "crates/yali-cli", "src-tauri"]
 
 [workspace.package]
-version = "0.0.1"
+version = "0.1.0-alpha.1"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/freemantc9527/yali"

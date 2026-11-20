@@ -69,7 +69,7 @@ level_of_profile() {
 import json, sys
 p = json.load(open(sys.argv[1]))
 q = p["quality"]
-print(q["level"] if q["kind"] == "level" and q["level"] is not None else -1)
+print("recommended" if q["kind"] == "recommended" else q["level"] if q["kind"] == "level" and q["level"] is not None else -1)
 PY
 }
 LEVEL="$(level_of_profile)"
@@ -179,9 +179,9 @@ observations = []
 # 质量门：level≥5 时照片类样本 SSIM≥0.95（DESIGN §9 口径；平涂图形/动图/HEIC 的
 # SSIM 对边缘 ringing 极敏感，实测 q75 webp 也只有 0.86~0.92 而 PSNR>50dB，
 # 绝对门只对照片类有意义——细节见 benchkit/README.md）
-lvl = int(level)
+lvl = -1 if level == "recommended" else int(level)
 PHOTO_SAMPLES = ("photo.jpg",)
-if lvl >= 5:
+if lvl >= 5 or level == "recommended":
     for r in records:
         if r["sample"] not in PHOTO_SAMPLES or r["ssim"] is None:
             continue

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { version } from "../../package.json";
 import {
   compress,
   coreVersion,
@@ -25,8 +26,8 @@ describe("bridge 浏览器降级", () => {
     expect(isTauri()).toBe(false);
   });
 
-  it("内核版本降级为占位", async () => {
-    expect(await coreVersion()).toBe("browser-dev");
+  it("浏览器页面显示同步的产品版本", async () => {
+    expect(await coreVersion()).toBe(version);
   });
 
   it("仅列出四档出厂 profile（与 fixtures 对齐）", async () => {

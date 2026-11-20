@@ -7,7 +7,8 @@ use std::path::{Path, PathBuf};
 use anyhow::{bail, Context, Result};
 use serde::Serialize;
 
-use crate::engines::registry::{run_plan, EncodeRequest, Registry};
+use crate::engines::registry::{run_plan, EncodeRequest, Registry, SubprocessPlan, EngineExit};
+use crate::engines::EngineKind;
 use crate::profile::{Profile, QualityKind};
 use crate::undo;
 
@@ -191,6 +192,7 @@ pub async fn compress_file(
     if base_fmt == InputFormat::Png && target_fmt == crate::profile::OutputFormat::Png {
         // BMP 默认转无损 PNG，避免对照片先量化而达不到 pngquant 最低质量。
         if input_fmt == InputFormat::Bmp
+            || (quality.kind == QualityKind::Recommended && png_is_animated(&base_input))
             || png_png_engine_choice(png_color_type(&base_input)) == crate::engines::EngineKind::Oxipng {
             forced_encoder = Some(crate::engines::EngineKind::Oxipng);
         }
@@ -219,6 +221,7 @@ pub async fn compress_file(
             output_fmt: target_fmt,
             level,
             lossless,
+            recommended: quality.kind == QualityKind::Recommended,
         });
         let cleanup = tmp.clone();
         async move {
@@ -232,6 +235,7 @@ pub async fn compress_file(
     };
 
     let final_level: Option<u8> = match quality.kind {
+        QualityKind::Recommended => Some(4), // 其他格式沿用旧默认档；JPEG / PNG 有固定推荐参数
         QualityKind::Level => Some(quality.level.unwrap_or(4)),
         QualityKind::Lossless => None,
         QualityKind::TargetBytes => {
@@ -277,8 +281,67 @@ pub async fn compress_file(
     };
 
     // tmp 里已是目标结果就不再重编（bisection 收敛场景），否则编码一次
+    let mut engine_name = encoder.name().to_string();
     if quality.kind != QualityKind::TargetBytes {
-        encode_once(final_level, quality.kind == QualityKind::Lossless).await?;
+        if let Err(error) = encode_once(final_level, quality.kind == QualityKind::Lossless).await {
+            // 只对 pngquant 明确的「达不到质量下限」回退；损坏文件与其他错误照常报错。
+            if quality.kind == QualityKind::Recommended
+                && encoder.kind() == EngineKind::Pngquant
+                && error.downcast_ref::<EngineExit>().is_some_and(|exit| exit.0 == Some(99))
+            {
+                let fallback = registry.encoder_of(EngineKind::Oxipng)
+                    .context("PNG 量化未达质量下限，且 oxipng 不可用")?;
+                let plan = fallback.plan(&EncodeRequest {
+                    input: encode_input.clone(), output: tmp.clone(),
+                    input_fmt: base_fmt, output_fmt: target_fmt,
+                    level: Some(4), lossless: false, recommended: true,
+                })?;
+                if let Err(error) = run_plan(&plan).await {
+                    let _ = std::fs::remove_file(&tmp);
+                    return Err(error);
+                }
+                engine_name = fallback.name().into();
+            } else {
+                return Err(error);
+            }
+        }
+    }
+    if quality.kind == QualityKind::Recommended
+        && matches!(target_fmt, crate::profile::OutputFormat::Jpeg | crate::profile::OutputFormat::Png)
+    {
+        if let Err(error) = validate_candidate(&encode_input, &tmp, target_fmt).await {
+            let _ = std::fs::remove_file(&tmp);
+            return Err(error);
+        }
+        let candidate = temp_sibling(&tmp); // 与产物同分区，候选发布可原子替换
+        let plan = if target_fmt == crate::profile::OutputFormat::Png
+            && encoder.kind() == EngineKind::Pngquant && engine_name == "pngquant"
+        {
+            registry.encoder_of(EngineKind::Oxipng).map(|optimizer| optimizer.plan(&EncodeRequest {
+                input: tmp.clone(), output: candidate.clone(), input_fmt: InputFormat::Png,
+                output_fmt: target_fmt, level: Some(4), lossless: false, recommended: true,
+            })).transpose()?
+        } else if target_fmt == crate::profile::OutputFormat::Jpeg
+            && sniff(&encode_input)? == InputFormat::Jpeg
+        {
+            // 必须使用实际编码输入；缩放 / 转换后不能拿原始 JPEG 来替换结果。
+            EngineKind::Mozjpeg.sibling_binary("jpegtran").map(|program| SubprocessPlan {
+                program,
+                args: vec!["-copy".into(), "all".into(), "-optimize".into(), "-progressive".into(),
+                    "-outfile".into(), candidate.to_string_lossy().into(), encode_input.to_string_lossy().into()],
+            })
+        } else { None };
+        if let Some(plan) = plan {
+            // 可选优化失败不损坏已验证的主产物。
+            if run_plan(&plan).await.is_ok()
+                && choose_smaller_candidate(&encode_input, &tmp, &candidate, target_fmt).await.unwrap_or(false)
+            {
+                engine_name = if target_fmt == crate::profile::OutputFormat::Png {
+                    "pngquant+oxipng".into()
+                } else { "jpegtran".into() };
+            }
+        }
+        let _ = std::fs::remove_file(&candidate);
     }
     let output_size = std::fs::metadata(&tmp)?.len();
 
@@ -358,10 +421,51 @@ pub async fn compress_file(
         output_bytes: report_bytes,
         saved_bytes,
         saved_pct,
-        engine: encoder.name().into(),
+        engine: engine_name,
         elapsed_ms: started.elapsed().as_millis(),
         status,
     })
+}
+
+/// 推荐模式的候选必须真实可解码、格式正确，且不改变编码输入的尺寸。
+async fn validate_candidate(input: &Path, output: &Path, target: crate::profile::OutputFormat) -> Result<()> {
+    if Registry::auto_of(sniff(output)?) != target {
+        bail!("候选输出格式异常");
+    }
+    let (before, after) = tokio::join!(probe_dims(input), probe_dims(output));
+    if before.is_none() || before != after {
+        bail!("候选输出尺寸异常或无法读取");
+    }
+    let ffmpeg = crate::metrics::ffmpeg_path().context("推荐压缩需要完整应用内的 ffmpeg")?;
+    run_plan(&SubprocessPlan { program: ffmpeg, args: vec![
+        "-v".into(), "error".into(), "-xerror".into(), "-i".into(), output.to_string_lossy().into(),
+        "-f".into(), "null".into(), "-".into(),
+    ] }).await
+}
+
+async fn choose_smaller_candidate(input: &Path, output: &Path, candidate: &Path, target: crate::profile::OutputFormat) -> Result<bool> {
+    if std::fs::metadata(candidate).map(|m| m.len()).unwrap_or(u64::MAX)
+        >= std::fs::metadata(output)?.len()
+        || validate_candidate(input, candidate, target).await.is_err()
+    {
+        return Ok(false);
+    }
+    std::fs::rename(candidate, output)?;
+    Ok(true)
+}
+
+fn png_is_animated(path: &Path) -> bool {
+    let Some(head) = png_head(path) else { return false };
+    let mut pos = 8;
+    while pos + 12 <= head.len() {
+        let size = u32::from_be_bytes(head[pos..pos + 4].try_into().unwrap()) as usize;
+        if &head[pos + 4..pos + 8] == b"acTL" { return true; }
+        if &head[pos + 4..pos + 8] == b"IDAT" { break; }
+        pos = match pos.checked_add(12).and_then(|v| v.checked_add(size)) {
+            Some(next) => next, None => break,
+        };
+    }
+    false
 }
 
 /// 预缩放：vipsthumbnail → 无损 PNG 中转，shrinkOnly 必须显式禁止放大。
@@ -701,6 +805,114 @@ mod tests {
     use std::sync::Mutex;
 
     static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    struct TestHome(PathBuf, Option<std::ffi::OsString>);
+    impl TestHome {
+        fn new() -> Self {
+            let root = std::env::temp_dir().join(format!("yali-recommended-{}-{}", std::process::id(),
+                std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+            let previous = std::env::var_os("YALI_HOME");
+            std::env::set_var("YALI_HOME", &root);
+            Self(root, previous)
+        }
+    }
+    impl Drop for TestHome {
+        fn drop(&mut self) {
+            match &self.1 {
+                Some(value) => std::env::set_var("YALI_HOME", value),
+                None => std::env::remove_var("YALI_HOME"),
+            }
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn recommended_handles_quality_rejection_and_optional_optimizer_failure() {
+        use std::os::unix::fs::PermissionsExt;
+        let _lock = crate::test_support::ENV_LOCK.lock().unwrap();
+        let _home = TestHome::new();
+        let dir = crate::data::TempDir::new().unwrap();
+        let mut profile: Profile = serde_json::from_str(include_str!("../../../fixtures/default.json")).unwrap();
+        profile.output.undo_manifest = false;
+        let input = dir.path().join("ui.png");
+        std::fs::copy(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../benchkit/samples/ui.png"), &input).unwrap();
+        let original = std::fs::read(&input).unwrap();
+        struct Override(Option<std::ffi::OsString>);
+        impl Drop for Override {
+            fn drop(&mut self) {
+                match &self.0 {
+                    Some(value) => std::env::set_var("YALI_ENGINES_PATH", value),
+                    None => std::env::remove_var("YALI_ENGINES_PATH"),
+                }
+            }
+        }
+        let _restore = Override(std::env::var_os("YALI_ENGINES_PATH"));
+        std::env::set_var("YALI_ENGINES_PATH", dir.path());
+        let script = |name: &str, content: &str| {
+            let path = dir.path().join(name);
+            std::fs::write(&path, content).unwrap();
+            std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        };
+        script("pngquant", "#!/bin/sh\nexit 99\n");
+        let report = compress_file(&input, &profile, &Registry::discover(&profile)).await.unwrap();
+        assert_eq!(report.engine, "oxipng", "质量未达标只能回退无损");
+        script("pngquant", "#!/bin/sh\nexit 1\n");
+        assert!(compress_file(&input, &profile, &Registry::discover(&profile)).await.is_err(), "普通引擎错误不能伪装为质量回退");
+        std::fs::remove_file(dir.path().join("pngquant")).unwrap();
+        script("oxipng", "#!/bin/sh\nexit 1\n");
+        let report = compress_file(&input, &profile, &Registry::discover(&profile)).await.unwrap();
+        assert_eq!(report.engine, "pngquant");
+        assert_eq!(report.status, "done", "可选后处理失败应保留有效量化结果");
+        assert_eq!(std::fs::read(&input).unwrap(), original);
+    }
+
+    #[tokio::test]
+    async fn recommended_rejects_invalid_and_larger_candidates() {
+        let _lock = crate::test_support::ENV_LOCK.lock().unwrap();
+        let _home = TestHome::new();
+        let dir = crate::data::TempDir::new().unwrap();
+        let input = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../benchkit/samples/photo.jpg");
+        let output = dir.path().join("primary.jpg");
+        let candidate = dir.path().join("candidate.jpg");
+        std::fs::copy(&input, &output).unwrap();
+        let original = std::fs::read(&output).unwrap();
+        std::fs::write(&candidate, b"invalid").unwrap();
+        assert!(!choose_smaller_candidate(&input, &output, &candidate, crate::profile::OutputFormat::Jpeg).await.unwrap());
+        std::fs::write(&candidate, vec![0; original.len() + 1]).unwrap();
+        assert!(!choose_smaller_candidate(&input, &output, &candidate, crate::profile::OutputFormat::Jpeg).await.unwrap());
+        assert_eq!(std::fs::read(output).unwrap(), original);
+    }
+
+    #[tokio::test]
+    async fn recommended_thumbnail_and_already_compressed_jpeg_preserve_user_intent() {
+        let _lock = crate::test_support::ENV_LOCK.lock().unwrap();
+        let _home = TestHome::new();
+        let dir = crate::data::TempDir::new().unwrap();
+        let mut profile: Profile = serde_json::from_str(include_str!("../../../fixtures/thumbnail.json")).unwrap();
+        profile.output.undo_manifest = false;
+        let input = dir.path().join("photo.jpg");
+        std::fs::copy(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../benchkit/samples/photo.jpg"), &input).unwrap();
+        let registry = Registry::discover(&profile);
+        let report = compress_file(&input, &profile, &registry).await.unwrap();
+        assert_eq!(probe_dims(Path::new(report.output.as_ref().unwrap())).await, Some((1024, 683)), "不能让未缩放的无损候选覆盖缩放结果");
+        let low = dir.path().join("low.jpg");
+        run_plan(&registry.encoder_of(EngineKind::Mozjpeg).unwrap().plan(&EncodeRequest {
+            input, output: low.clone(), input_fmt: InputFormat::Jpeg,
+            output_fmt: crate::profile::OutputFormat::Jpeg, level: Some(10), lossless: false, recommended: false,
+        }).unwrap()).await.unwrap();
+        profile.resize.max_width = None;
+        profile.resize.max_height = None;
+        let original = std::fs::read(&low).unwrap();
+        let report = compress_file(&low, &profile, &registry).await.unwrap();
+        assert_eq!(std::fs::read(&low).unwrap(), original);
+        if report.status == "done" {
+            assert!(report.output_bytes.unwrap() < report.input_bytes);
+        } else {
+            assert_eq!(report.status, "larger_output");
+            assert!(report.output.is_none());
+        }
+    }
 
     #[tokio::test]
     async fn thumbnail_shrinks_large_images_but_never_enlarges_small_ones() {
