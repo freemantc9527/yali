@@ -8,7 +8,7 @@ macOS 是鸭梨的主平台，Finder、桌面工作台、CLI、自包含运行�
 
 ## Windows
 
-Windows 代码处于实验阶段，尚未完成真实构建、打包、WebView2、动态库、系统集成和格式兼容性验收。首个 Windows 版本只计划保证 JPEG、PNG、GIF、WebP、BMP、TIFF 等基本图片处理，不承诺 macOS 的 HEIC、AVIF、JPEG XL 和 Finder Services 能力。
+Windows 代码处于实验阶段。[首轮云端试构建](https://github.com/freemantc9527/yali/actions/runs/45133346294)已完成 x86_64 App / CLI 编译、78 项 UI 测试、ZIP 组装及解压后的 CLI 版本检查。图片引擎没有内嵌，WebView2、GUI 运行、动态库、系统集成和格式兼容性仍待真实 Windows 验收。首个 Windows 版本只计划保证 JPEG、PNG、GIF、WebP、BMP、TIFF 等基本图片处理，不承诺 macOS 的 HEIC、AVIF、JPEG XL 和 Finder Services 能力。
 
 | 范围 | 当前边界 |
 | --- | --- |

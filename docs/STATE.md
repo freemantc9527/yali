@@ -27,7 +27,7 @@ macOS 是当前主平台。当前本机验证的引擎最低部署目标为 macO
 
 当前版本为 `0.1.0-alpha`，已通过 GitHub Actions 双架构构建并[公开预发布](https://github.com/freemantc9527/yali/releases/tag/v0.1.0-alpha)。两个 DMG 已下载回读并校验 SHA-256；原生交互待验项目保持不变。
 
-Windows 新增 ZIP 实验工作流，先编译 Rust 测试、运行 UI 测试并打包 App 与 CLI，再解压运行 CLI 版本检查。图片引擎没有内嵌，GUI 启动和图片处理仍需真实 Windows 验证，不作为正式支持声明。
+Windows ZIP 实验工作流已在 [Actions 45133346294](https://github.com/freemantc9527/yali/actions/runs/45133346294) 通过：Rust 测试程序编译、UI 78 项测试、App / CLI release 编译、ZIP 打包和解压后的 CLI 版本检查。下载回读确认两个程序均为 x86_64 PE，ZIP 完整性、提交记录和 SHA-256 匹配。图片引擎没有内嵌，Rust 测试未执行，GUI 启动和图片处理仍需真实 Windows 验证，不作为正式支持声明。
 
 ## 下一步
 
