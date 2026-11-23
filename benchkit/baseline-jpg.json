@@ -1,0 +1,67 @@
+{
+  "generatedAt": "2026-11-20T11:37:09+08:00",
+  "profile": "jpg",
+  "runsPerSample": 3,
+  "records": [
+    {
+      "sample": "photo.jpg",
+      "engine": "mozjpeg",
+      "status": "done",
+      "inputBytes": 531019,
+      "outputBytes": 79768,
+      "ratio": 0.1502,
+      "ssim": 0.970086,
+      "msMedian": 344
+    },
+    {
+      "sample": "ui.png",
+      "engine": "mozjpeg",
+      "status": "done",
+      "inputBytes": 34757,
+      "outputBytes": 15530,
+      "ratio": 0.4468,
+      "ssim": 0.996273,
+      "msMedian": 248
+    },
+    {
+      "sample": "palette.png",
+      "engine": "mozjpeg",
+      "status": "done",
+      "inputBytes": 921669,
+      "outputBytes": 90626,
+      "ratio": 0.0983,
+      "ssim": 0.905197,
+      "msMedian": 163
+    },
+    {
+      "sample": "anim.gif",
+      "engine": "vips",
+      "status": "done",
+      "inputBytes": 966363,
+      "outputBytes": 22976,
+      "ratio": 0.0238,
+      "ssim": 0.636048,
+      "msMedian": 153
+    },
+    {
+      "sample": "transparent.png",
+      "engine": "mozjpeg",
+      "status": "done",
+      "inputBytes": 32978,
+      "outputBytes": 13969,
+      "ratio": 0.4236,
+      "ssim": 0.914403,
+      "msMedian": 206
+    },
+    {
+      "sample": "photo_heic.heic",
+      "engine": "mozjpeg",
+      "status": "done",
+      "inputBytes": 263571,
+      "outputBytes": 77506,
+      "ratio": 0.2941,
+      "ssim": 0.934891,
+      "msMedian": 507
+    }
+  ]
+}

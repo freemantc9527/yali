@@ -1,0 +1,43 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# Node / Vite / pnpm
+node_modules/
+dist/
+.vite/
+coverage/
+.pnpm-store/
+*.tsbuildinfo
+pnpm-debug.log*
+
+# Python 发布脚本测试
+__pycache__/
+
+# Tauri
+src-tauri/gen/
+*.app
+*.dmg
+
+# 本地数据与密钥
+.env
+.env.*
+*.key
+benchkit/tmp/
+benchkit/local-samples/
+
+# macOS
+.DS_Store
+
+# 编辑器
+.idea/
+.vscode/
+*.swp
+.alma-snapshots
+
+# AI
+.playwright-mcp/
+.codegraph/
+
+# 本地开发任务卡与过程记录
+.tasks/

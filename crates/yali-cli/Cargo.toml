@@ -1,0 +1,18 @@
+[package]
+name = "yali-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "鸭梨 CLI（安装产物二进制名为 yali）"
+
+[[bin]]
+name = "yali"
+path = "src/main.rs"
+
+[dependencies]
+yali-core = { path = "../yali-core" }
+clap.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+tokio.workspace = true

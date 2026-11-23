@@ -1,0 +1,67 @@
+{
+  "generatedAt": "2026-11-20T11:37:09+08:00",
+  "profile": "default",
+  "runsPerSample": 3,
+  "records": [
+    {
+      "sample": "photo.jpg",
+      "engine": "mozjpeg",
+      "status": "done",
+      "inputBytes": 531019,
+      "outputBytes": 79768,
+      "ratio": 0.1502,
+      "ssim": 0.970086,
+      "msMedian": 344
+    },
+    {
+      "sample": "ui.png",
+      "engine": "pngquant+oxipng",
+      "status": "done",
+      "inputBytes": 34757,
+      "outputBytes": 4489,
+      "ratio": 0.1292,
+      "ssim": 0.999881,
+      "msMedian": 251
+    },
+    {
+      "sample": "palette.png",
+      "engine": "oxipng",
+      "status": "done",
+      "inputBytes": 921669,
+      "outputBytes": 802076,
+      "ratio": 0.8702,
+      "ssim": 1.0,
+      "msMedian": 650
+    },
+    {
+      "sample": "anim.gif",
+      "engine": "gifsicle",
+      "status": "done",
+      "inputBytes": 966363,
+      "outputBytes": 661199,
+      "ratio": 0.6842,
+      "ssim": 0.8227,
+      "msMedian": 161
+    },
+    {
+      "sample": "transparent.png",
+      "engine": "pngquant+oxipng",
+      "status": "done",
+      "inputBytes": 32978,
+      "outputBytes": 5473,
+      "ratio": 0.166,
+      "ssim": 0.932151,
+      "msMedian": 259
+    },
+    {
+      "sample": "photo_heic.heic",
+      "engine": "sips",
+      "status": "done",
+      "inputBytes": 263571,
+      "outputBytes": 257639,
+      "ratio": 0.9775,
+      "ssim": 0.98904,
+      "msMedian": 169
+    }
+  ]
+}

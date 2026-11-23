@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:yali:profile-schema:v1",
+  "title": "Yali Profile v1",
+  "description": "鸭梨 Profile v1 —— 所有入口（右键/GUI/CLI）的唯一参数事实源。字段权威定义见 docs/DESIGN.md §2。camelCase、未知字段一律拒绝。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "pipeline", "resize", "quality", "format", "metadata", "output", "ui"],
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "description": "档名，即磁盘文件名（profiles/<name>.json）" },
+    "pipeline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classify", "engine"],
+      "properties": {
+        "classify": { "type": "boolean", "description": "内容分类路由（M3 起启用）：照片→有损管道 / UI 截图→无损 WebP / 透明→pngquant 或 oxipng" },
+        "engine": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["jpeg"],
+          "properties": {
+            "jpeg": { "enum": ["mozjpeg"], "description": "brew 的 cjpeg 是 libjpeg-turbo，必须走 mozjpeg 包路径" }
+          }
+        }
+      }
+    },
+    "resize": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxWidth", "maxHeight", "keepRatio", "mode", "cropAnchor"],
+      "properties": {
+        "maxWidth": { "type": ["integer", "null"], "minimum": 1 },
+        "maxHeight": { "type": ["integer", "null"], "minimum": 1 },
+        "keepRatio": { "type": "boolean" },
+        "mode": { "enum": ["shrinkOnly", "always", "none"] },
+        "cropAnchor": { "enum": ["center", "smart", null] }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "level", "targetBytes", "minQualityFloor"],
+      "properties": {
+        "kind": { "enum": ["recommended", "level", "targetBytes", "lossless"], "description": "推荐 / 手动档位 / 目标大小二分 / 无损" },
+        "level": { "type": ["integer", "null"], "minimum": 1, "maximum": 10, "description": "kind=level 时必填" },
+        "targetBytes": { "type": ["integer", "null"], "minimum": 1, "description": "kind=targetBytes 时必填（字节）" },
+        "minQualityFloor": { "type": "integer", "minimum": 1, "maximum": 10, "description": "只在 targetBytes 下生效：二分下探的保护线" }
+      }
+    },
+    "format": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["output", "animated"],
+      "properties": {
+        "output": { "enum": ["auto", "jpeg", "png", "webp", "avif", "heic", "jxl"] },
+        "animated": { "enum": ["keep", "webp"], "description": "默认保守（保持 GIF）；webp 显式开启（实测 -24%）" }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exif", "icc"],
+      "properties": {
+        "exif": { "enum": ["keep", "strip", "privacy"] },
+        "icc": { "enum": ["srgb", "keep", "strip"] }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dir", "dirPath", "suffixTemplate", "largerPolicy", "undoManifest"],
+      "properties": {
+        "dir": { "enum": ["sibling", "override", "custom", "downloads"], "description": "sibling=与输入同目录；downloads=~/Downloads；custom=dirPath；override=环境变量 YALI_OUTPUT_DIR（未设置则回落 sibling）" },
+        "dirPath": { "type": ["string", "null"], "description": "dir=custom 时必填（绝对路径或 ~ 开头）" },
+        "suffixTemplate": { "type": "string", "minLength": 1, "description": "支持 {profile} / {date} / {size} 占位符（{size} 在编码完成后渲染）" },
+        "largerPolicy": { "enum": ["keepOriginal", "saveLarger"], "description": "负优化拦截：输出 ≥ 输入 → 不落盘，状态 larger_output" },
+        "undoManifest": { "type": "boolean", "description": "写撤销清单，yali undo 可 100% 还原" }
+      }
+    },
+    "ui": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["notify", "sound", "openGUIOnFail"],
+      "properties": {
+        "notify": { "type": "boolean" },
+        "sound": { "type": "boolean" },
+        "openGUIOnFail": { "type": "boolean" }
+      }
+    }
+  }
+}
