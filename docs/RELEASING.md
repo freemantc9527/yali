@@ -13,6 +13,16 @@
 
 当前工作流位于 `.github/workflows/release.yml`。手动运行只生成 Actions artifacts，不创建标签或公开 Release。
 
+2026-11-23 两次完整运行约需 31 到 33 分钟，其中 Apple Silicon 约 15 分钟、Intel 约 31 分钟。依赖安装与首次编译较慢，耗时只用于估算。排查时按阶段或每隔数分钟读取一次结构化状态，无需逐分钟查询；发现失败后再读取日志。
+
+## Windows ZIP 实验
+
+`.github/workflows/windows-experiment.yml` 在 `dev` 分支修改该文件时触发，也保留 `workflow_dispatch` 手动入口。手动入口在工作流进入默认分支后可从 GitHub 页面使用。
+
+此流程使用 Windows x86_64 runner 编译 Rust 测试、运行 UI 测试、构建真实前端与两个程序，再将 `Yali-workbench.exe`、`yali.exe`、许可证、实验说明和构建记录组成 ZIP。解压回读后执行 CLI 版本检查，上传 ZIP 与 SHA-256 为保留 14 天的 Actions artifact，不创建 Release。
+
+Rust 测试只编译，不等同于执行通过。ZIP 不含图片引擎，GUI 需要系统安装 Microsoft Edge WebView2 Runtime；免安装指程序解压后运行，配置和缓存仍使用常规数据目录。GUI 启动、图片处理与运行时依赖须在真实 Windows 环境另行验证。
+
 ## 构建检查
 
 每个架构执行：

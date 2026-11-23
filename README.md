@@ -8,10 +8,27 @@
 
 <p align="center">
   <a href="https://github.com/freemantc9527/yali/blob/main/LICENSE"><img src="https://img.shields.io/github/license/freemantc9527/yali" alt="Apache-2.0 license"></a>
+  <a href="https://github.com/freemantc9527/yali/releases"><img src="https://img.shields.io/github/v/release/freemantc9527/yali?include_prereleases&label=download" alt="Latest release"></a>
+  <a href="https://github.com/freemantc9527/yali/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/freemantc9527/yali/release.yml?label=macOS%20build" alt="macOS build"></a>
   <a href="https://github.com/freemantc9527/yali"><img src="https://img.shields.io/github/stars/freemantc9527/yali?style=flat" alt="GitHub stars"></a>
 </p>
 
 鸭梨（Yali）是一个面向 macOS 的本地图片压缩与转换工具。它把常用操作放进 Finder 右键菜单、桌面工作台和 CLI，处理图片时不必打开终端，也不必记住一长串参数。
+
+> 当前公开版本是 `0.1.0-alpha`。它适合尝鲜和反馈，不代表所有 macOS 入口都完成了人工验收。
+
+## 下载
+
+从 [GitHub Releases](https://github.com/freemantc9527/yali/releases) 下载 DMG。根据 Mac 的处理器选择对应文件：
+
+| Mac 类型 | 下载 | 架构 |
+| --- | --- | --- |
+| Apple Silicon（M1、M2、M3、M4 等） | [Yali_0.1.0-alpha_macos_arm64.dmg](https://github.com/freemantc9527/yali/releases/download/v0.1.0-alpha/Yali_0.1.0-alpha_macos_arm64.dmg) | arm64 |
+| Intel Mac | [Yali_0.1.0-alpha_macos_x86_64.dmg](https://github.com/freemantc9527/yali/releases/download/v0.1.0-alpha/Yali_0.1.0-alpha_macos_x86_64.dmg) | x86_64 |
+
+不知道自己的架构时，在“ → 关于本机”查看芯片信息。也可以在终端运行 `uname -m`，输出 `arm64` 表示 Apple Silicon，输出 `x86_64` 表示 Intel。
+
+每个 Release 还提供构建记录和 `SHA256SUMS`。发布包由 GitHub Actions 从固定提交分别构建，当前 App 使用 ad-hoc 签名，未进行 Developer ID 签名或 Apple 公证。
 
 ## 项目缘起
 
@@ -56,9 +73,9 @@ flowchart LR
 
 ### 使用发布包
 
-公开 Release 建立后，可以从仓库 Releases 页面下载对应架构的 macOS DMG。将 `Yali.app` 拖到 `/Applications/` 或 `~/Applications/`，打开应用后，在“设置 → 自动化”中安装或修复 Finder 右键操作。
+从上面的 Releases 页面下载对应架构的 macOS DMG。打开 DMG，将 `Yali.app` 拖到 `/Applications/` 或 `~/Applications/`，再打开应用。在“设置 → 自动化”中安装或修复 Finder 右键操作。
 
-当前版本为 `0.1.0-alpha`。每个 Release 会单独列出架构、最低系统、已验证格式和已知限制。当前本机验证的 App 为 Apple Silicon，图片引擎的实际最低部署目标为 macOS 27.2，低版本系统尚未验证。应用使用 ad-hoc 签名，不包含 Developer ID 或公证。
+每个 Release 会单独列出架构、最低系统、已验证格式和已知限制。当前公开包记录的最低 macOS 版本为 15.0，已通过两架构云端构建与自动检查。维护者本机环境为 macOS 27.2，Finder 等原生交互及低版本系统仍待人工验收。应用使用 ad-hoc 签名，不包含 Developer ID 或公证。
 
 ### 首次打开 ad-hoc App
 

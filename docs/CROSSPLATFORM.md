@@ -15,7 +15,7 @@ Windows 代码处于实验阶段，尚未完成真实构建、打包、WebView2�
 | 图片处理 | 先验证 libvips、`vipsheader` 和 Windows 动态库闭包，基本格式优先 |
 | 系统入口 | 暂不承诺右键菜单、文件关联、剪贴板、watch 和通知 |
 | 图形界面 | 只有在真实 WebView2 环境验证后才扩大支持范围 |
-| 分发 | 当前没有公开 Windows 资产，不能把条件编译分支当作可用产品 |
+| 分发 | Windows ZIP 实验工作流在 `dev` 修改工作流时触发，也保留手动入口；产物是 Actions artifact，不是公开 Release。图片引擎尚未内嵌，运行需要 WebView2，配置与缓存使用常规数据目录 |
 
 ## Linux
 

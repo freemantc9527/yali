@@ -1,0 +1,111 @@
+name: Windows portable experiment
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [dev]
+    paths: ['.github/workflows/windows-experiment.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-experiment-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Windows portable ZIP
+    runs-on: windows-2025
+    timeout-minutes: 60
+    env:
+      CARGO_TERM_COLOR: always
+      RUSTUP_TOOLCHAIN: '1.100.0'
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: '12.21.0'
+          run_install: false
+
+      - name: Install Rust and Tauri CLI
+        shell: pwsh
+        run: |
+          rustup toolchain install $env:RUSTUP_TOOLCHAIN --profile minimal
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo install tauri-cli --version '=2.12.5' --locked
+
+      - name: Install frontend dependencies
+        run: pnpm --dir ui install --frozen-lockfile
+
+      - name: Compile Rust tests
+        env:
+          YALI_HOME: ${{ runner.temp }}\yali-windows-tests
+        run: cargo test --locked -p yali-core -p yali-cli -p yali-app --no-run
+
+      - name: Test UI
+        run: pnpm --dir ui test
+
+      - name: Build CLI
+        run: cargo build --locked --release -p yali-cli
+
+      - name: Build Windows binaries without an installer
+        run: cargo tauri build --no-bundle
+
+      - name: Assemble portable ZIP
+        shell: pwsh
+        run: |
+          $stage = Join-Path $env:RUNNER_TEMP 'yali-windows-portable'
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item 'target\release\yali-app.exe' (Join-Path $stage 'Yali-workbench.exe')
+          Copy-Item 'target\release\yali.exe' (Join-Path $stage 'yali.exe')
+          Copy-Item 'LICENSE' (Join-Path $stage 'LICENSE')
+          $version = (Get-Content 'src-tauri\tauri.conf.json' -Raw | ConvertFrom-Json).version
+          @'
+          Yali Windows portable experiment
+
+          This ZIP is an engineering experiment, not a supported Windows release.
+          Open Yali-workbench.exe for the GUI. Run yali.exe --help for CLI usage.
+          Requires Microsoft Edge WebView2 Runtime. The image engines are not bundled.
+          GUI startup and image processing still require manual verification on Windows.
+          Settings and cache use the normal Yali data directory, not the ZIP folder.
+          '@ | Set-Content -Encoding UTF8 (Join-Path $stage 'WINDOWS-EXPERIMENT.txt')
+          @{
+            version = $version
+            commit = $env:GITHUB_SHA
+            target = 'x86_64-pc-windows-msvc'
+            runUrl = "https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
+            imageEnginesBundled = $false
+            rustTests = 'compiled-only'
+            guiManuallyVerified = $false
+          } | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $stage 'build-info.json')
+          $zip = Join-Path $env:GITHUB_WORKSPACE "target\Yali_${version}_windows_x86_64-experiment.zip"
+          Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip -CompressionLevel Optimal
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $([IO.Path]::GetFileName($zip))" | Set-Content -Encoding UTF8 "$zip.sha256"
+          $readback = Join-Path $env:RUNNER_TEMP 'yali-windows-readback'
+          Expand-Archive -Path $zip -DestinationPath $readback
+          foreach ($name in @('Yali-workbench.exe', 'yali.exe', 'LICENSE', 'WINDOWS-EXPERIMENT.txt', 'build-info.json')) {
+            if (!(Test-Path (Join-Path $readback $name) -PathType Leaf)) { throw "Missing ZIP entry: $name" }
+          }
+          & (Join-Path $readback 'yali.exe') --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-portable-experiment
+          path: target/Yali_*_windows_*-experiment.zip*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
