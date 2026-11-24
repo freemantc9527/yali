@@ -14,7 +14,7 @@
 
 当前工作流位于 `.github/workflows/release.yml`。手动运行只生成 `desktop-release-verified` artifact（含发布说明），不创建标签或公开 Release。可用 `gh workflow run release.yml --ref dev` 演练；公开发布仍须分别确认 main 合入、标签推送和发布范围，不得覆盖已有版本。
 
-2026-11-23 两次完整运行约需 31 到 33 分钟，其中 Apple Silicon 约 15 分钟、Intel 约 31 分钟。依赖安装与首次编译较慢，耗时只用于估算。排查时按阶段或每隔数分钟读取一次结构化状态，无需逐分钟查询；发现失败后再读取日志。
+2026-11-24 [三架构手动演练](https://github.com/freemantc9527/yali/actions/runs/45339644244)已通过，生成 `desktop-release-verified` artifact，公开任务按设计跳过。期间 Windows 上游下载连接超时，原运行重跑失败任务后成功；两个 macOS 构建结果保留，来源仍绑定同一提交和 run。依赖安装与首次编译较慢，耗时只用于估算。排查时按阶段或每隔数分钟读取一次结构化状态，发现失败后再读取日志。
 
 ## Windows ZIP 实验
 
