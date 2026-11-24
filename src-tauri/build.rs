@@ -6,7 +6,24 @@ fn main() {
     // 这里在 codegen 之前兜一个占位产物，保证「无前端产物也能编译」。
     // 正式产物仍由 `pnpm --dir ui build` 生成并覆盖（vite emptyOutDir）。
     ensure_frontend_dist_placeholder();
-    tauri_build::build()
+    // Embed one manifest in every linkable target, including the library test harness.
+    // rustc-link-arg-tests only covers integration tests, not the library's unit tests.
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows")
+        && std::env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc")
+    {
+        tauri_build::try_build(
+            tauri_build::Attributes::new().windows_attributes(
+                tauri_build::WindowsAttributes::new_without_app_manifest(),
+            ),
+        ).expect("Tauri Windows build configuration");
+        let manifest = std::path::PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap())
+            .join("windows-test.manifest");
+        println!("cargo:rerun-if-changed={}", manifest.display());
+        println!("cargo:rustc-link-arg=/MANIFEST:EMBED");
+        println!("cargo:rustc-link-arg=/MANIFESTINPUT:{}", manifest.display());
+    } else {
+        tauri_build::build();
+    }
 }
 
 fn ensure_frontend_dist_placeholder() {
