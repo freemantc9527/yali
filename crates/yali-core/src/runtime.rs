@@ -150,6 +150,7 @@ fn binary_in(contents: &Path, name: &str) -> Option<PathBuf> {
 /// 只给子进程设置环境，不改 GUI / CLI 的进程全局环境。
 pub fn command_environment(program: &Path) -> Vec<(&'static str, String)> {
     // 保留 libvips 上游相对结构。仅包内可执行文件获得隔离环境。
+    #[cfg(windows)]
     if let Some(root) = windows_root().or_else(|| program.ancestors().skip(1).find(|p| p.join("yali-runtime.json").is_file()).map(Path::to_path_buf)) {
         if program.starts_with(&root) {
             let system = std::env::var_os("SystemRoot").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("C:/Windows"));
@@ -196,6 +197,19 @@ pub fn command_environment(program: &Path) -> Vec<(&'static str, String)> {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(not(windows))]
+    #[test]
+    fn windows_style_marker_does_not_set_environment_for_unbundled_unix_tools() {
+        let dir = std::env::temp_dir().join(format!("yali-runtime-platform-{}", std::process::id()));
+        let bin = dir.join("bin");
+        std::fs::create_dir_all(&bin).unwrap();
+        let tool = bin.join("cjpeg");
+        std::fs::write(&tool, b"test").unwrap();
+        std::fs::write(dir.join("yali-runtime.json"), b"{}").unwrap();
+        assert!(command_environment(&tool).is_empty());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
     use super::*;
 
     #[test]
@@ -255,6 +269,8 @@ mod tests {
         std::fs::write(&cli, b"test").unwrap();
         assert!(contents_for(&cli).is_none());
         std::fs::write(contents.join("Resources/yali-runtime.json"), b"{}").unwrap();
+        // 构建目录也会有运行时清单，不能越过 macOS bundle 误用 Windows 环境。
+        std::fs::write(dir.join("yali-runtime.json"), b"{}").unwrap();
         assert_eq!(contents_for(&cli), Some(contents.canonicalize().unwrap()));
         assert!(binary_in(&contents, "pngquant").is_none());
         #[cfg(unix)]

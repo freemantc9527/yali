@@ -29,7 +29,7 @@ macOS 是当前主平台。当前本机验证的引擎最低部署目标为 macO
 
 Windows 在 [Actions 45321363937](https://github.com/freemantc9527/yali/actions/runs/45321363937) 通过：实际执行 Rust 与 79 项 UI 测试、App / CLI release 编译、专用图片引擎构建、79 个 PE 文件及 DLL 依赖检查。最终 ZIP 在中文空格路径、无 HOME、受限 PATH 下完成六类输入处理、透明图片白底转换、PNG 无损、动画/多页保护、配置保存、撤销、缺 EXE/DLL 负例和独立 FFmpeg 质量对照。下载回读确认二进制/对应源码 ZIP、锁文件、来源和 SHA-256 匹配。
 
-本地回归：Rust 108 项、UI 79 项、Python 打包/发布检查 31 项通过；macOS 完整 App、隔离冒烟及 default / jpg 金样通过。发布流程已扩展为 macOS arm64/x86_64 DMG 和 Windows x64 实验 ZIP，强制同提交、同运行、完整对应源码及验证报告；联合云端演练结果另行记录。Windows 11 GUI、WebView2 缺失和 SmartScreen 仍待实机验收，服务器自动化不能替代桌面验收。
+本地回归：Rust 109 项、UI 79 项、Python 打包/发布检查 31 项通过；macOS 完整 App、隔离冒烟及 default / jpg 金样通过。发布流程已扩展为 macOS arm64/x86_64 DMG 和 Windows x64 实验 ZIP，强制同提交、同运行、完整对应源码及验证报告；联合云端演练结果另行记录。Windows 11 GUI、WebView2 缺失和 SmartScreen 仍待实机验收，服务器自动化不能替代桌面验收。
 
 ## 下一步
 
