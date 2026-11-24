@@ -1,4 +1,4 @@
-name: macOS release
+name: Desktop release
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: macos-release-${{ github.ref }}
+  group: desktop-release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -30,7 +30,7 @@ jobs:
         with:
           python-version: '3.13'
       - name: Test release validation
-        run: python3 -m unittest discover -s scripts -p 'test_release.py' -v
+        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
       - name: Validate candidate and version tag
         id: candidate
         env:
@@ -117,9 +117,63 @@ jobs:
           compression-level: 0
           retention-days: 14
 
+  windows:
+    needs: prepare
+    uses: ./.github/workflows/windows-experiment.yml
+    with:
+      ref: ${{ needs.prepare.outputs.commit }}
+
+  assemble:
+    needs: [prepare, build, windows]
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ needs.prepare.outputs.commit }}
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          pattern: macos-*
+          path: release-assets
+          merge-multiple: true
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: windows-portable-experiment
+          path: windows-assets
+      - name: Select attested Windows release set
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          python3 - <<'PYTHON'
+          import os
+          from pathlib import Path
+          import shutil
+          import sys
+          sys.path.insert(0, "scripts")
+          import windows_release
+          for name in windows_release.names(os.environ["VERSION"]).values():
+              shutil.copy2(Path("windows-assets") / name, Path("release-assets") / name)
+          PYTHON
+      - name: Require all platforms from the same candidate and run
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          COMMIT: ${{ needs.prepare.outputs.commit }}
+        run: python3 scripts/release.py assemble --directory release-assets --version "$VERSION" --commit "$COMMIT"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: desktop-release-verified
+          path: release-assets/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
   release:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-    needs: [prepare, build]
+    needs: [prepare, assemble]
     runs-on: macos-15
     timeout-minutes: 30
     permissions:
@@ -134,14 +188,8 @@ jobs:
           python-version: '3.13'
       - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
-          pattern: macos-*
+          name: desktop-release-verified
           path: release-assets
-          merge-multiple: true
-      - name: Require both architectures from the same candidate
-        env:
-          VERSION: ${{ needs.prepare.outputs.version }}
-          COMMIT: ${{ needs.prepare.outputs.commit }}
-        run: python3 scripts/release.py assemble --directory "release-assets" --version "$VERSION" --commit "$COMMIT"
       - name: Create draft, verify uploaded assets and publish
         env:
           GH_TOKEN: ${{ github.token }}
@@ -157,13 +205,13 @@ jobs:
           if [[ "$PRERELEASE" == true ]]; then
             args+=(--prerelease)
           fi
-          gh release create "$RELEASE_TAG" "${args[@]}" release-assets/Yali_*.dmg release-assets/Yali_*.json release-assets/SHA256SUMS
+          gh release create "$RELEASE_TAG" "${args[@]}" release-assets/Yali_*.dmg release-assets/Yali_*.zip release-assets/Yali_*.json release-assets/SHA256SUMS
           gh release view "$RELEASE_TAG" --json isDraft,isPrerelease,targetCommitish,assets > "$RUNNER_TEMP/release-state.json"
-          jq -e --arg sha "$COMMIT" --argjson pre "$PRERELEASE" '.isDraft and .isPrerelease == $pre and .targetCommitish == $sha and (.assets | length) == 5' "$RUNNER_TEMP/release-state.json"
+          jq -e --arg sha "$COMMIT" --argjson pre "$PRERELEASE" '.isDraft and .isPrerelease == $pre and .targetCommitish == $sha and (.assets | length) == 11' "$RUNNER_TEMP/release-state.json"
           gh release download "$RELEASE_TAG" --dir "$RUNNER_TEMP/release-readback"
           cd "$RUNNER_TEMP/release-readback"
           shasum -a 256 --check SHA256SUMS
           cmp SHA256SUMS "$GITHUB_WORKSPACE/release-assets/SHA256SUMS"
           test "$(gh api "repos/$GH_REPO/commits/$RELEASE_TAG" --jq .sha)" = "$COMMIT"
           gh release edit "$RELEASE_TAG" --verify-tag --draft=false
-          gh release view "$RELEASE_TAG" --json isDraft,isPrerelease,assets | jq -e --argjson pre "$PRERELEASE" '(.isDraft | not) and .isPrerelease == $pre and (.assets | length) == 5'
+          gh release view "$RELEASE_TAG" --json isDraft,isPrerelease,assets | jq -e --argjson pre "$PRERELEASE" '(.isDraft | not) and .isPrerelease == $pre and (.assets | length) == 11'

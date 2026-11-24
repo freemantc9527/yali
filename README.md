@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/freemantc9527/yali/blob/main/LICENSE"><img src="https://img.shields.io/github/license/freemantc9527/yali" alt="Apache-2.0 license"></a>
   <a href="https://github.com/freemantc9527/yali/releases"><img src="https://img.shields.io/github/v/release/freemantc9527/yali?include_prereleases&label=download" alt="Latest release"></a>
-  <a href="https://github.com/freemantc9527/yali/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/freemantc9527/yali/release.yml?label=macOS%20build" alt="macOS build"></a>
+  <a href="https://github.com/freemantc9527/yali/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/freemantc9527/yali/release.yml?label=desktop%20build" alt="Desktop build"></a>
   <a href="https://github.com/freemantc9527/yali"><img src="https://img.shields.io/github/stars/freemantc9527/yali?style=flat" alt="GitHub stars"></a>
 </p>
 
@@ -29,6 +29,8 @@
 不知道自己的架构时，在“ → 关于本机”查看芯片信息。也可以在终端运行 `uname -m`，输出 `arm64` 表示 Apple Silicon，输出 `x86_64` 表示 Intel。
 
 每个 Release 还提供构建记录和 `SHA256SUMS`。发布包由 GitHub Actions 从固定提交分别构建，当前 App 使用 ad-hoc 签名，未进行 Developer ID 签名或 Apple 公证。
+
+Windows 11 x64 实验包已通过云端图片处理检查，可在 [Actions 成功运行](https://github.com/freemantc9527/yali/actions/runs/45321363937)底部下载 `windows-portable-experiment`（需登录 GitHub，artifact 保留 14 天）。下载后先解开 artifact，再解压其中的 Windows ZIP，运行 `Yali-workbench.exe`；CLI 为 `yali.exe`。图片引擎已内嵌，GUI 需要已安装的 Microsoft Edge WebView2。请保留对应源码 ZIP 和许可一起分发。Windows 11 GUI、WebView2 缺失和 SmartScreen 仍待人工验收，尚无公开 Windows Release。
 
 ## 项目缘起
 
@@ -136,7 +138,7 @@ cargo run -p yali-cli -- compress "/path/to/photo.jpg" --profile default
 ## 支持范围
 
 - **macOS** 是当前主平台，Finder 集成、桌面工作台、CLI 和自包含运行时都以 macOS 为主线维护。
-- **Windows** 处于实验阶段，只计划先保证 JPEG、PNG、GIF、WebP、BMP、TIFF 等基本图片处理。打包、WebView2、系统集成和完整格式兼容性尚未在真实 Windows 环境验证。
+- **Windows** 实验包已通过云端构建和 JPEG、PNG、GIF、WebP、BMP、TIFF 基本处理检查。Windows 11 GUI、WebView2 缺失、SmartScreen 和系统集成仍待实机验收。
 - HEIC、AVIF、JPEG XL 等格式的可用性取决于平台、内置引擎和具体构建产物。每个版本的发布说明会记录实际验证范围。
 
 ## 项目文档

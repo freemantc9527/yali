@@ -37,7 +37,7 @@ ADR-006：分享包必须用 `bash scripts/build.sh` 生成。脚本先构建 re
 
 当前 App 只携带图片处理所需工具，不再打包 FFmpeg 及其独占动态依赖。图片引擎在包内缺件时仍禁止回落开发机；可选外部 FFmpeg 是明确例外，从 PATH 或 macOS 标准 Homebrew 路径查找，用于 SSIM 和额外解码校验。设置页可重新检查路径与滤镜，结果不写入配置。benchkit 仍需开发机安装 FFmpeg 进行质量度量。
 
-Windows 已通过首轮云端 App / CLI 编译、UI 测试和无引擎 ZIP 版本检查；首轮 Rust 测试尚未执行，图片运行时与真实 Windows GUI 未验证。新增 windows-runtime.py 的 prepare/package/check、build-windows.ps1 和 smoke-windows.py 已完成本地实现及脚本测试，仍待本轮 Windows runner 构建与运行验证。直接依赖 dirs 7.0.0 与 sha2 0.10.9 复用既有依赖树，分别用于 Windows Known Folder 和包内摘要检查。本机无 Windows 工具链和运行环境，不能用 macOS 构建通过推定 Windows 可用，见 [CROSSPLATFORM](CROSSPLATFORM.md)。
+Windows 已通过含图片引擎的云端 App / CLI 编译、Rust/UI 测试、PE/DLL 检查及最终解压 ZIP 处理与质量对照。windows-runtime.py 的 prepare/package/check、build-windows.ps1 和 smoke-windows.py 构成打包与验收入口；windows_release.py 将包、对应源码及报告绑定到同一候选提交和 Actions 运行。直接依赖 dirs 7.0.0 与 sha2 0.10.9 复用既有依赖树，分别用于 Windows Known Folder 和包内摘要检查。Windows 11 GUI、WebView2 和 SmartScreen 仍待实机验收，见 [CROSSPLATFORM](CROSSPLATFORM.md)。
 
 个人学习版不要求 Developer ID / 公证。首次打开优先使用 Finder 的“打开”或“系统设置 → 隐私与安全性 → 仍要打开”；如果下载包仍被隔离属性拦截，可以只对目标 App 执行 `xattr -dr com.apple.quarantine "/Applications/Yali.app"`，然后用 `open "/Applications/Yali.app"` 启动。`codesign --verify --deep --strict` 只能验证本机 ad-hoc 完整性，不能据此声称通过 Gatekeeper 或公证。
 

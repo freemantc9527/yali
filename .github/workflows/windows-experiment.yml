@@ -2,6 +2,11 @@ name: Windows portable experiment
 
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: false
   push:
     branches: [dev]
     paths:
@@ -40,6 +45,7 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          ref: ${{ inputs.ref || github.sha }}
           persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
@@ -117,13 +123,15 @@ jobs:
         run: |
           $ffmpeg = (Get-Content target/windows-ffmpeg-path.txt -Raw).Trim()
           python scripts/smoke-windows.py --directory 'target/windows-assets/解压 验证 [Yali]' --ffmpeg $ffmpeg
+      - name: Attest verified Windows release assets
+        run: python scripts/release.py attest-windows --directory target/windows-assets
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: windows-portable-experiment
           path: |
             target/windows-assets/*.zip
             target/windows-assets/SHA256SUMS
-            target/windows-assets/*.json
+            target/windows-assets/Yali_*.json
           if-no-files-found: error
           compression-level: 0
           retention-days: 14

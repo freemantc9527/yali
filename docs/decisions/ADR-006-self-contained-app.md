@@ -27,4 +27,4 @@
 
 Windows ZIP 采用独立布局与 schemaVersion=1 的运行时清单，保留同一子进程引擎架构，不复用 macOS Contents 根。macOS Services 的根判断保持 macOS 专用。工具仅以包内绝对路径运行，校验工具映射、相对路径、x64 架构、文件摘要与构建时依赖闭包；摘要用于完整性检查，不证明来源可信。
 
-ZIP 不含 Node、Python、完整 SDK、FFmpeg 或完整 WebView2。工具按锁文件准备；C 工具静态链接 CRT，官方 MSVC 工具需要的 CRT 在许可允许范围内随包保留。libvips 的目录及插件结构保持上游布局；第三方许可证、对应源码、构建配方和 Cargo 依赖随同 artifact 分发。新 Windows 构建和 Windows 11 GUI 尚未验证，不能由 macOS 自动化推定已支持。
+ZIP 不含 Node、Python、完整 SDK、FFmpeg 或完整 WebView2。工具按锁文件准备；C 工具静态链接 CRT，官方 MSVC 工具需要的 CRT 在许可允许范围内随包保留。libvips 的目录及插件结构保持上游布局；第三方许可证、对应源码、构建配方和 Cargo 依赖随同 artifact 分发。2026-11-24 Windows runner 已通过含引擎构建、Rust/UI 测试、PE/DLL 和最终 ZIP 真实处理/质量检查；Windows 11 GUI 仍待人工验收。

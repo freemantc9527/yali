@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate release inputs, archive the final App, and assemble both architectures."""
+"""Validate and assemble macOS and Windows release archives from one candidate."""
 import argparse
 import hashlib
 import json
@@ -10,6 +10,8 @@ import re
 import subprocess
 import tempfile
 import tomllib
+
+import windows_release
 from contextlib import contextmanager
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -150,8 +152,9 @@ def assemble(directory, version, commit):
     if provenance["buildOrigin"] != "github-actions":
         raise ValueError("Release assembly requires a GitHub Actions run; local packages are validation-only")
     expected = {f"Yali_{version}_macos_{arch}.{suffix}" for arch in TARGETS for suffix in ("dmg", "json")}
+    expected.update(windows_release.names(version).values())
     if {path.name for path in directory.iterdir()} != expected:
-        raise ValueError("Expected exactly two architecture archives and their manifests")
+        raise ValueError("Expected exactly two macOS architecture archives/manifests and the complete Windows release set")
     checksums, rows = [], []
     for arch, target in TARGETS.items():
         stem = f"Yali_{version}_macos_{arch}"
@@ -180,6 +183,9 @@ def assemble(directory, version, commit):
         rows.append(f"| {arch} | {minimum} | `{archive.name}` |")
         for path in (archive, manifest):
             checksums.append(f"{digest(path)}  {path.name}\n")
+    for path in windows_release.validate(directory, version, commit, provenance):
+        checksums.append(f"{digest(path)}  {path.name}\n")
+    win = windows_release.names(version)
     notes = f"""Yali {version}
 
 源码提交：`{commit}`
@@ -195,7 +201,9 @@ App 不再内置 FFmpeg；没有它仍可处理图片和视觉对比，SSIM 分�
 在“应用设置 → 通用 → 质量检测”查看外部 FFmpeg 路径与 SSIM 支持，并可重新检查。
 设置分为通用、自动化和关于；窄屏导航只显示图标与标题。
 
-Windows 尚未实机验证；当前仅提供 macOS 资产，Windows 基本图片功能须经过真实环境验收后再发布。
+Windows 11 x64 实验包：`{win["archive"]}`。解压后运行 Yali-workbench.exe，CLI 使用 yali.exe。
+图片引擎已内嵌，支持 JPEG、PNG、GIF、WebP、BMP、TIFF 输入；GUI 需要已安装 Microsoft Edge WebView2。
+对应源码：`{win["sources"]}`；Windows 11 GUI、WebView2 缺失与 SmartScreen 仍待人工验收。
 
 本版本采用 ad-hoc 签名，未进行 Developer ID 签名或 Apple 公证。
 首次打开按 macOS 的隐私与安全性提示处理；不要关闭 Gatekeeper。
@@ -205,7 +213,7 @@ Windows 尚未实机验证；当前仅提供 macOS 资产，Windows 基本图片
 """
     write_new(directory / "SHA256SUMS", "".join(checksums))
     write_new(directory / "RELEASE_NOTES.md", notes)
-    print("Both architectures validated; release notes and SHA256SUMS generated")
+    print("macOS arm64/x86_64 and Windows x86_64 validated; release notes and SHA256SUMS generated")
 
 
 def main():
@@ -218,6 +226,8 @@ def main():
     pack.add_argument("--app", type=Path, default=ROOT / "target/release/bundle/macos/Yali.app")
     pack.add_argument("--output", type=Path, required=True)
     pack.add_argument("--arch", choices=TARGETS, required=True)
+    attest = commands.add_parser("attest-windows")
+    attest.add_argument("--directory", type=Path, required=True)
     join = commands.add_parser("assemble")
     join.add_argument("--directory", type=Path, required=True)
     join.add_argument("--version", required=True)
@@ -238,6 +248,9 @@ def main():
         print(values, end="")
     elif args.command == "package":
         package(args.app, args.output, args.arch)
+    elif args.command == "attest-windows":
+        commit = run("git", "rev-parse", "HEAD")
+        windows_release.attest(args.directory, product_version(), commit, build_provenance(commit))
     else:
         assemble(args.directory, args.version, args.commit)
 

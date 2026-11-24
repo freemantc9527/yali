@@ -1,6 +1,6 @@
 # 当前项目状态
 
-更新日期：2026-11-23。本文只记录当前事实，不保存逐任务历史。开发过程和验收证据留在本地 `.tasks/`。
+更新日期：2026-11-24。本文只记录当前事实，不保存逐任务历史。开发过程和验收证据留在本地 `.tasks/`。
 
 ## 已实现
 
@@ -23,13 +23,13 @@
 
 ## 平台与发布限制
 
-macOS 是当前主平台。当前本机验证的引擎最低部署目标为 macOS 27.2，低版本系统未验证。Windows 的基本图片处理、包内引擎解析和 ZIP 构建脚本已在本地补齐；新增 Windows 构建尚未上云执行，没有可公开下载的 Windows 资产。
+macOS 是当前主平台。当前本机验证的引擎最低部署目标为 macOS 27.2，低版本系统未验证。Windows x64 含图片引擎的实验 ZIP 已通过云端构建与自动处理验收，可从 Actions artifact 下载；尚未公开发布 Windows Release。
 
 当前版本为 `0.1.0-alpha`，已通过 GitHub Actions 双架构构建并[公开预发布](https://github.com/freemantc9527/yali/releases/tag/v0.1.0-alpha)。两个 DMG 已下载回读并校验 SHA-256；原生交互待验项目保持不变。
 
-Windows ZIP 实验工作流已在 [Actions 45133346294](https://github.com/freemantc9527/yali/actions/runs/45133346294) 通过：Rust 测试程序编译、UI 78 项测试、App / CLI release 编译、ZIP 打包和解压后的 CLI 版本检查。下载回读确认两个程序均为 x86_64 PE，ZIP 完整性、提交记录和 SHA-256 匹配。图片引擎没有内嵌，Rust 测试未执行，GUI 启动和图片处理仍需真实 Windows 验证，不作为正式支持声明。
+Windows 在 [Actions 45321363937](https://github.com/freemantc9527/yali/actions/runs/45321363937) 通过：实际执行 Rust 与 79 项 UI 测试、App / CLI release 编译、专用图片引擎构建、79 个 PE 文件及 DLL 依赖检查。最终 ZIP 在中文空格路径、无 HOME、受限 PATH 下完成六类输入处理、透明图片白底转换、PNG 无损、动画/多页保护、配置保存、撤销、缺 EXE/DLL 负例和独立 FFmpeg 质量对照。下载回读确认二进制/对应源码 ZIP、锁文件、来源和 SHA-256 匹配。
 
-Windows 运行时当前本地验证：Rust 108 项、UI 79 项、Python 打包/发布检查 23 项通过；macOS 完整 App、隔离冒烟及 default / jpg 金样通过。新增工作流会源码构建专用引擎、检查 x64 PE 依赖并对最终解压 ZIP 做六类输入和质量测试，同时提供对应源码与许可。上述 Windows 自动化尚未在 runner 执行，不能据此声明 Windows 图片处理已验收；Windows 11 GUI、WebView2 和 SmartScreen 仍待实机验收。
+本地回归：Rust 108 项、UI 79 项、Python 打包/发布检查 31 项通过；macOS 完整 App、隔离冒烟及 default / jpg 金样通过。发布流程已扩展为 macOS arm64/x86_64 DMG 和 Windows x64 实验 ZIP，强制同提交、同运行、完整对应源码及验证报告；联合云端演练结果另行记录。Windows 11 GUI、WebView2 缺失和 SmartScreen 仍待实机验收，服务器自动化不能替代桌面验收。
 
 ## 下一步
 

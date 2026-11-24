@@ -4,18 +4,18 @@ macOS 是鸭梨的主平台，Finder、桌面工作台、CLI、自包含运行�
 
 ## macOS
 
-当前本机验证覆盖 Apple Silicon。发布流程计划分别构建 Apple Silicon 和 Intel 产物，但每个版本的实际最低系统、架构和格式范围以 Release 构建记录为准。当前图片引擎的实际最低部署目标为 macOS 27.2，低版本系统尚未验证。
+当前本机验证覆盖 Apple Silicon，公开 alpha 已通过 Apple Silicon 和 Intel 云端构建。每个版本的实际最低系统、架构和格式范围以 Release 构建记录为准：公开 alpha 两份 DMG 记录为 macOS 15.0，本机依赖构建记录为 macOS 27.2，不能混用两者的系统要求。
 
 ## Windows
 
-Windows 代码处于实验阶段。[首轮云端试构建](https://github.com/freemantc9527/yali/actions/runs/45133346294)已完成 x86_64 App / CLI 编译、78 项 UI 测试、ZIP 组装及解压后的 CLI 版本检查。首轮 ZIP 没有内嵌图片引擎。后续代码已补齐包内运行时、专用引擎构建和最终 ZIP 冒烟脚本，但本轮尚未执行 Windows 云端构建；WebView2、GUI 运行、动态库和格式兼容性仍待真实 Windows 验收。首个 Windows 版本只计划保证 JPEG、PNG、GIF、WebP、BMP、TIFF 等基本图片处理，不承诺 macOS 的 HEIC、AVIF、JPEG XL 和 Finder Services 能力。
+Windows 处于实验阶段。[含图片引擎的云端构建](https://github.com/freemantc9527/yali/actions/runs/45321363937)已通过 Rust/UI 测试、App/CLI 编译、79 个 PE 文件及 DLL 依赖检查、最终解压 ZIP 的六类输入与质量对照。实验包可从该运行的 artifact 下载，尚无公开 Windows Release。Windows 11 GUI、WebView2 缺失和 SmartScreen 仍待实机验收；不承诺 macOS 的 HEIC、AVIF、JPEG XL 和 Finder Services 能力。
 
 | 范围 | 当前边界 |
 | --- | --- |
-| 图片处理 | 候选范围为 JPEG、PNG、GIF、WebP、BMP、TIFF 输入；JPEG、PNG、WebP 输出，GIF 默认保留动画；多页 TIFF、动画转静态和不保帧的重编码明确拒绝。Windows 实测待完成 |
+| 图片处理 | 自动化已验证 JPEG、PNG、GIF、WebP、BMP、TIFF 输入；JPEG、PNG、WebP 输出，GIF 默认保留动画；多页 TIFF、动画转静态和不保帧的重编码明确拒绝。桌面交互待验 |
 | 系统入口 | 暂不承诺右键菜单、文件关联、剪贴板、watch 和通知 |
 | 图形界面 | 只有在真实 WebView2 环境验证后才扩大支持范围 |
-| 分发 | Windows ZIP 实验工作流监听 dev 的 core/CLI/Tauri/UI/脚本/样本/schema 变更并保留手动入口；只有引擎准备、Rust/UI 测试、依赖检查和最终 ZIP 冒烟全部通过才上传 artifact。附校验和、对应源码和许可，不创建 Release。GUI 需要已安装的 WebView2 |
+| 分发 | 实验工作流保留 dev 自动构建与手动入口，也供双平台 Release 复用；全部测试、依赖/最终 ZIP 检查和质量对照通过才上传 artifact。附校验和、对应源码和许可。手动运行不发布；标签发布需分别授权。GUI 需要已安装的 WebView2 |
 
 ## Linux
 

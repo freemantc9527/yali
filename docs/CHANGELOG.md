@@ -4,11 +4,12 @@
 
 ## 未发布
 
-- 补齐 Windows ZIP 的包内引擎解析、专用图片工具构建、PE/DLL 检查、对应源码与许可收集，以及最终解压 ZIP 的真实处理/质量验收脚本；新增流程尚待 Windows 云端运行。
+- Windows 实验 ZIP 已内嵌图片引擎，并通过云端 Rust/UI 测试、PE/DLL 检查、六类输入处理与质量对照；同时提供对应源码和第三方许可，GUI 仍待实机验收。
+- Release 流程增加 Windows x64 实验 ZIP，与 Apple Silicon/Intel DMG 一起校验提交、构建来源和 SHA-256；缺少任一平台、对应源码或验证报告都会阻止发布。手动构建只生成 artifact。
 - Windows 数据路径支持无 HOME 的普通用户和系统下载目录；编码、尺寸与 TIFF/BMP 显示副本共用包内运行时环境。
 - Windows 拒绝多页 TIFF、动画转静态和可能丢帧的动画重编码；透明图片转 JPEG 保持白底，补齐灰度 alpha 与 tRNS 检测，修复普通 PNG 无损/level 1–2 的专用引擎选择；BMP/TIFF 转格式允许体积增加，错误时清理临时产物。
 
-- README 增加双架构 DMG 下载入口和安装说明；新增 Windows ZIP 试构建流程，供验证编译和打包使用，尚不包含图片引擎。
+- README 增加双架构 DMG 和 Windows 实验 artifact 下载入口及使用说明。
 - 重整项目 README 和公开文档结构，明确 macOS 主线、Windows 实验范围和 `.tasks/` 开发流程。
 - 将任务过程与长期文档分离，避免开发草稿成为项目主页的一部分。
 
