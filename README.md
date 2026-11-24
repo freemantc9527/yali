@@ -15,22 +15,23 @@
 
 鸭梨（Yali）是一个面向 macOS 的本地图片压缩与转换工具。它把常用操作放进 Finder 右键菜单、桌面工作台和 CLI，处理图片时不必打开终端，也不必记住一长串参数。
 
-> 当前公开版本是 `0.1.0-alpha`。它适合尝鲜和反馈，不代表所有 macOS 入口都完成了人工验收。
+> 当前公开版本是 `0.2.0-alpha`，提供 macOS 与 Windows 程序包。它适合尝鲜和反馈，原生交互仍有待人工验收项目。
 
 ## 下载
 
-从 [GitHub Releases](https://github.com/freemantc9527/yali/releases) 下载 DMG。根据 Mac 的处理器选择对应文件：
+从 [GitHub Releases](https://github.com/freemantc9527/yali/releases/tag/v0.2.0-alpha) 按系统和处理器下载对应程序包：
 
-| Mac 类型 | 下载 | 架构 |
+| 平台 | 下载 | 架构 |
 | --- | --- | --- |
-| Apple Silicon（M1、M2、M3、M4 等） | [Yali_0.1.0-alpha_macos_arm64.dmg](https://github.com/freemantc9527/yali/releases/download/v0.1.0-alpha/Yali_0.1.0-alpha_macos_arm64.dmg) | arm64 |
-| Intel Mac | [Yali_0.1.0-alpha_macos_x86_64.dmg](https://github.com/freemantc9527/yali/releases/download/v0.1.0-alpha/Yali_0.1.0-alpha_macos_x86_64.dmg) | x86_64 |
+| Apple Silicon Mac，macOS 15.0+ | [macOS DMG](https://github.com/freemantc9527/yali/releases/download/v0.2.0-alpha/Yali_0.2.0-alpha_macos_arm64.dmg) | arm64 |
+| Intel Mac，macOS 15.0+ | [macOS DMG](https://github.com/freemantc9527/yali/releases/download/v0.2.0-alpha/Yali_0.2.0-alpha_macos_x86_64.dmg) | x86_64 |
+| Windows 11（实验） | [Windows 程序 ZIP](https://github.com/freemantc9527/yali/releases/download/v0.2.0-alpha/Yali_0.2.0-alpha_windows_x86_64-experiment.zip) | x86_64 |
 
 不知道自己的架构时，在“ → 关于本机”查看芯片信息。也可以在终端运行 `uname -m`，输出 `arm64` 表示 Apple Silicon，输出 `x86_64` 表示 Intel。
 
 每个 Release 还提供构建记录和 `SHA256SUMS`。发布包由 GitHub Actions 从固定提交分别构建，当前 App 使用 ad-hoc 签名，未进行 Developer ID 签名或 Apple 公证。
 
-Windows 11 x64 实验包已通过云端图片处理检查。参照[各平台 Actions 下载说明](docs/RELEASING.md#发布流程)，选择 Windows 程序 artifact；历史构建也可在[联合演练](https://github.com/freemantc9527/yali/actions/runs/45339644244#artifacts)下载，程序文件名以 `-experiment.zip` 结尾。Actions 下载需要登录 GitHub，artifact 保留 14 天。解压程序 ZIP 后运行 `Yali-workbench.exe`；CLI 为 `yali.exe`。图片引擎已内置，GUI 需要 Microsoft Edge WebView2。对应源码 ZIP 不用于安装。Windows 11 GUI、WebView2 缺失和 SmartScreen 仍待人工验收，尚无公开 Windows Release。
+Windows 程序 ZIP 约 27.6 MiB，解压后运行 `Yali-workbench.exe`；CLI 为 `yali.exe`。图片引擎已内置，GUI 需要 Microsoft Edge WebView2。第三方对应源码单独提供，安装和运行只需下载程序 ZIP。Windows 11 GUI、WebView2 缺失和 SmartScreen 仍待人工验收。开发构建参照[各平台 Actions 下载说明](docs/RELEASING.md#发布流程)，Actions artifact 保留 14 天。
 
 ## 项目缘起
 

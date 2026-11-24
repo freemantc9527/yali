@@ -23,9 +23,9 @@
 
 ## 平台与发布限制
 
-macOS 是当前主平台。当前本机验证的引擎最低部署目标为 macOS 27.2，低版本系统未验证。Windows x64 含图片引擎的实验 ZIP 已通过云端构建与自动处理验收，可从 Actions artifact 下载；尚未公开发布 Windows Release。
+macOS 是当前主平台。本机验证的引擎最低部署目标为 macOS 27.2；公开云端构建的两份 DMG 最低系统为 macOS 15.0，低版本真实交互未验证。Windows x64 含图片引擎的实验 ZIP 已通过云端构建与自动处理验收，现与两份 macOS DMG 在同一 Release 分别下载。
 
-当前源码版本为 `0.2.0-alpha`，正在准备 macOS / Windows 联合预发布，尚未公开。已公开版本仍为 [`0.1.0-alpha`](https://github.com/freemantc9527/yali/releases/tag/v0.1.0-alpha)，其两个 DMG 已下载回读并校验 SHA-256；原生交互待验项目保持不变。
+当前版本 [`0.2.0-alpha`](https://github.com/freemantc9527/yali/releases/tag/v0.2.0-alpha) 已公开预发布，提交为 `cd535bb5b998f3a6e7de5050ef3c93c4cbcac987`。[标签发布运行 45354515710](https://github.com/freemantc9527/yali/actions/runs/45354515710) 的三架构构建、隔离图片处理、质量检查、联合汇总和公开资产回读全部通过。本地再次下载全部 11 份公开资产，10 条 SHA-256、两份 DMG 与 Windows ZIP/对应源码/报告回读通过。Intel 首次上传因 GitHub artifact 服务超时失败，同运行重跑后成功，未移动标签。三个架构的程序分别下载，Windows 程序约 27.6 MiB，对应源码单独提供；旧版 `0.1.0-alpha` 保留。原生交互待验项目保持不变。
 
 Windows 在 [Actions 45321363937](https://github.com/freemantc9527/yali/actions/runs/45321363937) 通过：实际执行 Rust 与 79 项 UI 测试、App / CLI release 编译、专用图片引擎构建、79 个 PE 文件及 DLL 依赖检查。最终 ZIP 在中文空格路径、无 HOME、受限 PATH 下完成六类输入处理、透明图片白底转换、PNG 无损、动画/多页保护、配置保存、撤销、缺 EXE/DLL 负例和独立 FFmpeg 质量对照。下载回读确认二进制/对应源码 ZIP、锁文件、来源和 SHA-256 匹配。
 
