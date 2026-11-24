@@ -50,18 +50,33 @@ jobs:
         with:
           version: '12.21.0'
           run_install: false
+      - name: Restore pinned Tauri build CLI
+        id: tauri-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cargo/bin/cargo-tauri.exe
+          key: windows-tauri-${{ runner.arch }}-${{ env.RUSTUP_TOOLCHAIN }}-2.12.5-static-v1
       - name: Install build tools
         run: |
           $ErrorActionPreference = 'Stop'
           rustup toolchain install $env:RUSTUP_TOOLCHAIN --profile minimal
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo install tauri-cli --version '=2.12.5' --locked
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          foreach ($tool in @('cmake', 'ninja', 'ffmpeg')) {
+          if ('${{ steps.tauri-cache.outputs.cache-hit }}' -ne 'true') {
+            cargo install tauri-cli --version '=2.12.5' --locked
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          $tauriVersion = cargo tauri --version
+          if ($LASTEXITCODE -ne 0 -or $tauriVersion -ne 'tauri-cli 2.12.5') { throw "Unexpected Tauri CLI: $tauriVersion" }
+          foreach ($tool in @('cmake', 'ninja')) {
             if (!(Get-Command $tool -ErrorAction SilentlyContinue)) { throw "Required runner build tool missing: $tool" }
           }
           New-Item -ItemType Directory -Force target | Out-Null
-          (Get-Command ffmpeg).Source | Set-Content -Encoding utf8 target/windows-ffmpeg-path.txt
+      - name: Save pinned Tauri build CLI
+        if: steps.tauri-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cargo/bin/cargo-tauri.exe
+          key: windows-tauri-${{ runner.arch }}-${{ env.RUSTUP_TOOLCHAIN }}-2.12.5-static-v1
       - name: Install frontend dependencies
         run: pnpm --dir ui install --frozen-lockfile
       - name: Validate packaging scripts

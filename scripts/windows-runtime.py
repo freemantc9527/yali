@@ -235,9 +235,14 @@ def prepare(build_dir):
     downloads = build_dir / "windows-downloads"
     downloads.mkdir(parents=True, exist_ok=True)
     with ThreadPoolExecutor(max_workers=6) as pool:
-        list(pool.map(lambda item: download(item, downloads), lock["archives"]))
+        list(pool.map(lambda item: download(item, downloads), [*lock["archives"], lock["qualityTool"]]))
     # An interrupted build is never reused as a prepared runtime.
     work = Path(tempfile.mkdtemp(prefix="windows-runtime-", dir=build_dir))
+    quality = extract(downloads / lock["qualityTool"]["archive"], work / "quality-tool")
+    ffmpeg = quality / "bin/ffmpeg.exe"
+    if not ffmpeg.is_file():
+        raise ValueError("missing pinned build-only FFmpeg")
+    (build_dir / "windows-ffmpeg-path.txt").write_text(str(ffmpeg.resolve()) + "\n", encoding="utf-8")
     sources, paths = work / "sources", {}
     sources.mkdir()
     for item in lock["archives"]:

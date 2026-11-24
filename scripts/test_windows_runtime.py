@@ -184,7 +184,9 @@ class WindowsRuntimeTests(unittest.TestCase):
         lock = json.loads(runtime.LOCK.read_text())
         self.assertEqual(lock["target"], runtime.TARGET)
         names = set()
-        for item in lock["archives"]:
+        self.assertFalse(lock["qualityTool"]["distributed"])
+        self.assertNotIn(lock["qualityTool"]["name"], {item["name"] for item in lock["archives"]})
+        for item in [*lock["archives"], lock["qualityTool"]]:
             self.assertRegex(item["sha256"], "^[0-9a-f]{64}$")
             self.assertTrue(item["url"].startswith("https://"))
             self.assertNotIn(item["name"], names)

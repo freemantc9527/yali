@@ -569,5 +569,15 @@
       "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
     }
   ],
-  "pngquantCargoLockSha256": "1ce7129a155289dbaccfe210e57aa18720bc8ee99e744504bf1b28bf568bdcdd"
+  "pngquantCargoLockSha256": "1ce7129a155289dbaccfe210e57aa18720bc8ee99e744504bf1b28bf568bdcdd",
+  "qualityTool": {
+    "name": "ffmpeg",
+    "version": "9.0.2",
+    "kind": "build-only",
+    "url": "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-9.0.2-essentials_build.zip",
+    "archive": "ffmpeg-9.0.2-essentials_build.zip",
+    "sha256": "60f467265b1e312373dbcd92200c2618a74850f98d3d078e94296bb3fa2047ba",
+    "digestEvidence": "Gyan versioned archive SHA-256; Windows build provider linked by ffmpeg.org/download.html",
+    "distributed": false
+  }
 }
