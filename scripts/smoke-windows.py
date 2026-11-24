@@ -86,6 +86,11 @@ def gif_timing(path):
     return delays, loop
 
 
+def windows_path_text(value):
+    """Compare canonical Windows paths without extended-prefix or case spelling differences."""
+    return str(value).replace("\\\\?\\", "").replace("/", "\\").casefold()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", type=Path, required=True)
@@ -102,7 +107,7 @@ def main():
     ], "quality": []}
     # Every fixture, corruption, rename and cleanup stays inside this script's temporary directory.
     with tempfile.TemporaryDirectory(prefix="yali-smoke-") as temporary:
-        work = Path(temporary)
+        work = Path(temporary).resolve()
         package = work / "移动 中文 & [Yali]"
         shutil.copytree(directory, package)
         user = work / "普通 用户"
@@ -165,8 +170,8 @@ def main():
         doctor = run(cli, "doctor").stdout
         for line in doctor.splitlines():
             if line.startswith("✓"):
-                assert str(package) in line, line
-        assert all(str(tools[name]) in doctor for name in ["cjpeg", "pngquant", "oxipng", "gifsicle", "cwebp", "gif2webp", "vipsthumbnail"]), doctor
+                assert windows_path_text(package.resolve()) in windows_path_text(line), (str(package.resolve()), line)
+        assert all(windows_path_text(tools[name].resolve()) in windows_path_text(doctor) for name in ["cjpeg", "pngquant", "oxipng", "gifsicle", "cwebp", "gif2webp", "vipsthumbnail"]), doctor
         report["enginePaths"] = {name: str(path) for name, path in tools.items()}
         # A valid PE masquerading as an encoder would fail if the packaged resolver invoked it.
         poison = work / "fake-engines"
@@ -175,7 +180,7 @@ def main():
             shutil.copy2(cli, poison / (name + ".exe"))
         env["PATH"] = str(poison) + ";" + env["PATH"]
         env["YALI_ENGINES_PATH"] = str(poison)
-        assert str(poison) not in run(cli, "doctor").stdout
+        assert windows_path_text(poison.resolve()) not in windows_path_text(run(cli, "doctor").stdout)
         for name in ["photo.jpg", "ui.png", "palette.png", "transparent.png", "anim.gif"]:
             shutil.copy2(ROOT / "benchkit/samples" / name, inputs / ("中文 [1] " + name))
         photo = inputs / "中文 [1] photo.jpg"

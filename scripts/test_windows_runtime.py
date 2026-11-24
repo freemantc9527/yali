@@ -35,6 +35,10 @@ def pe(imported=None, delay=False, machine=0x8664):
         data[768:768 + len(value)] = value
     return bytes(data)
 
+smoke_spec = importlib.util.spec_from_file_location("windows_smoke", Path(__file__).with_name("smoke-windows.py"))
+smoke = importlib.util.module_from_spec(smoke_spec)
+smoke_spec.loader.exec_module(smoke)
+
 
 class WindowsRuntimeTests(unittest.TestCase):
     def setUp(self):
@@ -225,6 +229,12 @@ class WindowsRuntimeTests(unittest.TestCase):
             self.assertTrue(runtime.system_dll(name), name)
         for name in ["vcruntime140.dll", "msvcp140.dll", "libvips-42.dll", "libc++.dll"]:
             self.assertFalse(runtime.system_dll(name), name)
+
+    def test_doctor_windows_paths_compare_canonical_prefix_and_case(self):
+        expected = r"C:\Users\RunnerAdmin\中文 & [Yali]\runtime\bin\cwebp.exe"
+        actual = r"✓ Cwebp: \\?\C:\Users\runneradmin\中文 & [Yali]\runtime\bin\cwebp.exe 1.6.0"
+        self.assertIn(smoke.windows_path_text(expected), smoke.windows_path_text(actual))
+        self.assertNotIn(smoke.windows_path_text(r"C:\other\cwebp.exe"), smoke.windows_path_text(actual))
 
     def test_lock_has_fixed_digests_and_cargo_lock(self):
         lock = json.loads(runtime.LOCK.read_text(encoding="utf-8"))
