@@ -10,10 +10,21 @@ pub fn root() -> Result<PathBuf> {
         anyhow::ensure!(path.is_absolute(), "YALI_HOME 必须是绝对路径");
         return Ok(path);
     }
-    let home = std::env::var_os("HOME").context("HOME 环境变量未设置，无法定位数据目录")?;
-    let home = PathBuf::from(home);
-    anyhow::ensure!(home.is_absolute(), "HOME 必须是绝对路径");
-    Ok(home.join(".yali"))
+    Ok(home()?.join(".yali"))
+}
+
+pub fn home() -> Result<PathBuf> {
+    #[cfg(windows)]
+    let path = std::env::var_os("USERPROFILE").filter(|p| !p.is_empty()).or_else(|| std::env::var_os("HOME"));
+    #[cfg(not(windows))]
+    let path = std::env::var_os("HOME");
+    let path = PathBuf::from(path.context("无法定位用户主目录（Windows 使用 USERPROFILE，其他平台使用 HOME）")?);
+    anyhow::ensure!(path.is_absolute(), "用户主目录必须是绝对路径");
+    Ok(path)
+}
+
+pub fn downloads() -> Result<PathBuf> {
+    dirs::download_dir().context("无法定位系统下载目录，请选择自定义输出目录")
 }
 
 /// 首次访问复制旧配置；新目录始终优先，旧文件留存，缓存无需迁移。
@@ -23,6 +34,10 @@ pub fn import_legacy() -> Result<()> {
     if std::env::var_os("YALI_HOME").is_some() {
         return Ok(());
     }
+    #[cfg(not(target_os = "macos"))]
+    return Ok(());
+    #[cfg(target_os = "macos")]
+    {
     let target = root()?;
     let marker = target.join(".legacy-imported");
     if marker.exists() {
@@ -36,6 +51,7 @@ pub fn import_legacy() -> Result<()> {
     std::fs::create_dir_all(&target)?;
     std::fs::write(marker, b"1\n")?;
     Ok(())
+    }
 }
 
 fn copy_missing(source: &Path, target: &Path) -> Result<()> {
@@ -66,6 +82,7 @@ fn copy_missing_file(mut source: impl std::io::Read, destination: &Path) -> Resu
     let mut file = std::fs::File::create(&staged)?;
     std::io::copy(&mut source, &mut file)?;
     file.sync_all()?;
+    drop(file);
     // hard_link 原子发布且不覆盖并发创建的新配置；rename 会覆盖，不能用于此处。
     match std::fs::hard_link(&staged, destination) {
         Ok(()) => {}
@@ -76,7 +93,7 @@ fn copy_missing_file(mut source: impl std::io::Read, destination: &Path) -> Resu
 }
 
 /// 编码中间文件也写入数据根；独立工作目录避免同名输入互相覆盖。
-pub struct TempDir(PathBuf, std::fs::File);
+pub struct TempDir(PathBuf, Option<std::fs::File>);
 
 impl TempDir {
     pub fn new() -> Result<Self> {
@@ -97,7 +114,7 @@ impl TempDir {
         std::fs::create_dir(&dir)?;
         let lease = std::fs::File::create(dir.join(".inuse"))?;
         lease.lock()?;
-        Ok(Self(dir, lease))
+        Ok(Self(dir, Some(lease)))
     }
 
     pub fn path(&self) -> &Path {
@@ -107,7 +124,7 @@ impl TempDir {
 
 impl Drop for TempDir {
     fn drop(&mut self) {
-        let _lease = &self.1;
+        drop(self.1.take());
         let cache = self.0.parent().filter(|p| p.file_name().is_some_and(|n| n == "tmp"))
             .and_then(|p| p.parent()).filter(|p| p.file_name().is_some_and(|n| n == "cache"));
         let _guard = cache.and_then(|root| crate::cache::lock(root).ok());
@@ -121,6 +138,29 @@ impl Drop for TempDir {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_root_works_without_home_and_keeps_override() {
+        let _lock = crate::test_support::ENV_LOCK.lock().unwrap();
+        let keys = ["HOME", "USERPROFILE", "YALI_HOME"];
+        let previous = keys.map(|key| std::env::var_os(key));
+        let user = std::env::temp_dir().join("普通 用户");
+        std::env::remove_var("HOME");
+        std::env::remove_var("YALI_HOME");
+        std::env::set_var("USERPROFILE", &user);
+        assert_eq!(home().unwrap(), user);
+        assert_eq!(root().unwrap(), user.join(".yali"));
+        let isolated = user.join("隔离");
+        std::env::set_var("YALI_HOME", &isolated);
+        assert_eq!(root().unwrap(), isolated);
+        for (key, value) in keys.into_iter().zip(previous) {
+            match value {
+                Some(value) => std::env::set_var(key, value),
+                None => std::env::remove_var(key),
+            }
+        }
+    }
 
     #[test]
     fn temporary_workspaces_are_protected_and_crash_leftovers_expire() {
@@ -140,7 +180,14 @@ mod tests {
         crate::cache::prune_at(&cache, true).unwrap();
         assert!(abandoned.exists(), "没有租约的旧目录在过期前保持安全");
         let expired = std::time::SystemTime::now() - crate::cache::MAX_AGE - std::time::Duration::from_secs(1);
-        std::fs::File::open(&abandoned).unwrap().set_times(std::fs::FileTimes::new().set_modified(expired)).unwrap();
+        let mut options = std::fs::OpenOptions::new();
+        options.read(true);
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::OpenOptionsExt;
+            options.write(true).custom_flags(0x02000000); // FILE_FLAG_BACKUP_SEMANTICS
+        }
+        options.open(&abandoned).unwrap().set_times(std::fs::FileTimes::new().set_modified(expired)).unwrap();
         assert_eq!(crate::cache::prune_at(&cache, false).unwrap().bytes, 0);
         assert!(!abandoned.exists());
         std::fs::remove_dir_all(root).unwrap();

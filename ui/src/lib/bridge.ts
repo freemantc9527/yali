@@ -413,9 +413,10 @@ export async function imagePreview(
 
 export interface PreviewImage { src: string; release: () => void }
 
-/** 两种显示尺寸共用真实图源；只有 WebView 解码失败时才转换无缩放 PNG。 */
+/** TIFF/BMP 在 Windows 使用 PNG 显示副本；其他格式按需转换，真实源路径保持不变。 */
 export async function displayImage(path: string): Promise<PreviewImage> {
   if (!isTauri()) return imagePreview(path, 0);
+  if (isWindows && /\.(?:tiff?|bmp)$/i.test(path)) return imagePreview(path, 0);
   const source = await invoke<string>("image_source", { path });
   const src = `${convertFileSrc(source)}?v=${Date.now()}`;
   const image = new Image();

@@ -16,9 +16,11 @@ fn profile_fixtures_roundtrip_field_identical() {
         let expected: serde_json::Value = serde_json::from_str(&raw).unwrap();
         let profile: Profile = serde_json::from_str(&raw).unwrap();
         assert_eq!(profile.name, *name, "档名应与文件名一致: {name}");
-        profile
-            .validate()
-            .unwrap_or_else(|e| panic!("fixture '{name}' 语义校验失败: {e}"));
+        if cfg!(windows) && *name == "archive" {
+            assert!(profile.validate().is_err(), "Windows 不能执行归档预设");
+        } else {
+            profile.validate().unwrap_or_else(|e| panic!("fixture '{name}' 语义校验失败: {e}"));
+        }
         let actual = serde_json::to_value(&profile).unwrap();
         assert_eq!(
             actual, expected,

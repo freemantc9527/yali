@@ -23,11 +23,13 @@
 
 ## 平台与发布限制
 
-macOS 是当前主平台。当前本机验证的引擎最低部署目标为 macOS 27.2，低版本系统未验证。Windows 只保留实验性基本图片处理方向，没有可公开下载的 Windows 资产。
+macOS 是当前主平台。当前本机验证的引擎最低部署目标为 macOS 27.2，低版本系统未验证。Windows 的基本图片处理、包内引擎解析和 ZIP 构建脚本已在本地补齐；新增 Windows 构建尚未上云执行，没有可公开下载的 Windows 资产。
 
 当前版本为 `0.1.0-alpha`，已通过 GitHub Actions 双架构构建并[公开预发布](https://github.com/freemantc9527/yali/releases/tag/v0.1.0-alpha)。两个 DMG 已下载回读并校验 SHA-256；原生交互待验项目保持不变。
 
 Windows ZIP 实验工作流已在 [Actions 45133346294](https://github.com/freemantc9527/yali/actions/runs/45133346294) 通过：Rust 测试程序编译、UI 78 项测试、App / CLI release 编译、ZIP 打包和解压后的 CLI 版本检查。下载回读确认两个程序均为 x86_64 PE，ZIP 完整性、提交记录和 SHA-256 匹配。图片引擎没有内嵌，Rust 测试未执行，GUI 启动和图片处理仍需真实 Windows 验证，不作为正式支持声明。
+
+Windows 运行时当前本地验证：Rust 108 项、UI 79 项、Python 打包/发布检查 23 项通过；macOS 完整 App、隔离冒烟及 default / jpg 金样通过。新增工作流会源码构建专用引擎、检查 x64 PE 依赖并对最终解压 ZIP 做六类输入和质量测试，同时提供对应源码与许可。上述 Windows 自动化尚未在 runner 执行，不能据此声明 Windows 图片处理已验收；Windows 11 GUI、WebView2 和 SmartScreen 仍待实机验收。
 
 ## 下一步
 

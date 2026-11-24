@@ -42,7 +42,7 @@ pub(crate) fn ffmpeg_path() -> Option<PathBuf> {
 }
 
 async fn probe_ssim_filter(ffmpeg: &Path) -> Option<bool> {
-    let mut command = tokio::process::Command::new(ffmpeg);
+    let mut command = crate::runtime::async_command(ffmpeg);
     command
         .envs(crate::runtime::command_environment(ffmpeg))
         .args(["-hide_banner", "-filters"])
@@ -109,7 +109,7 @@ pub async fn ssim(a: &Path, b: &Path) -> Result<f64> {
 }
 
 async fn run_ssim(ffmpeg: &Path, a: &Path, b: &Path) -> Result<f64> {
-    let out = tokio::process::Command::new(ffmpeg)
+    let out = crate::runtime::async_command(ffmpeg)
         .envs(crate::runtime::command_environment(ffmpeg))
         .args(["-hide_banner", "-loglevel", "info", "-i"])
         .arg(a)

@@ -307,7 +307,7 @@ impl Profile {
         if self.output.dir == DirKind::Custom {
             match self.output.dir_path.as_deref() {
                 Some(p) if !p.trim().is_empty() => {
-                    if !(std::path::Path::new(p).is_absolute() || p.starts_with('~')) {
+                    if !(std::path::Path::new(p).is_absolute() || p == "~" || p.starts_with("~/") || (cfg!(windows) && p.starts_with("~\\"))) {
                         bail!(
                             "profile '{}': output.dirPath 必须是绝对路径或 ~ 开头，得到 '{p}'",
                             self.name
@@ -373,10 +373,17 @@ mod tests {
         p.output.dir_path = Some("relative/out".into());
         let err = p.validate().unwrap_err().to_string();
         assert!(err.contains("绝对路径"), "相对路径应拒绝: {err}");
-        p.output.dir_path = Some("/abs/out".into());
+        p.output.dir_path = Some(std::env::temp_dir().join("out").to_string_lossy().into_owned());
         assert!(p.validate().is_ok());
         p.output.dir_path = Some("~/out".into());
         assert!(p.validate().is_ok());
+        p.output.dir_path = Some("~other/out".into());
+        assert!(p.validate().is_err());
+        #[cfg(windows)]
+        for raw in [r"C:\图片\输出", r"\\server\share\输出", r"\\?\C:\图片\输出", r"~\输出"] {
+            p.output.dir_path = Some(raw.into());
+            assert!(p.validate().is_ok(), "{raw}");
+        }
     }
 
     #[test]

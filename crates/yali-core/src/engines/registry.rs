@@ -429,7 +429,7 @@ impl Registry {
             EngineKind::Vips,
             EngineKind::Sips,
         ];
-        let bundled = crate::runtime::contents().is_some();
+        let bundled = crate::runtime::is_packaged();
         let probes: HashMap<_, _> = kinds.iter()
             .filter(|k| !bundled || **k != EngineKind::Svgo)
             .map(|k| (*k, k.probe())).collect();
@@ -525,8 +525,7 @@ impl Registry {
             .values()
             .filter_map(|p| p.path.clone())
             .map(|path| tokio::spawn(async move {
-                let _ = tokio::process::Command::new(&path)
-                    .envs(crate::runtime::command_environment(&path))
+                let _ = crate::runtime::async_command(&path)
                     .arg("--version").output().await;
             }))
             .collect();

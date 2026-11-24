@@ -335,7 +335,7 @@ mod tests {
         let mut s = Settings::default();
         s.clipboard.enabled = true;
         s.watch.enabled = true;
-        s.watch.dirs = vec!["/tmp/yali-test-desktop".into()];
+        s.watch.dirs = vec![std::env::temp_dir().join("yali-test-desktop").to_string_lossy().into_owned()];
         store.save(&s).unwrap();
         assert_eq!(store.load().unwrap(), s);
     }
@@ -439,7 +439,7 @@ mod tests {
         assert!(s.validate().is_err(), "相对路径必须拒");
 
         let mut s = Settings::default();
-        s.watch.dirs = vec!["/tmp/a".into(), "/tmp/a".into()];
+        s.watch.dirs = vec![std::env::temp_dir().to_string_lossy().into_owned(); 2];
         assert!(s.validate().is_err(), "重复目录必须拒");
     }
 

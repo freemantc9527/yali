@@ -17,11 +17,17 @@
 
 ## Windows ZIP 实验
 
-`.github/workflows/windows-experiment.yml` 在 `dev` 分支修改该文件时触发，也保留 `workflow_dispatch` 手动入口。手动入口在工作流进入默认分支后可从 GitHub 页面使用。
+`.github/workflows/windows-experiment.yml` 在 `dev` 分支修改相关 Rust、UI、脚本、schema 或样本时触发，也保留 `workflow_dispatch` 手动入口。手动入口在工作流进入默认分支后可从 GitHub 页面使用。
 
-此流程使用 Windows x86_64 runner 编译 Rust 测试、运行 UI 测试、构建真实前端与两个程序，再将 `Yali-workbench.exe`、`yali.exe`、许可证、实验说明和构建记录组成 ZIP。解压回读后执行 CLI 版本检查，上传 ZIP 与 SHA-256 为保留 14 天的 Actions artifact，不创建 Release。
+此流程使用 windows-2025 x64，先按 scripts/windows-engines.lock.json 下载校验上游归档，再通过 scripts/build-windows.ps1 构建 mozjpeg、pngquant、gifsicle、libwebp，保留 libvips 官方运行目录和 oxipng 官方程序。工具使用静态 CRT；官方 oxipng 所需的可再分发 CRT 从 runner 的 Visual Studio Redist 目录收集并附许可，禁止依赖系统已安装的 VC++ 掩盖缺件。mozjpeg 使用上游支持的非 SIMD 构建，参数与质量门槛保持一致，耗时只作观察。
 
-Rust 测试只编译，不等同于执行通过。ZIP 不含图片引擎，GUI 需要系统安装 Microsoft Edge WebView2 Runtime；免安装指程序解压后运行，配置和缓存仍使用常规数据目录。GUI 启动、图片处理与运行时依赖须在真实 Windows 环境另行验证。
+准备完成后实际执行 Rust 和 UI 测试，构建 release CLI、真实前端与 GUI，再用 scripts/windows-runtime.py package 检查每个 EXE/DLL 的 x64 PE、普通/延迟导入依赖、包内路径和文件摘要。ZIP 解压到中文空格目录后，scripts/smoke-windows.py 使用独立临时用户目录和受限 PATH，验证六类输入、缺件负例、动画策略、原图安全、撤销及相同引擎版本/参数的 SSIM/体积比门槛。FFmpeg 只作为 runner 的质量工具，既不放进 ZIP，也不用于无 FFmpeg 的基本处理步骤。
+
+只有检查全部成功才上传 ZIP、SHA256SUMS、构建/依赖/冒烟 JSON 与对应源码 ZIP，保留 14 天，不创建 Release。源码包保留固定上游归档、MXE 构建配方/补丁、pngquant 和 librsvg 的 Cargo 依赖；运行包保留第三方许可与来源。不得拆掉对应源码或许可单独分发二进制。
+
+本轮脚本尚未在 Windows runner 执行，不把本地 macOS 自动化写成 Windows 构建成功。Windows 11 新账户/VM 的 GUI、选择/拖入、预设重启、结果打开/定位、视觉对比、控制台闪窗、WebView2 缺失及 SmartScreen 表现须另行记录。GUI 使用用户已安装的 WebView2 Evergreen，不静默修改系统组件。
+
+本地完成后，先确认具体 diff/提交内容，再单独确认推送 dev 及其会触发的 Windows Actions 运行；main 合入、标签和公开 Release/增补已有资产均须分别授权。旧 macOS alpha 资产不因本任务自动改变。
 
 ## 构建检查
 

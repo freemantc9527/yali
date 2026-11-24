@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+const platform = vi.hoisted(() => ({ windows: false }));
+vi.mock("./platform", () => ({ get isWindows() { return platform.windows; } }));
 const invoke = vi.hoisted(() => vi.fn());
 vi.mock("@tauri-apps/api/core", () => ({ invoke, convertFileSrc: (path: string) => `asset:${path}` }));
 import { displayImage, imagePreview } from "./bridge";
 
-afterEach(() => { vi.unstubAllGlobals(); vi.resetAllMocks(); });
+afterEach(() => { platform.windows = false; vi.unstubAllGlobals(); vi.resetAllMocks(); });
 describe("真实文件预览", () => {
   const native = () => vi.stubGlobal("window", { __TAURI_INTERNALS__: {} });
   it("可解码图片直接读原件，不调用预览转换", async () => {
@@ -35,4 +37,17 @@ describe("真实文件预览", () => {
     result.release();
     expect(invoke).toHaveBeenCalledWith("release_preview", { leaseId: "thumb" });
   });
+  it("Windows 的 TIFF/BMP 使用 PNG 显示副本并保留中文、UNC 和扩展路径", async () => {
+    native();
+    platform.windows = true;
+    invoke.mockResolvedValue({ path: "C:\\用户\\缓存 [图].png", leaseId: "win" });
+    for (const path of ["C:\\用户\\图片 & [1].TIFF", "\\\\server\\share\\图片.bmp", "\\\\?\\C:\\用户\\图.tif"]) {
+      const result = await displayImage(path);
+      expect(invoke).toHaveBeenCalledWith("image_preview", { path, maxEdge: 0 });
+      expect(result.src).toBe("asset:C:\\用户\\缓存 [图].png");
+      result.release();
+    }
+    expect(invoke).not.toHaveBeenCalledWith("image_source", expect.anything());
+  });
+
 });

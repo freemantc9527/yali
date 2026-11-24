@@ -21,35 +21,10 @@ pub struct ImageInfo {
 }
 
 async fn dimensions(path: &Path) -> (Option<u32>, Option<u32>) {
-    #[cfg(target_os = "macos")]
-    let mut command = tokio::process::Command::new("/usr/bin/sips");
-    #[cfg(target_os = "macos")]
-    command.args(["-g", "pixelWidth", "-g", "pixelHeight"]);
-    #[cfg(not(target_os = "macos"))]
-    let mut command = tokio::process::Command::new(
-        yali_core::runtime::bundled_binary("vipsheader").unwrap_or_else(|| PathBuf::from("vipsheader")),
-    );
-    #[cfg(not(target_os = "macos"))]
-    command.arg("-a");
-    let output = command
-        .arg(path)
-        .output()
-        .await;
-    let Ok(output) = output else {
-        return (None, None);
-    };
-    let text = String::from_utf8_lossy(&output.stdout);
-    let value = |key: &str| {
-        text.lines().find_map(|line| {
-            let line = line.trim();
-            line.strip_prefix(key)
-                .or_else(|| line.strip_prefix(if key == "pixelWidth:" { "width:" } else { "height:" }))
-                ?.trim()
-                .parse::<u32>()
-                .ok()
-        })
-    };
-    (value("pixelWidth:"), value("pixelHeight:"))
+    match yali_core::pipeline::probe_dims(path).await {
+        Some((width, height)) => (Some(width), Some(height)),
+        None => (None, None),
+    }
 }
 
 #[tauri::command]
@@ -142,15 +117,15 @@ pub async fn generate(
         let temporary = cache.join(format!("preview-{}.png", std::process::id()));
         let _staged = StagedPreview(temporary.clone());
         #[cfg(target_os = "macos")]
-        let mut command = tokio::process::Command::new("/usr/bin/sips");
+        let mut command = yali_core::runtime::async_command(Path::new("/usr/bin/sips"));
         #[cfg(target_os = "macos")]
         {
             command.kill_on_drop(true).args(["-s", "format", "png"]);
             if max_edge > 0 { command.args(["-Z", &max_edge.to_string()]); }
         }
         #[cfg(not(target_os = "macos"))]
-        let mut command = tokio::process::Command::new(
-            yali_core::runtime::bundled_binary("vips").unwrap_or_else(|| PathBuf::from("vips")),
+        let mut command = yali_core::runtime::async_command(
+            &yali_core::engines::EngineKind::Vips.sibling_binary("vips").ok_or("缺少包内预览引擎 vips")?,
         );
         #[cfg(not(target_os = "macos"))]
         {
@@ -158,7 +133,7 @@ pub async fn generate(
             if max_edge > 0 {
                 command.args(["thumbnail", &source.to_string_lossy(), &temporary.to_string_lossy(), &max_edge.to_string()]);
             } else {
-                command.args(["copy", &source.to_string_lossy(), &temporary.to_string_lossy()]);
+                command.args(["autorot", &source.to_string_lossy(), &temporary.to_string_lossy()]);
             }
         }
         #[cfg(target_os = "macos")]
@@ -180,7 +155,7 @@ pub async fn generate(
             }
         }
     }
-    let lease = std::fs::File::open(&target).map_err(|e| e.to_string())?;
+    let lease = std::fs::OpenOptions::new().read(true).write(true).open(&target).map_err(|e| e.to_string())?;
     lease.lock_shared().map_err(|e| e.to_string())?;
     lease
         .set_times(std::fs::FileTimes::new().set_modified(std::time::SystemTime::now()))

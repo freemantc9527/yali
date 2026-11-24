@@ -117,7 +117,7 @@ fn idle(entry: &Entry, now: SystemTime, age: Duration) -> Option<File> {
         if now.duration_since(entry.modified).unwrap_or_default() < age {
             return None;
         }
-        return File::open(&entry.path).ok();
+        return OpenOptions::new().create(true).truncate(false).read(true).write(true).open(path).ok();
     }
     let file = OpenOptions::new().read(true).write(true).open(path).ok()?;
     file.try_lock().ok()?;
@@ -165,7 +165,8 @@ pub fn prune_locked(
         {
             continue;
         }
-        if let Some(_lease) = idle(&entry, now, age) {
+        if let Some(lease) = idle(&entry, now, age) {
+            drop(lease);
             let result = if entry.directory {
                 fs::remove_dir_all(&entry.path)
             } else {
@@ -193,7 +194,7 @@ mod tests {
         for (name, seconds) in [("old", 100), ("recent", 10), ("active", 200)] {
             let path = previews.join(name);
             fs::write(&path, [1; 8]).unwrap();
-            File::open(path)
+            OpenOptions::new().read(true).write(true).open(path)
                 .unwrap()
                 .set_times(fs::FileTimes::new().set_modified(now - Duration::from_secs(seconds)))
                 .unwrap();

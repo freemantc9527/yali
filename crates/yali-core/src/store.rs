@@ -325,7 +325,11 @@ mod tests {
             "首启应播种四档出厂 fixtures"
         );
         for name in names {
-            store.load(&name).unwrap(); // 播种出的每档都必须能通过解析 + 校验
+            if cfg!(windows) && name == "archive" {
+                assert!(store.load(&name).is_err(), "归档保留文件，但 Windows 不执行");
+            } else {
+                store.load(&name).unwrap();
+            }
         }
     }
 

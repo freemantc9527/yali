@@ -352,6 +352,7 @@ async fn main() -> Result<()> {
             Ok(())
         }
         Cmd::Doctor => {
+            yali_core::runtime::validate()?;
             let profile = Profile::default();
             let registry = Registry::discover(&profile);
             println!("yali v{} · 引擎自检", yali_core::CORE_VERSION);

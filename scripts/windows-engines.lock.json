@@ -1,0 +1,573 @@
+{
+  "schemaVersion": 1,
+  "target": "x86_64-pc-windows-msvc",
+  "archives": [
+    {
+      "name": "vips",
+      "version": "8.18.7",
+      "url": "https://github.com/libvips/build-win64-mxe/releases/download/v8.18.7/vips-dev-x64-all-8.18.7.zip",
+      "archive": "vips.zip",
+      "sha256": "78e56ba30c267ba32ff965200534bd5721364cadbead8c4d595e44b58dfeff15",
+      "kind": "binary",
+      "license": "LGPL-2.1-or-later and bundled dependencies",
+      "digestEvidence": "GitHub Release asset digest"
+    },
+    {
+      "name": "oxipng",
+      "version": "10.2.1",
+      "url": "https://github.com/oxipng/oxipng/releases/download/v10.2.1/oxipng-10.2.1-x86_64-pc-windows-msvc.zip",
+      "archive": "oxipng.zip",
+      "sha256": "7e940f83ee46874b73f53031f96a15834cb70b220af27391fb06fe7b4dd798e1",
+      "kind": "binary",
+      "license": "MIT",
+      "digestEvidence": "GitHub Release asset digest"
+    },
+    {
+      "name": "mozjpeg",
+      "version": "4.1.5",
+      "url": "https://codeload.github.com/mozilla/mozjpeg/tar.gz/6c9f0897afa1c2738d7222a0a9ab49e8b536a267",
+      "archive": "mozjpeg.tar.gz",
+      "sha256": "a577564110eb81045a9bea24aa3253d605dbc7bc304d683ffb2c40c67427ca75",
+      "commit": "6c9f0897afa1c2738d7222a0a9ab49e8b536a267",
+      "license": "BSD-3-Clause / IJG / Zlib",
+      "kind": "source",
+      "digestEvidence": "Official archive downloaded and SHA-256 recorded locally on 2026-11-23; review lock diff before cloud build"
+    },
+    {
+      "name": "pngquant",
+      "version": "3.0.3",
+      "url": "https://codeload.github.com/kornelski/pngquant/tar.gz/53a332a58f44357b6b41842a54d74aa1e245913d",
+      "archive": "pngquant.tar.gz",
+      "sha256": "ab826bdfd74d60d656d7e7f36a36ce0e871d4805c3819035c4796337cb2cca8c",
+      "commit": "53a332a58f44357b6b41842a54d74aa1e245913d",
+      "license": "GPL-3.0-or-later",
+      "kind": "source",
+      "digestEvidence": "Official archive downloaded and SHA-256 recorded locally on 2026-11-23; review lock diff before cloud build"
+    },
+    {
+      "name": "imagequant",
+      "version": "4.2.1",
+      "url": "https://codeload.github.com/ImageOptim/libimagequant/tar.gz/6e9805761851f1a8320380b9f563961f892ec6ba",
+      "archive": "imagequant.tar.gz",
+      "sha256": "d0167e69f9303029bd1df3ea728fe9e7a9c4b64050c266140b119443bd2da4b7",
+      "commit": "6e9805761851f1a8320380b9f563961f892ec6ba",
+      "license": "GPL-3.0-or-later",
+      "kind": "source",
+      "digestEvidence": "Official archive downloaded and SHA-256 recorded locally on 2026-11-23; review lock diff before cloud build"
+    },
+    {
+      "name": "gifsicle",
+      "version": "1.98",
+      "url": "https://codeload.github.com/kohler/gifsicle/tar.gz/8ff3057b736141b406be621830b851fdf4285689",
+      "archive": "gifsicle.tar.gz",
+      "sha256": "8620d29336b555a4c122d8c736c41900706d61e77ecade2d9051d114a92d0626",
+      "commit": "8ff3057b736141b406be621830b851fdf4285689",
+      "license": "GPL-2.0-or-later",
+      "kind": "source",
+      "digestEvidence": "Official archive downloaded and SHA-256 recorded locally on 2026-11-23; review lock diff before cloud build"
+    },
+    {
+      "name": "libwebp",
+      "version": "1.6.0",
+      "url": "https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.6.0.tar.gz",
+      "archive": "libwebp.tar.gz",
+      "sha256": "e4ab7009bf0629fd11982d4c2aa83964cf244cffba7347ecd39019a9e38c4564",
+      "license": "BSD-3-Clause",
+      "kind": "source",
+      "digestEvidence": "Official archive downloaded and SHA-256 recorded locally on 2026-11-23; review lock diff before cloud build"
+    },
+    {
+      "name": "giflib",
+      "version": "5.2.2",
+      "url": "https://sourceforge.net/projects/giflib/files/giflib-5.2.2.tar.gz/download",
+      "archive": "giflib.tar.gz",
+      "sha256": "be7ffbd057cadebe2aa144542fd90c6838c6a083b5e8a9048b8ee3b66b29d5fb",
+      "license": "MIT",
+      "kind": "source",
+      "digestEvidence": "Official archive downloaded and SHA-256 recorded locally on 2026-11-23; review lock diff before cloud build"
+    },
+    {
+      "name": "zlib",
+      "version": "1.3.1",
+      "url": "https://zlib.net/fossils/zlib-1.3.1.tar.gz",
+      "archive": "zlib.tar.gz",
+      "sha256": "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23",
+      "license": "Zlib",
+      "kind": "source",
+      "digestEvidence": "Official archive downloaded and SHA-256 recorded locally on 2026-11-23; review lock diff before cloud build"
+    },
+    {
+      "name": "libpng",
+      "version": "1.6.50",
+      "url": "https://codeload.github.com/pnggroup/libpng/tar.gz/refs/tags/v1.6.50",
+      "archive": "libpng.tar.gz",
+      "sha256": "71158e53cfdf2877bc99bcab33641d78df3f48e6e0daad030afe9cb8c031aa46",
+      "license": "Libpng-2.0",
+      "kind": "source",
+      "digestEvidence": "Official archive downloaded and SHA-256 recorded locally on 2026-11-23; review lock diff before cloud build"
+    },
+    {
+      "name": "vips-build",
+      "version": "8.18.7",
+      "url": "https://codeload.github.com/libvips/build-win64-mxe/tar.gz/refs/tags/v8.18.7",
+      "archive": "vips-build.tar.gz",
+      "sha256": "6e3c03a6af46f06f15495d72d116ceeb0c91faa2bdd7a8f31ffb811a74458fbd",
+      "license": "MIT",
+      "kind": "source",
+      "digestEvidence": "Official archive downloaded and SHA-256 recorded locally on 2026-11-23; review lock diff before cloud build"
+    },
+    {
+      "name": "mxe",
+      "version": "c36160b",
+      "url": "https://codeload.github.com/kleisauke/mxe/tar.gz/c36160b231e66e1cbe032ed54aef7617e8b259da",
+      "archive": "mxe.tar.gz",
+      "sha256": "b71d435d977b64f56b048c948a7649892fc36a1977ecd30ca0e7fe3c21b2f607",
+      "commit": "c36160b231e66e1cbe032ed54aef7617e8b259da",
+      "license": "See LICENSE.md",
+      "kind": "source",
+      "digestEvidence": "Official archive downloaded and SHA-256 recorded locally on 2026-11-23; review lock diff before cloud build"
+    },
+    {
+      "name": "vips-source-aom",
+      "version": "3.15.1",
+      "sha256": "8ca0c52746174603500f0adb6f2a215d69c9ca2aab2acb3caa06fb791d8d01bf",
+      "url": "https://storage.googleapis.com/aom-releases/libaom-3.15.1.tar.gz",
+      "archive": "vips-source-aom-libaom-3.15.1.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-libarchive",
+      "version": "3.8.9",
+      "sha256": "888c934f9d95648ecb9163dc8e23ab80a476ecb81a8f1154704a227b5b676dde",
+      "url": "https://www.libarchive.org/downloads/libarchive-3.8.9.tar.xz",
+      "archive": "vips-source-libarchive-libarchive-3.8.9.tar.xz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-brotli",
+      "version": "1.2.0",
+      "sha256": "816c96e8e8f193b40151dad7e8ff37b1221d019dbcb9c35cd3fadbfe6477dfec",
+      "url": "https://github.com/google/brotli/archive/v1.2.0.tar.gz",
+      "archive": "vips-source-brotli-brotli-1.2.0.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-cairo",
+      "version": "1.18.6",
+      "sha256": "1c767308174337a74694da0f3ec069c271452163a1ef4540964c50c301f157d4",
+      "url": "https://cairographics.org/releases/cairo-1.18.6.tar.xz",
+      "archive": "vips-source-cairo-cairo-1.18.6.tar.xz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-cfitsio",
+      "version": "4.7.0",
+      "sha256": "ce573bbea8e75b429f8c3d3e86498741ba3dc9628a1530d2f65268397ad059e8",
+      "url": "https://heasarc.gsfc.nasa.gov/FTP/software/fitsio/c/cfitsio-4.7.0.tar.gz",
+      "archive": "vips-source-cfitsio-cfitsio-4.7.0.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-cgif",
+      "version": "0.5.4",
+      "sha256": "83a70a15bc2da41f081a44ebc58ee48e2e1d524a6d3fdb4a24064afa08d5ad4d",
+      "url": "https://github.com/dloebl/cgif/archive/v0.5.4.tar.gz",
+      "archive": "vips-source-cgif-cgif-0.5.4.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-libdicom",
+      "version": "1.3.0",
+      "sha256": "75f1167f5153c659cdd58f2b432d2592bf0477abe0087e195bc621b5594ef10a",
+      "url": "https://github.com/ImagingDataCommons/libdicom/releases/download/v1.3.0/libdicom-1.3.0.tar.xz",
+      "archive": "vips-source-libdicom-libdicom-1.3.0.tar.xz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-libexif",
+      "version": "0.6.26",
+      "sha256": "4a055ed6575e61ca46c3172be3c753cc16c9becd0f99ec71d58dd0e471476c0c",
+      "url": "https://github.com/libexif/libexif/releases/download/v0.6.26/libexif-0.6.26.tar.xz",
+      "archive": "vips-source-libexif-libexif-0.6.26.tar.xz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-expat",
+      "version": "2.8.5",
+      "sha256": "952c03c33a6b337f12dae7a9b0f9dee86f867550d35c994d6bdaaddd37dc8454",
+      "url": "https://github.com/libexpat/libexpat/releases/download/R_2_8_5/expat-2.8.5.tar.bz2",
+      "archive": "vips-source-expat-expat-2.8.5.tar.bz2",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-libffi",
+      "version": "3.8.0",
+      "sha256": "7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4",
+      "url": "https://github.com/libffi/libffi/releases/download/v3.8.0/libffi-3.8.0.tar.gz",
+      "archive": "vips-source-libffi-libffi-3.8.0.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-fftw",
+      "version": "3.3.11",
+      "sha256": "5630c24cdeb33b131612f7eb4b1a9934234754f9f388ff8617458d0be6f239a1",
+      "url": "https://www.fftw.org/fftw-3.3.11.tar.gz",
+      "archive": "vips-source-fftw-fftw-3.3.11.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-fontconfig",
+      "version": "2.18.3",
+      "sha256": "8d28f79d2017cbe1fbb7da84b2502c86421b4f45860234d2f4ab5b35564c8d01",
+      "url": "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/2.18.3/fontconfig-2.18.3.tar.bz2",
+      "archive": "vips-source-fontconfig-fontconfig-2.18.3.tar.bz2",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-freetype",
+      "version": "2.14.3",
+      "sha256": "36bc4f1cc413335368ee656c42afca65c5a3987e8768cc28cf11ba775e785a5f",
+      "url": "https://sourceforge.net/projects/freetype/files/freetype2/2.14.3/freetype-2.14.3.tar.xz/download",
+      "archive": "vips-source-freetype-freetype-2.14.3.tar.xz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-fribidi",
+      "version": "1.0.17",
+      "sha256": "6949dcde27d41cebad1fd741fcafc36d55a1020d2d872d4a6eb3914caabbada2",
+      "url": "https://github.com/fribidi/fribidi/releases/download/v1.0.17/fribidi-1.0.17.tar.xz",
+      "archive": "vips-source-fribidi-fribidi-1.0.17.tar.xz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-glib",
+      "version": "2.90.0",
+      "sha256": "17d15cac2af80a33271127408e0abc2748eb297c595c2a26409e81e14e7d1b8f",
+      "url": "https://download.gnome.org/sources/glib/2.90/glib-2.90.0.tar.xz",
+      "archive": "vips-source-glib-glib-2.90.0.tar.xz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-harfbuzz",
+      "version": "14.5.0",
+      "sha256": "b7132e148358a45185c9feafd049dbaf243649d3c44414b3534d9c95d18592b9",
+      "url": "https://github.com/harfbuzz/harfbuzz/releases/download/14.5.0/harfbuzz-14.5.0.tar.xz",
+      "archive": "vips-source-harfbuzz-harfbuzz-14.5.0.tar.xz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-libheif",
+      "version": "1.23.5",
+      "sha256": "fd9036064c4432f0550d15072ddf34956a248279ee9aeaff0fba3fa0f77d8f1a",
+      "url": "https://github.com/strukturag/libheif/releases/download/v1.23.5/libheif-1.23.5.tar.gz",
+      "archive": "vips-source-libheif-libheif-1.23.5.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-highway",
+      "version": "1.4.0",
+      "sha256": "36f672ab48ddb3c8555e9e89e16fe400cd7d16c6eb455a1a3d0c146a63ababdc",
+      "url": "https://github.com/google/highway/releases/download/1.4.0/highway-1.4.0.tar.gz",
+      "archive": "vips-source-highway-highway-1.4.0.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-imagemagick",
+      "version": "7.1.2-31",
+      "sha256": "168a9710b3a8d69dbd20eb0a35f145b0c0ed35f076b2fc98d3eb57daa919c376",
+      "url": "https://github.com/ImageMagick/ImageMagick/releases/download/7.1.2-31/ImageMagick-7.1.2-31.tar.xz",
+      "archive": "vips-source-imagemagick-ImageMagick-7.1.2-31.tar.xz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-libimagequant",
+      "version": "2.4.1",
+      "sha256": "47d2a84b7b1052975c9d50a3d4e3cacbf57b43d84a4c3131210848ead9964dfb",
+      "url": "https://github.com/lovell/libimagequant/archive/v2.4.1.tar.gz",
+      "archive": "vips-source-libimagequant-libimagequant-2.4.1.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-libjxl",
+      "version": "0.12.0",
+      "sha256": "03e9be69a30be4011f559da75328b6d7cea8ad921fabfbd551ce10bf45cdc992",
+      "url": "https://github.com/libjxl/libjxl/archive/v0.12.0.tar.gz",
+      "archive": "vips-source-libjxl-libjxl-0.12.0.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-lcms",
+      "version": "2.19.1",
+      "sha256": "bfc54f7bab59fbc921012014a8032e4cba4abd46db47d46b76416a8c0b2815c8",
+      "url": "https://sourceforge.net/projects/lcms/files/lcms/2.19.1/lcms2-2.19.1.tar.gz/download",
+      "archive": "vips-source-lcms-lcms2-2.19.1.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-matio",
+      "version": "1.6.0",
+      "sha256": "1481dc74e01d249e90f064333f969369fe3dd11d6cc6963e8635c581aa5d7711",
+      "url": "https://github.com/tbeu/matio/releases/download/v1.6.0/matio-1.6.0.tar.gz",
+      "archive": "vips-source-matio-matio-1.6.0.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-mozjpeg",
+      "version": "0826579",
+      "sha256": "375d19302f09dfa267651dcfd3ddb62862ab3a488862b6168ce755bb1a925860",
+      "url": "https://github.com/mozilla/mozjpeg/tarball/0826579/mozjpeg-0826579.tar.gz",
+      "archive": "vips-source-mozjpeg-mozjpeg-0826579.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-nifticlib",
+      "version": "3.0.1",
+      "sha256": "868b611b5f8a3a73809436c9072db50db4975615905f0bd5fb7b1432e6d24b37",
+      "url": "https://github.com/NIFTI-Imaging/nifti_clib/archive/v3.0.1.tar.gz",
+      "archive": "vips-source-nifticlib-nifticlib-3.0.1.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-openexr",
+      "version": "3.1.13",
+      "sha256": "466213c67b6f45ae2642de762b8c327e01c2f29e0aec56ff62215391e4e06440",
+      "url": "https://github.com/AcademySoftwareFoundation/openexr/releases/download/v3.1.13/openexr-v3.1.13.tar.gz",
+      "archive": "vips-source-openexr-openexr-v3.1.13.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-openjpeg",
+      "version": "2.5.4",
+      "sha256": "a695fbe19c0165f295a8531b1e4e855cd94d0875d2f88ec4b61080677e27188a",
+      "url": "https://github.com/uclouvain/openjpeg/archive/v2.5.4.tar.gz",
+      "archive": "vips-source-openjpeg-openjpeg-2.5.4.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-openslide",
+      "version": "4.0.1",
+      "sha256": "df82f6b264f98d11eeb80d85bbb10c7935fcd69c7abae1d610ce49b9a0437faf",
+      "url": "https://github.com/openslide/openslide/releases/download/v4.0.1/openslide-4.0.1.tar.xz",
+      "archive": "vips-source-openslide-openslide-4.0.1.tar.xz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-pango",
+      "version": "1.58.2",
+      "sha256": "342385b6ca3b7c73455d7c80a13b7dbe4489e00bc3bd4c5bd6ed4dce421e374a",
+      "url": "https://download.gnome.org/sources/pango/1.58/pango-1.58.2.tar.xz",
+      "archive": "vips-source-pango-pango-1.58.2.tar.xz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-pixman",
+      "version": "0.46.4",
+      "sha256": "d09c44ebc3bd5bee7021c79f922fe8fb2fb57f7320f55e97ff9914d2346a591c",
+      "url": "https://cairographics.org/releases/pixman-0.46.4.tar.gz",
+      "archive": "vips-source-pixman-pixman-0.46.4.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-libpng",
+      "version": "1.6.58",
+      "sha256": "28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775",
+      "url": "https://sourceforge.net/projects/libpng/files/libpng16/1.6.58/libpng-1.6.58.tar.xz/download",
+      "archive": "vips-source-libpng-libpng-1.6.58.tar.xz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-poppler",
+      "version": "26.09.0",
+      "sha256": "8059eadb6805340768f138c465b57f8164c92b4a0773c37ef031ea6c0d987b2e",
+      "url": "https://poppler.freedesktop.org/poppler-26.09.0.tar.xz",
+      "archive": "vips-source-poppler-poppler-26.09.0.tar.xz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-proxy-libintl",
+      "version": "0.5",
+      "sha256": "f7a1cbd7579baaf575c66f9d99fb6295e9b0684a28b095967cfda17857595303",
+      "url": "https://github.com/frida/proxy-libintl/archive/0.5.tar.gz",
+      "archive": "vips-source-proxy-libintl-proxy-libintl-0.5.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-libraw",
+      "version": "0.22.2",
+      "sha256": "de86b035655accff8d4010f1a221fdf50d353cb7b1422ba26f14a0db92612cfa",
+      "url": "https://www.libraw.org/data/LibRaw-0.22.2.tar.gz",
+      "archive": "vips-source-libraw-LibRaw-0.22.2.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-librsvg",
+      "version": "2.63.2",
+      "sha256": "852b18e1a00b8605528825a27dc7748bff2a5dd254028f59dc22a34ea57e81b6",
+      "url": "https://download.gnome.org/sources/librsvg/2.63/librsvg-2.63.2.tar.xz",
+      "archive": "vips-source-librsvg-librsvg-2.63.2.tar.xz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-sqlite",
+      "version": "3530400",
+      "sha256": "0e9483900e92cd5de8fd48d16bf9200145a61f7fd5be542a5ac81d8a9516eb9c",
+      "url": "https://www.sqlite.org/2026/sqlite-autoconf-3530400.tar.gz",
+      "archive": "vips-source-sqlite-sqlite-autoconf-3530400.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-tiff",
+      "version": "4.7.2",
+      "sha256": "4996f0c4f93094719b1ca5c6279b20e588773ba8a247533e486416fb662ddb88",
+      "url": "https://download.osgeo.org/libtiff/tiff-4.7.2.tar.xz",
+      "archive": "vips-source-tiff-tiff-4.7.2.tar.xz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-uhdr",
+      "version": "2.0.2",
+      "sha256": "aa8d193bb887c348c419780511dd03b374f4e07af8812b6d3f80c8537cf1ef2c",
+      "url": "https://github.com/google/libultrahdr/archive/v2.0.2.tar.gz",
+      "archive": "vips-source-uhdr-uhdr-2.0.2.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-vips",
+      "version": "8.18.7",
+      "sha256": "5baaead3b0bb20ffdb9e9ff09aa9fda08620923df77b63b436654cb5e0b3bf94",
+      "url": "https://github.com/libvips/libvips/releases/download/v8.18.7/vips-8.18.7.tar.xz",
+      "archive": "vips-source-vips-vips-8.18.7.tar.xz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-libwebp",
+      "version": "1.6.0",
+      "sha256": "e4ab7009bf0629fd11982d4c2aa83964cf244cffba7347ecd39019a9e38c4564",
+      "url": "https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.6.0.tar.gz",
+      "archive": "vips-source-libwebp-libwebp-1.6.0.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-libxml2",
+      "version": "2.15.4",
+      "sha256": "98087fd181d9070724f3fbc65c7377db03038eb92bd882374daff44940138821",
+      "url": "https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.4.tar.xz",
+      "archive": "vips-source-libxml2-libxml2-2.15.4.tar.xz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-zlib-ng",
+      "version": "2.3.3",
+      "sha256": "f9c65aa9c852eb8255b636fd9f07ce1c406f061ec19a2e7d508b318ca0c907d1",
+      "url": "https://github.com/zlib-ng/zlib-ng/archive/2.3.3.tar.gz",
+      "archive": "vips-source-zlib-ng-zlib-ng-2.3.3.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-zstd",
+      "version": "1.5.7",
+      "sha256": "37d7284556b20954e56e1ca85b80226768902e2edabd3b649e9e72c0c9012ee3",
+      "url": "https://github.com/facebook/zstd/archive/v1.5.7.tar.gz",
+      "archive": "vips-source-zstd-zstd-1.5.7.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-pcre2",
+      "version": "10.48",
+      "sha256": "b6c68fdf6f3ac31388b50aa89ff0fc49c00c987c16e7b5146491d12003f2c8ed",
+      "url": "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.48/pcre2-10.48.tar.bz2",
+      "archive": "vips-source-pcre2-pcre2-10.48.tar.bz2",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-libiconv",
+      "version": "1.19",
+      "sha256": "88dd96a8c0464eca144fc791ae60cd31cd8ee78321e67397e25fc095c4a19aa6",
+      "url": "https://ftp.gnu.org/gnu/libiconv/libiconv-1.19.tar.gz",
+      "archive": "vips-source-libiconv-libiconv-1.19.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-imath",
+      "version": "3.2.2",
+      "sha256": "0f5a783b424f374e6f27ec8b0c73130e89b08814ac8fa2e84fd7fe0b05862c53",
+      "url": "https://github.com/AcademySoftwareFoundation/Imath/releases/download/v3.2.2/Imath-3.2.2.tar.gz",
+      "archive": "vips-source-imath-Imath-3.2.2.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-llvm-mingw",
+      "version": "20260922",
+      "sha256": "9e430702df67673bb9632253d3f63868e1c13d15ef21deb350b953282b767627",
+      "url": "https://github.com/mstorsjo/llvm-mingw/archive/20260922.tar.gz",
+      "archive": "vips-source-llvm-mingw-llvm-mingw-20260922.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-llvm",
+      "version": "23.1.2",
+      "sha256": "c98bbef08a2b4c2613cd50e9aa9ae7b69b1fe6c16b2c40373bc0ab6116fdf78a",
+      "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.2/llvm-project-23.1.2.src.tar.xz",
+      "archive": "vips-source-llvm-llvm-project-23.1.2.src.tar.xz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    },
+    {
+      "name": "vips-source-mingw-w64",
+      "version": "57b5950",
+      "sha256": "7362a2dc2d289dde4617e21e5d7a006c87c19e80793c8928a794b654ed6e2bcd",
+      "url": "https://github.com/mingw-w64/mingw-w64/tarball/57b5950/mingw-w64-mingw-w64-57b5950.tar.gz",
+      "archive": "vips-source-mingw-w64-mingw-w64-mingw-w64-57b5950.tar.gz",
+      "kind": "corresponding-source",
+      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+    }
+  ],
+  "pngquantCargoLockSha256": "1ce7129a155289dbaccfe210e57aa18720bc8ee99e744504bf1b28bf568bdcdd"
+}

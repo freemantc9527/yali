@@ -58,7 +58,7 @@ impl EngineKind {
             { return None; }
         }
         // 包内缺件不回落开发机引擎，防止构建残缺被 Homebrew 掩盖。
-        if crate::runtime::contents().is_some() {
+        if crate::runtime::is_packaged() {
             return crate::runtime::bundled_binary(binary);
         }
         let (_, pkg) = self.spec();
@@ -162,8 +162,7 @@ fn version_of(kind: EngineKind, path: &Path) -> Option<String> {
         EngineKind::Sips => return None,             // sips 无版本参数
         _ => (["--version"], false),
     };
-    let out = std::process::Command::new(path)
-        .envs(crate::runtime::command_environment(path))
+    let out = crate::runtime::command(path)
         .args(args).output().ok()?;
     let text = if use_stderr {
         String::from_utf8_lossy(&out.stderr)
@@ -176,8 +175,7 @@ fn version_of(kind: EngineKind, path: &Path) -> Option<String> {
 
 /// 运行引擎子进程（tokio，捕获 stdout/stderr）
 pub(crate) async fn run_engine(program: &Path, args: &[String]) -> Result<std::process::Output> {
-    tokio::process::Command::new(program)
-        .envs(crate::runtime::command_environment(program))
+    crate::runtime::async_command(program)
         .args(args)
         .output()
         .await
@@ -192,6 +190,7 @@ mod tests {
     /// env 是进程级全局：所有改 env 的测试共用这把锁
     static ENV_LOCK: Mutex<()> = Mutex::new(());
 
+    #[cfg(target_os = "macos")]
     #[test]
     fn engine_mozjpeg_resolution_rejects_libjpeg_turbo_cjpeg() {
         // 本机 PATH 里 /opt/homebrew/bin/cjpeg 是 libjpeg-turbo 的李鬼：
@@ -210,13 +209,18 @@ mod tests {
         let _guard = ENV_LOCK.lock().unwrap();
         let dir = std::env::temp_dir().join(format!("yali-engines-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(dir.join("pngquant"), "#!/bin/sh\n").unwrap();
+        std::fs::write(dir.join(if cfg!(windows) { "pngquant.exe" } else { "pngquant" }), "#!/bin/sh\n").unwrap();
+        let original = std::env::var_os("YALI_ENGINES_PATH");
         std::env::set_var("YALI_ENGINES_PATH", &dir);
         let resolved = EngineKind::Pngquant.resolve();
-        std::env::remove_var("YALI_ENGINES_PATH");
-        assert_eq!(resolved, Some(dir.join("pngquant")));
+        match original {
+            Some(value) => std::env::set_var("YALI_ENGINES_PATH", value),
+            None => std::env::remove_var("YALI_ENGINES_PATH"),
+        }
+        assert_eq!(resolved, Some(dir.join(if cfg!(windows) { "pngquant.exe" } else { "pngquant" })));
     }
 
+    #[cfg(target_os = "macos")]
     #[test]
     fn engine_resolves_without_brew_in_path() {
         // Finder Services / launchd 的 PATH 只有 /usr/bin:/bin：Homebrew 目录必须自带兜底

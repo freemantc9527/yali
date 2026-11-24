@@ -22,3 +22,9 @@
 - 承担：包体积增加，插件与动态依赖必须一并验收；当前本机引擎实际要求 macOS 27.2，首批产物限 Apple Silicon。旧系统兼容需要针对旧部署目标重新构建依赖，不由本卡承诺。
 - 放弃：依赖开发仓库路径、接收者自行装 Homebrew、用户目录中另一份完整运行时、后台常驻安装服务、私有系统偏好改写。
 - 回滚：设置页可卸载本应用两条 workflow；配置、图片与稳定 CLI 入口保留。恢复旧 App 不需要迁移设置 schema。未实施系统级安装、更新或发布。
+
+## Windows 实验补充（2026-11-23）
+
+Windows ZIP 采用独立布局与 schemaVersion=1 的运行时清单，保留同一子进程引擎架构，不复用 macOS Contents 根。macOS Services 的根判断保持 macOS 专用。工具仅以包内绝对路径运行，校验工具映射、相对路径、x64 架构、文件摘要与构建时依赖闭包；摘要用于完整性检查，不证明来源可信。
+
+ZIP 不含 Node、Python、完整 SDK、FFmpeg 或完整 WebView2。工具按锁文件准备；C 工具静态链接 CRT，官方 MSVC 工具需要的 CRT 在许可允许范围内随包保留。libvips 的目录及插件结构保持上游布局；第三方许可证、对应源码、构建配方和 Cargo 依赖随同 artifact 分发。新 Windows 构建和 Windows 11 GUI 尚未验证，不能由 macOS 自动化推定已支持。

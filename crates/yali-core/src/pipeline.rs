@@ -126,6 +126,7 @@ pub async fn compress_file(
     if matches!(profile.format.output, crate::profile::OutputFormat::Avif | crate::profile::OutputFormat::Heic | crate::profile::OutputFormat::Jxl | crate::profile::OutputFormat::Svg) {
         bail!("Windows 不支持此输出格式");
     }
+    crate::runtime::validate()?;
     let started = std::time::Instant::now();
     let input_bytes = std::fs::metadata(input)?.len();
     let input_fmt = sniff(input)?;
@@ -153,6 +154,15 @@ pub async fn compress_file(
         target_fmt
     };
 
+    #[cfg(windows)]
+    {
+        // 在任何中间产物之前检查动图与多页语义。
+        let pages = if matches!(input_fmt, InputFormat::Gif | InputFormat::Webp | InputFormat::Tiff) {
+            image_pages(input).await?
+        } else if input_fmt == InputFormat::Png && png_is_animated(input) { 2 } else { 1 };
+        validate_frames(input_fmt, target_fmt, pages, profile)?;
+    }
+
     // 输出落点：目录策略（sibling/downloads/custom/override）+ 后缀模板；
     // {size} 要等编码完成才知道，先按无 size 版本算临时名
     let out_path = final_path(input, profile, target_fmt, None)?;
@@ -169,10 +179,23 @@ pub async fn compress_file(
     let mut decoded: Option<PathBuf> = None;
     let (mut base_input, mut base_fmt) = (input.to_path_buf(), input_fmt);
     if input_fmt == InputFormat::Bmp
+        || (cfg!(windows) && (input_fmt == InputFormat::Tiff
+            || (target_fmt == crate::profile::OutputFormat::Jpeg && !matches!(input_fmt, InputFormat::Jpeg | InputFormat::Png))
+            || (input_fmt == InputFormat::Gif && target_fmt != crate::profile::OutputFormat::Gif && target_fmt != crate::profile::OutputFormat::Webp)
+            || (input_fmt == InputFormat::Webp && target_fmt != crate::profile::OutputFormat::Webp)
+            || (input_fmt == InputFormat::Jpeg && target_fmt == crate::profile::OutputFormat::Png)))
         || (matches!(input_fmt, InputFormat::Heic | InputFormat::Avif | InputFormat::Jxl)
             && target_fmt != Registry::auto_of(input_fmt))
     {
         let png = decode_to_png_via_sips(input, workspace.path(), registry).await?;
+        base_input = png.clone();
+        base_fmt = InputFormat::Png;
+        decoded = Some(png);
+    }
+
+    #[cfg(windows)]
+    if matches!(base_fmt, InputFormat::Jpeg | InputFormat::Png) && image_orientation(&base_input).await? > 1 {
+        let png = decode_to_png_via_sips(&base_input, workspace.path(), registry).await?;
         base_input = png.clone();
         base_fmt = InputFormat::Png;
         decoded = Some(png);
@@ -188,13 +211,22 @@ pub async fn compress_file(
     let mut aux_file: Option<PathBuf> = None;
     let mut forced_encoder: Option<crate::engines::EngineKind> = None;
     if base_fmt == InputFormat::Png && target_fmt == crate::profile::OutputFormat::Jpeg {
-        if png_has_alpha(&base_input) {
+        #[cfg(windows)]
+        let has_alpha = matches!(image_field(&base_input, "bands:").await?, Some(2 | 4));
+        #[cfg(not(windows))]
+        let has_alpha = png_has_alpha(&base_input);
+        if has_alpha {
             match flatten_alpha_to_white(&base_input, workspace.path()).await {
                 Ok(Some(flat)) => {
                     aux_file = Some(flat);
                     base_input = aux_file.clone().unwrap();
                 }
-                _ => forced_encoder = Some(crate::engines::EngineKind::Sips),
+                _ => {
+                    #[cfg(target_os = "macos")]
+                    { forced_encoder = Some(crate::engines::EngineKind::Sips); }
+                    #[cfg(not(target_os = "macos"))]
+                    bail!("透明图片白底合成失败，请检查包内 libvips 运行时");
+                },
             }
         }
     }
@@ -203,7 +235,7 @@ pub async fn compress_file(
     if base_fmt == InputFormat::Png && target_fmt == crate::profile::OutputFormat::Png {
         // BMP 默认转无损 PNG，避免对照片先量化而达不到 pngquant 最低质量。
         if input_fmt == InputFormat::Bmp
-            || (quality.kind == QualityKind::Recommended && png_is_animated(&base_input))
+            || png_is_animated(&base_input)
             || png_png_engine_choice(png_color_type(&base_input)) == crate::engines::EngineKind::Oxipng {
             forced_encoder = Some(crate::engines::EngineKind::Oxipng);
         }
@@ -224,8 +256,18 @@ pub async fn compress_file(
     // 编码：level 档单次；targetBytes 走 ≤5 轮 level 二分（收敛 [target-10KB, target]，
     // 受 minQualityFloor 保护）；lossless 单次
     let tmp = temp_sibling(&out_path);
+    let _staged = StagedOutput(tmp.clone());
+    let encoder_for = |level: Option<u8>, lossless: bool| -> Result<&dyn crate::engines::registry::Encoder> {
+        if base_fmt == InputFormat::Png && target_fmt == crate::profile::OutputFormat::Png
+            && (lossless || level.is_some_and(|level| level <= 2))
+        {
+            registry.encoder_of(crate::engines::EngineKind::Oxipng).context("PNG 无损档需要 oxipng")
+        } else {
+            Ok(encoder)
+        }
+    };
     let encode_once = |level: Option<u8>, lossless: bool| {
-        let plan = encoder.plan(&EncodeRequest {
+        let plan = encoder_for(level, lossless).and_then(|encoder| encoder.plan(&EncodeRequest {
             input: encode_input.clone(),
             output: tmp.clone(),
             input_fmt: base_fmt,
@@ -233,7 +275,7 @@ pub async fn compress_file(
             level,
             lossless,
             recommended: quality.kind == QualityKind::Recommended,
-        });
+        }));
         let cleanup = tmp.clone();
         async move {
             let plan = plan?;
@@ -292,7 +334,7 @@ pub async fn compress_file(
     };
 
     // tmp 里已是目标结果就不再重编（bisection 收敛场景），否则编码一次
-    let mut engine_name = encoder.name().to_string();
+    let mut engine_name = encoder_for(final_level, quality.kind == QualityKind::Lossless)?.name().to_string();
     if quality.kind != QualityKind::TargetBytes {
         if let Err(error) = encode_once(final_level, quality.kind == QualityKind::Lossless).await {
             // 只对 pngquant 明确的「达不到质量下限」回退；损坏文件与其他错误照常报错。
@@ -385,7 +427,8 @@ pub async fn compress_file(
     }
 
     // 负优化拦截：同格式且输出 ≥ 输入 → 不落盘（DESIGN §3）
-    let same_format = target_fmt == Registry::auto_of(input_fmt);
+    let same_format = !matches!(input_fmt, InputFormat::Bmp | InputFormat::Tiff)
+        && target_fmt == Registry::auto_of(input_fmt);
     let mut status = "done";
     if same_format && output_size >= input_bytes {
         let _ = std::fs::remove_file(&tmp);
@@ -469,17 +512,21 @@ async fn choose_smaller_candidate(input: &Path, output: &Path, candidate: &Path,
 }
 
 fn png_is_animated(path: &Path) -> bool {
-    let Some(head) = png_head(path) else { return false };
-    let mut pos = 8;
-    while pos + 12 <= head.len() {
-        let size = u32::from_be_bytes(head[pos..pos + 4].try_into().unwrap()) as usize;
-        if &head[pos + 4..pos + 8] == b"acTL" { return true; }
-        if &head[pos + 4..pos + 8] == b"IDAT" { break; }
-        pos = match pos.checked_add(12).and_then(|v| v.checked_add(size)) {
-            Some(next) => next, None => break,
-        };
+    use std::io::{Seek, SeekFrom};
+    let Ok(mut file) = std::fs::File::open(path) else { return false; };
+    let mut magic = [0; 8];
+    if file.read_exact(&mut magic).is_err() || magic != [137, 80, 78, 71, 13, 10, 26, 10] { return false; }
+    loop {
+        let mut chunk = [0; 8];
+        if file.read_exact(&mut chunk).is_err() { return false; }
+        match &chunk[4..] {
+            b"acTL" => return true,
+            b"IDAT" | b"IEND" => return false,
+            _ => {}
+        }
+        let size = u32::from_be_bytes(chunk[..4].try_into().unwrap());
+        if file.seek(SeekFrom::Current(i64::from(size) + 4)).is_err() { return false; }
     }
-    false
 }
 
 /// 预缩放：vipsthumbnail → 无损 PNG 中转，shrinkOnly 必须显式禁止放大。
@@ -501,7 +548,7 @@ async fn pre_scaled_copy(
     }
     let vips = registry
         .path_of(crate::engines::EngineKind::Vips)
-        .ok_or_else(|| anyhow::anyhow!("预缩放需要 vips（brew install vips）"))?;
+        .ok_or_else(|| anyhow::anyhow!("预缩放需要可用的 libvips 运行时"))?;
     // 注意：vipsthumbnail 不认 dotfile 输出路径（会把图片写到 stdout），
     // 中转文件必须是非隐藏名
     let stem = input.file_stem().and_then(|s| s.to_str()).unwrap_or("img");
@@ -570,7 +617,7 @@ fn png_has_alpha(path: &Path) -> bool {
     if matches!(color_type, 4 | 6) {
         return true;
     }
-    if color_type != 3 {
+    if !matches!(color_type, 0 | 2 | 3) {
         return false;
     }
     let mut off = 8;
@@ -610,6 +657,14 @@ async fn flatten_alpha_to_white(input: &Path, dir: &Path) -> Result<Option<PathB
     }
     // 结构校验（零成本）：flatten 产物必须是 RGB。libvips 对无 alpha 的调色板 PNG
     // 会输出 graya 灰白图（实测毁图），这里当场判失败让调用方回落 sips。
+    if png_color_type(&flat) == Some(0) {
+        let rgb = dir.join("flatten-rgb.png");
+        run_plan(&SubprocessPlan {
+            program: crate::engines::EngineKind::Vips.sibling_binary("vips").context("缺少 vips")?,
+            args: vec!["colourspace".into(), flat.to_string_lossy().into(), rgb.to_string_lossy().into(), "srgb".into()],
+        }).await?;
+        std::fs::rename(rgb, &flat)?;
+    }
     if png_color_type(&flat) != Some(2) {
         let _ = std::fs::remove_file(&flat);
         return Ok(None);
@@ -647,44 +702,61 @@ async fn decode_to_png_via_sips(
         program: crate::engines::EngineKind::Vips
             .sibling_binary("vips")
             .context("当前平台缺少 libvips，无法解码容器图片")?,
-        args: vec!["copy".into(), input.to_string_lossy().into(), png.to_string_lossy().into()],
+        args: vec!["autorot".into(), input.to_string_lossy().into(), png.to_string_lossy().into()],
     };
     run_plan(&plan).await?;
     if !png.exists() {
-        bail!("sips 容器解码失败: {}", input.display());
+        bail!("图片解码未产出 PNG: {}", input.display());
     }
     Ok(png)
 }
 
 /// 像素尺寸探测（macOS 用 sips，其他平台用 vipsheader；失败返回 None）。
-async fn probe_dims(path: &Path) -> Option<(u32, u32)> {
+pub async fn probe_dims(path: &Path) -> Option<(u32, u32)> {
     #[cfg(target_os = "macos")]
-    let mut command = tokio::process::Command::new("sips");
-    #[cfg(target_os = "macos")]
-    command.args(["-g", "pixelWidth", "-g", "pixelHeight"]);
+    let (program, args) = (PathBuf::from("/usr/bin/sips"), vec!["-g", "pixelWidth", "-g", "pixelHeight"]);
     #[cfg(not(target_os = "macos"))]
-    let mut command = tokio::process::Command::new(
-        crate::runtime::bundled_binary("vipsheader").unwrap_or_else(|| PathBuf::from("vipsheader")),
-    );
-    #[cfg(not(target_os = "macos"))]
-    command.arg("-a");
-    let out = command
-        .arg(path)
-        .output()
-        .await
-        .ok()?;
+    let (program, args) = (crate::engines::EngineKind::Vips.sibling_binary("vipsheader")?, vec!["-a"]);
+    let out = crate::runtime::async_command(&program).args(args).arg(path).output().await.ok()?;
+    if !out.status.success() { return None; }
     let text = String::from_utf8_lossy(&out.stdout);
-    let mut w = None;
-    let mut h = None;
-    for line in text.lines() {
-        if let Some(v) = line.trim().strip_prefix("pixelWidth:").or_else(|| line.trim().strip_prefix("width:")) {
-            w = v.trim().parse().ok();
-        }
-        if let Some(v) = line.trim().strip_prefix("pixelHeight:").or_else(|| line.trim().strip_prefix("height:")) {
-            h = v.trim().parse().ok();
-        }
+    let field = |keys: &[&str]| -> Option<u32> {
+        text.lines().find_map(|line| keys.iter().find_map(|key| line.trim().strip_prefix(key)?.trim().parse().ok()))
+    };
+    Some((field(&["pixelWidth:", "width:"])?, field(&["pixelHeight:", "height:"])?))
+}
+
+/// libvips header 同样走绝对引擎路径与子进程环境。
+#[cfg(windows)]
+async fn image_field(path: &Path, field: &str) -> Result<Option<u32>> {
+    let program = crate::engines::EngineKind::Vips.sibling_binary("vipsheader").context("图片检查需要包内 vipsheader")?;
+    let out = crate::runtime::async_command(&program).arg("-a").arg(path).output().await?;
+    anyhow::ensure!(out.status.success(), "无法解码图片: {}", String::from_utf8_lossy(&out.stderr).trim());
+    Ok(String::from_utf8_lossy(&out.stdout).lines().find_map(|line| line.strip_prefix(field)?.trim().parse().ok()))
+}
+
+#[cfg(windows)]
+async fn image_pages(path: &Path) -> Result<u32> {
+    Ok(image_field(path, "n-pages:").await?.unwrap_or(1))
+}
+
+#[cfg(windows)]
+async fn image_orientation(path: &Path) -> Result<u32> {
+    Ok(image_field(path, "orientation:").await?.unwrap_or(1))
+}
+
+#[cfg(any(windows, test))]
+fn validate_frames(input: InputFormat, output: crate::profile::OutputFormat, pages: u32, profile: &Profile) -> Result<()> {
+    use crate::profile::{OutputFormat, ResizeMode};
+    if pages <= 1 { return Ok(()); }
+    if input == InputFormat::Tiff { bail!("暂不支持多页 TIFF，请先拆分页面"); }
+    let resize = profile.resize.mode != ResizeMode::None
+        && (profile.resize.max_width.is_some() || profile.resize.max_height.is_some());
+    match input {
+        InputFormat::Gif if matches!(output, OutputFormat::Gif | OutputFormat::Webp) => Ok(()),
+        InputFormat::Png if output == OutputFormat::Png && !resize => Ok(()),
+        _ => bail!("此组合会丢失动画帧，暂不支持动画转换或缩放，请保留原格式与尺寸"),
     }
-    Some((w?, h?))
 }
 
 /// 输出目录策略（DESIGN §2 output.dir / T-008）
@@ -705,21 +777,14 @@ fn output_dir(input: &Path, profile: &Profile) -> Result<PathBuf> {
                 .context("output.dir=custom 但缺少 dirPath（validate 应已拦截）")?;
             expand_home(raw)
         }
-        DirKind::Downloads => {
-            let home = std::env::var("HOME").context("HOME 未设置，无法定位下载目录")?;
-            Ok(PathBuf::from(home).join("Downloads"))
-        }
+        DirKind::Downloads => crate::data::downloads(),
     }
 }
 
 fn expand_home(raw: &str) -> Result<PathBuf> {
-    if let Some(rest) = raw.strip_prefix("~/") {
-        let home = std::env::var("HOME").context("HOME 未设置，无法展开 ~")?;
-        return Ok(PathBuf::from(home).join(rest));
-    }
-    if raw == "~" {
-        let home = std::env::var("HOME").context("HOME 未设置，无法展开 ~")?;
-        return Ok(PathBuf::from(home));
+    if raw == "~" { return crate::data::home(); }
+    if let Some(rest) = raw.strip_prefix("~/").or_else(|| if cfg!(windows) { raw.strip_prefix("~\\") } else { None }) {
+        return Ok(crate::data::home()?.join(rest));
     }
     Ok(PathBuf::from(raw))
 }
@@ -772,10 +837,24 @@ fn final_path(
         suffix = suffix.replace("{size}", &size_token(bytes));
     }
     let name = format!("{stem}{suffix}.{ext}");
-    if Path::new(&name) == input.file_name().unwrap_or_default() && dir == input.parent().unwrap_or(Path::new(".")) {
-        bail!("后缀模板渲染后与输入同名，会覆盖原文件");
-    }
-    Ok(dir.join(name))
+    let output = dir.join(name);
+    anyhow::ensure!(!same_file(input, &output)?, "后缀模板渲染后与输入同名，会覆盖原文件");
+    Ok(output)
+}
+
+fn same_file(input: &Path, output: &Path) -> Result<bool> {
+    let absolute = |path: &Path| -> Result<PathBuf> {
+        if path.exists() { return Ok(path.canonicalize()?); }
+        let parent = path.parent().unwrap_or(Path::new("."));
+        let parent = if parent.exists() { parent.canonicalize()? } else if parent.is_absolute() { parent.to_path_buf() } else { std::env::current_dir()?.join(parent) };
+        Ok(parent.join(path.file_name().context("缺少文件名")?))
+    };
+    let left = absolute(input)?;
+    let right = absolute(output)?;
+    #[cfg(windows)]
+    { Ok(left.to_string_lossy().to_lowercase() == right.to_string_lossy().to_lowercase()) }
+    #[cfg(not(windows))]
+    { Ok(left == right) }
 }
 
 fn date_stamp() -> String {
@@ -819,16 +898,116 @@ fn civil_from_days(day_index: i64) -> (i64, u32, u32) {
 /// ②vipsthumbnail 按扩展名推断输出格式，故保留目标扩展名在末尾。
 fn temp_sibling(target: &Path) -> PathBuf {
     let pid = std::process::id();
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let sequence = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let stem = target
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("out");
     let ext = target.extension().and_then(|s| s.to_str()).unwrap_or("bin");
-    target.with_file_name(format!("{stem}.yali-{pid}.tmp.{ext}"))
+    target.with_file_name(format!("{stem}.yali-{pid}-{sequence}.tmp.{ext}"))
+}
+
+struct StagedOutput(PathBuf);
+impl Drop for StagedOutput {
+    fn drop(&mut self) { let _ = std::fs::remove_file(&self.0); }
 }
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn frame_guards_preserve_animation_or_reject_before_encoding() {
+        use crate::profile::{OutputFormat as O, ResizeMode};
+        use super::{InputFormat as I, validate_frames};
+        let mut p = crate::Profile::default();
+        assert!(validate_frames(I::Tiff, O::Jpeg, 2, &p).is_err());
+        assert!(validate_frames(I::Gif, O::Jpeg, 3, &p).is_err());
+        assert!(validate_frames(I::Gif, O::Png, 1, &p).is_ok());
+        assert!(validate_frames(I::Gif, O::Webp, 3, &p).is_ok());
+        assert!(validate_frames(I::Gif, O::Gif, 3, &p).is_ok());
+        assert!(validate_frames(I::Webp, O::Webp, 3, &p).is_err());
+        p.resize.mode = ResizeMode::None;
+        assert!(validate_frames(I::Png, O::Png, 2, &p).is_ok());
+        p.resize.mode = ResizeMode::ShrinkOnly;
+        p.resize.max_width = Some(32);
+        assert!(validate_frames(I::Png, O::Png, 2, &p).is_err());
+    }
+
+    #[tokio::test]
+    async fn png_lossless_and_levels_one_two_route_to_oxipng_without_pixel_changes() {
+        use super::*;
+        let _lock = crate::test_support::ENV_LOCK.lock().unwrap();
+        let _home = TestHome::new();
+        let workspace = crate::data::TempDir::new().unwrap();
+        let input = workspace.path().join("ui.png");
+        std::fs::copy(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../benchkit/samples/ui.png"), &input).unwrap();
+        let original = std::fs::read(&input).unwrap();
+        let mut profile: Profile = serde_json::from_str(include_str!("../../../fixtures/default.json")).unwrap();
+        let registry = Registry::discover(&profile);
+        let vips = crate::engines::EngineKind::Vips.sibling_binary("vips").unwrap();
+        let before = workspace.path().join("before.raw");
+        run_plan(&SubprocessPlan { program: vips.clone(), args: vec!["rawsave".into(), input.to_string_lossy().into(), before.to_string_lossy().into()] }).await.unwrap();
+        for (kind, level) in [(QualityKind::Lossless, None), (QualityKind::Level, Some(1)), (QualityKind::Level, Some(2))] {
+            profile.quality.kind = kind;
+            profile.quality.level = level;
+            let result = compress_file(&input, &profile, &registry).await.unwrap();
+            assert_eq!(result.engine, "oxipng");
+            let output = result.output.map(PathBuf::from).unwrap_or(input.clone());
+            let after = workspace.path().join("after.raw");
+            run_plan(&SubprocessPlan { program: vips.clone(), args: vec!["rawsave".into(), output.to_string_lossy().into(), after.to_string_lossy().into()] }).await.unwrap();
+            let before = std::fs::read(&before).unwrap();
+            let after = std::fs::read(&after).unwrap();
+            // ui fixture is RGBA16 with fully opaque alpha. Removing opaque alpha is lossless.
+            assert!(before.chunks_exact(8).all(|pixel| pixel[6..8] == [255, 255]));
+            let rgb: Vec<u8> = before.chunks_exact(8).flat_map(|pixel| pixel[..6].iter().copied()).collect();
+            assert!(after == before || after == rgb, "PNG 无损优化改变了可见像素");
+        }
+        assert_eq!(std::fs::read(input).unwrap(), original);
+    }
+
+    #[tokio::test]
+    async fn grayscale_alpha_is_flattened_to_rgb_white_and_source_is_preserved() {
+        use super::*;
+        let _lock = crate::test_support::ENV_LOCK.lock().unwrap();
+        let _home = TestHome::new();
+        let workspace = crate::data::TempDir::new().unwrap();
+        let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../benchkit/samples/transparent.png");
+        let original = std::fs::read(&source).unwrap();
+        let gray = workspace.path().join("灰度 alpha [test].png");
+        let vips = crate::engines::EngineKind::Vips.sibling_binary("vips").unwrap();
+        run_plan(&SubprocessPlan { program: vips.clone(), args: vec![
+            "colourspace".into(), source.to_string_lossy().into(), gray.to_string_lossy().into(), "b-w".into(),
+        ] }).await.unwrap();
+        assert!(png_has_alpha(&gray));
+        let flat = flatten_alpha_to_white(&gray, workspace.path()).await.unwrap().unwrap();
+        assert_eq!(png_color_type(&flat), Some(2));
+        let pixel = crate::runtime::async_command(&vips).arg("getpoint").arg(flat).args(["0", "0"]).output().await.unwrap();
+        assert!(pixel.status.success());
+        let colors: Vec<f64> = String::from_utf8_lossy(&pixel.stdout).split_whitespace().map(|s| s.parse().unwrap()).collect();
+        assert_eq!(colors.len(), 3);
+        assert!(colors.iter().all(|c| *c >= 254.0), "{colors:?}");
+        assert_eq!(std::fs::read(source).unwrap(), original);
+    }
+
+    #[test]
+    fn output_aliases_cannot_overwrite_source() {
+        use super::*;
+        let dir = std::env::temp_dir().join(format!("yali-output-alias-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let input = dir.join("Original.JPG");
+        std::fs::write(&input, b"original").unwrap();
+        let mut p = Profile::default();
+        p.output.suffix_template.clear();
+        let result = final_path(&input, &p, crate::OutputFormat::Jpeg, None);
+        #[cfg(any(windows, target_os = "macos"))]
+        assert!(result.is_err());
+        #[cfg(not(any(windows, target_os = "macos")))]
+        assert!(result.is_ok());
+        assert!(same_file(&input, &dir.join("./Original.JPG")).unwrap());
+        assert_eq!(std::fs::read(&input).unwrap(), b"original");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
     #[test]
     fn windows_limits_supported_input_formats() {
         use super::{input_supported, InputFormat};
@@ -838,9 +1017,7 @@ mod tests {
 
     use super::*;
     use crate::profile::DirKind;
-    use std::sync::Mutex;
 
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     struct TestHome(PathBuf, Option<std::ffi::OsString>);
     impl TestHome {
@@ -1010,10 +1187,27 @@ mod tests {
     }
 
     #[test]
+    fn animation_marker_after_large_metadata_is_not_missed() {
+        let mut bytes = fake_png(6, false);
+        // Keep IHDR, insert a large ancillary chunk and acTL before image data.
+        bytes.truncate(33);
+        bytes.extend_from_slice(&100_000u32.to_be_bytes());
+        bytes.extend_from_slice(b"tEXt");
+        bytes.resize(bytes.len() + 100_000 + 4, 0);
+        bytes.extend_from_slice(&8u32.to_be_bytes());
+        bytes.extend_from_slice(b"acTL");
+        bytes.extend_from_slice(&[0; 12]);
+        let path = write_fake("large-metadata-apng.png", &bytes);
+        assert!(png_is_animated(&path));
+    }
+
+    #[test]
     fn pipeline_png_alpha_detection() {
         // type 6 RGBA / type 4 灰度+alpha → 有透明
         assert!(png_has_alpha(&write_fake("t6.png", &fake_png(6, false))));
         assert!(png_has_alpha(&write_fake("t4.png", &fake_png(4, false))));
+        assert!(png_has_alpha(&write_fake("t0-trns.png", &fake_png(0, true))));
+        assert!(png_has_alpha(&write_fake("t2-trns.png", &fake_png(2, true))));
         // type 3 调色板：有 tRNS 才算透明；没有就不该 flatten
         assert!(png_has_alpha(&write_fake("t3trns.png", &fake_png(3, true))));
         assert!(!png_has_alpha(&write_fake("t3.png", &fake_png(3, false))));
@@ -1057,14 +1251,14 @@ mod tests {
         avif[8..12].copy_from_slice(b"avif");
         let p = dir.join("s.avif");
         std::fs::write(&p, avif).unwrap();
-        assert_eq!(sniff(&p).unwrap(), InputFormat::Avif);
+        if cfg!(windows) { assert!(sniff(&p).is_err()); } else { assert_eq!(sniff(&p).unwrap(), InputFormat::Avif); }
 
         let mut heic = vec![0u8; 12];
         heic[4..8].copy_from_slice(b"ftyp");
         heic[8..12].copy_from_slice(b"heic");
         let p = dir.join("s.heic");
         std::fs::write(&p, heic).unwrap();
-        assert_eq!(sniff(&p).unwrap(), InputFormat::Heic);
+        if cfg!(windows) { assert!(sniff(&p).is_err()); } else { assert_eq!(sniff(&p).unwrap(), InputFormat::Heic); }
         std::fs::remove_dir_all(&dir).ok();
     }
 
@@ -1082,50 +1276,33 @@ mod tests {
     fn pipeline_suffix_template_placeholders() {
         let mut profile = Profile::default();
         profile.name = "web".into();
-        let input = Path::new("/tmp/photo.jpg");
+        let input_path = std::env::temp_dir().join("photo.jpg");
+        let input = input_path.as_path();
         let out = final_path(input, &profile, crate::profile::OutputFormat::Webp, None).unwrap();
         assert_eq!(out.file_name().unwrap(), "photo-web.webp");
     }
 
     #[test]
     fn pipeline_output_dir_strategies() {
-        let _guard = ENV_LOCK.lock().unwrap();
-        let original_home = std::env::var("HOME").ok();
-        let original_override = std::env::var("YALI_OUTPUT_DIR").ok();
-        std::env::set_var("HOME", "/tmp/yali-test-home");
-        std::env::remove_var("YALI_OUTPUT_DIR");
-
-        let input = Path::new("/tmp/photo/photo.jpg");
+        let _guard = crate::test_support::ENV_LOCK.lock().unwrap();
+        let root = std::env::temp_dir();
+        let input = root.join("photo/photo.jpg");
         let mut profile = Profile::default();
-        profile.name = "t".into();
-
-        // sibling：与输入同目录
-        assert_eq!(output_dir(input, &profile).unwrap(), PathBuf::from("/tmp/photo"));
-
-        // downloads：$HOME/Downloads
+        assert_eq!(output_dir(&input, &profile).unwrap(), root.join("photo"));
         profile.output.dir = DirKind::Downloads;
-        assert_eq!(output_dir(input, &profile).unwrap(), PathBuf::from("/tmp/yali-test-home/Downloads"));
-
-        // custom：绝对路径 / ~ 展开
+        assert_eq!(output_dir(&input, &profile).unwrap(), crate::data::downloads().unwrap());
         profile.output.dir = DirKind::Custom;
-        profile.output.dir_path = Some("/tmp/yali-test-out".into());
-        assert_eq!(output_dir(input, &profile).unwrap(), PathBuf::from("/tmp/yali-test-out"));
+        profile.output.dir_path = Some(root.join("output").to_string_lossy().into_owned());
+        assert_eq!(output_dir(&input, &profile).unwrap(), root.join("output"));
         profile.output.dir_path = Some("~/压缩输出".into());
-        assert_eq!(output_dir(input, &profile).unwrap(), PathBuf::from("/tmp/yali-test-home/压缩输出"));
-
-        // override：环境变量优先，缺失回落 sibling
+        assert_eq!(output_dir(&input, &profile).unwrap(), crate::data::home().unwrap().join("压缩输出"));
         profile.output.dir = DirKind::Override;
-        std::env::set_var("YALI_OUTPUT_DIR", "/tmp/override-dir");
-        assert_eq!(output_dir(input, &profile).unwrap(), PathBuf::from("/tmp/override-dir"));
-        std::env::remove_var("YALI_OUTPUT_DIR");
-        assert_eq!(output_dir(input, &profile).unwrap(), PathBuf::from("/tmp/photo"));
-
-        match original_home {
-            Some(v) => std::env::set_var("HOME", v),
-            None => std::env::remove_var("HOME"),
-        }
-        if let Some(v) = original_override {
-            std::env::set_var("YALI_OUTPUT_DIR", v);
+        let previous = std::env::var_os("YALI_OUTPUT_DIR");
+        std::env::set_var("YALI_OUTPUT_DIR", root.join("override"));
+        assert_eq!(output_dir(&input, &profile).unwrap(), root.join("override"));
+        match previous {
+            Some(v) => std::env::set_var("YALI_OUTPUT_DIR", v),
+            None => std::env::remove_var("YALI_OUTPUT_DIR"),
         }
     }
 
@@ -1134,7 +1311,8 @@ mod tests {
         let mut profile = Profile::default();
         profile.name = "web".into();
         profile.output.suffix_template = "-{profile}-{size}".into();
-        let input = Path::new("/tmp/photo.jpg");
+        let input_path = std::env::temp_dir().join("photo.jpg");
+        let input = input_path.as_path();
         // 编码前：{size} 原样保留（仅用于临时命名）
         let pre = final_path(input, &profile, crate::profile::OutputFormat::Jpeg, None).unwrap();
         assert_eq!(pre.file_name().unwrap(), "photo-web-{size}.jpg");
@@ -1149,7 +1327,8 @@ mod tests {
     fn pipeline_same_name_template_rejected() {
         let mut profile = Profile::default();
         profile.output.suffix_template = String::new();
-        let input = Path::new("/tmp/photo.jpg");
+        let input_path = std::env::temp_dir().join("photo.jpg");
+        let input = input_path.as_path();
         assert!(final_path(input, &profile, crate::profile::OutputFormat::Jpeg, None).is_err());
     }
 }

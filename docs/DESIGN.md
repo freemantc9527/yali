@@ -8,7 +8,7 @@ Yali 是 macOS 优先的本地图片压缩与转换工具：Finder 快速操作�
 
 原则：Profile 统一参数；右键永不询问、精调归 GUI / CLI；保留原图；原生 arm64；开发仅依赖 CLT，无 Xcode。失败件持久化尚未进入当前承诺范围。
 
-只处理图片，不提供音视频处理。macOS 保留完整图片能力，其他平台仅计划基本功能；Windows 当前只有尝试性条件分支，未验证编译、打包或运行，具体边界见 [CROSSPLATFORM](CROSSPLATFORM.md)。
+只处理图片，不提供音视频处理。macOS 保留完整图片能力；Windows 实验 ZIP 已完成云端编译、UI 测试及 CLI 版本检查，首轮包不含图片引擎；新的 Windows 引擎准备、ZIP 检查与冒烟脚本已实现，云端与 GUI 运行仍未验证，具体边界见 [CROSSPLATFORM](CROSSPLATFORM.md)。
 
 ## 2. 数据契约
 
