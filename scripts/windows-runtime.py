@@ -358,7 +358,7 @@ def package(build_dir, output):
         "多页 TIFF、动画转静态、APNG 缩放和动画 WebP 重编码会明确拒绝。\n"
         "无 FFmpeg 仍可处理和视觉对比，仅 SSIM 不可用。\n"
         "GUI、WebView2 缺失及 SmartScreen 表现需 Windows 11 实机人工验收；无签名。\n"
-        "第三方许可见 licenses，同一 artifact 提供对应源码 ZIP；不要遗漏源码资产。\n", encoding="utf-8")
+        "第三方许可见 licenses。对应源码 ZIP 单独提供，取得方式见同次 Actions 运行或同版本 Release。\n", encoding="utf-8")
     version = json.loads((ROOT / "src-tauri/tauri.conf.json").read_text(encoding="utf-8"))["version"]
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     dirty = bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True).strip())

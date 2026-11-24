@@ -131,11 +131,11 @@ class ReleaseTests(unittest.TestCase):
             checksum, filename = line.split("  ")
             self.assertEqual(release.digest(self.root / filename), checksum)
         notes = (self.root / "RELEASE_NOTES.md").read_text(encoding="utf-8")
-        self.assertIn("| arm64 | 15.0 |", notes)
-        self.assertIn("| x86_64 | 15.0 |", notes)
+        self.assertIn("| macOS Apple Silicon | arm64 | macOS 15.0 |", notes)
+        self.assertIn("| macOS Intel | x86_64 | macOS 15.0 |", notes)
         self.assertIn("App 不再内置 FFmpeg", notes)
         self.assertIn("SSIM 分数会隐藏", notes)
-        self.assertIn("Windows 11 x64 实验包", notes)
+        self.assertIn("| Windows（实验） | x86_64 | Windows 11，桌面待验 |", notes)
         self.assertIn("SmartScreen 仍待人工验收", notes)
 
     def test_missing_architecture_blocks_release(self):

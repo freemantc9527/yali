@@ -30,7 +30,7 @@
 
 每个 Release 还提供构建记录和 `SHA256SUMS`。发布包由 GitHub Actions 从固定提交分别构建，当前 App 使用 ad-hoc 签名，未进行 Developer ID 签名或 Apple 公证。
 
-Windows 11 x64 实验包已通过云端图片处理检查，可在 [Actions 成功运行](https://github.com/freemantc9527/yali/actions/runs/45321363937)底部下载 `windows-portable-experiment`（需登录 GitHub，artifact 保留 14 天）。下载后先解开 artifact，再解压其中的 Windows ZIP，运行 `Yali-workbench.exe`；CLI 为 `yali.exe`。图片引擎已内嵌，GUI 需要已安装的 Microsoft Edge WebView2。请保留对应源码 ZIP 和许可一起分发。Windows 11 GUI、WebView2 缺失和 SmartScreen 仍待人工验收，尚无公开 Windows Release。
+Windows 11 x64 实验包已通过云端图片处理检查。参照[各平台 Actions 下载说明](docs/RELEASING.md#发布流程)，选择 Windows 程序 artifact；历史构建也可在[联合演练](https://github.com/freemantc9527/yali/actions/runs/45339644244#artifacts)下载，程序文件名以 `-experiment.zip` 结尾。Actions 下载需要登录 GitHub，artifact 保留 14 天。解压程序 ZIP 后运行 `Yali-workbench.exe`；CLI 为 `yali.exe`。图片引擎已内置，GUI 需要 Microsoft Edge WebView2。对应源码 ZIP 不用于安装。Windows 11 GUI、WebView2 缺失和 SmartScreen 仍待人工验收，尚无公开 Windows Release。
 
 ## 项目缘起
 

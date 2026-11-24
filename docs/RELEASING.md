@@ -12,7 +12,17 @@
 6. 汇总任务强制三种架构来自同一仓库、提交和 Actions 运行，回读两个 DMG、Windows ZIP 与对应源码，校验依赖/冒烟/质量报告，生成 10 行 SHA256SUMS。
 7. 仅标签触发的发布任务创建草稿，上传 11 份资产并下载回读 SHA-256；核对标签未移动后公开。任一前置检查失败都阻止公开。
 
-当前工作流位于 `.github/workflows/release.yml`。手动运行只生成 `desktop-release-verified` artifact（含发布说明），不创建标签或公开 Release。可用 `gh workflow run release.yml --ref dev` 演练；公开发布仍须分别确认 main 合入、标签推送和发布范围，不得覆盖已有版本。
+当前工作流位于 `.github/workflows/release.yml`。可用 `gh workflow run release.yml --ref dev` 手动演练，只生成 Actions artifacts，不创建标签或公开 Release。运行页底部按平台下载：
+
+| 用途 | Artifact |
+| --- | --- |
+| Apple Silicon Mac | `desktop-macos-arm64` |
+| Intel Mac | `desktop-macos-x86_64` |
+| Windows x64 程序 | `desktop-windows-x86_64` |
+| Windows 第三方对应源码 | `desktop-windows-corresponding-sources` |
+| 校验和与发布说明 | `desktop-release-metadata` |
+
+各平台的程序单独下载。汇总任务验证资产后只上传校验和与发布说明，发布任务从同次运行读取原始分平台资产并核对校验和。公开发布仍须分别确认 main 合入、标签推送和发布范围，不得覆盖已有版本。
 
 2026-11-24 [三架构手动演练](https://github.com/freemantc9527/yali/actions/runs/45339644244)已通过，生成 `desktop-release-verified` artifact，公开任务按设计跳过。期间 Windows 上游下载连接超时，原运行重跑失败任务后成功；两个 macOS 构建结果保留，来源仍绑定同一提交和 run。依赖安装与首次编译较慢，耗时只用于估算。排查时按阶段或每隔数分钟读取一次结构化状态，发现失败后再读取日志。
 
@@ -24,7 +34,7 @@
 
 准备完成后实际执行 Rust 和 UI 测试，构建 release CLI、真实前端与 GUI，再用 scripts/windows-runtime.py package 检查每个 EXE/DLL 的 x64 PE、普通/延迟导入依赖、包内路径和文件摘要。ZIP 解压到中文空格目录后，scripts/smoke-windows.py 使用独立临时用户目录和受限 PATH，验证六类输入、缺件负例、动画策略、原图安全、撤销及相同引擎版本/参数的 SSIM/体积比门槛。FFmpeg 只作为 runner 的质量工具，既不放进 ZIP，也不用于无 FFmpeg 的基本处理步骤。
 
-只有检查全部成功才生成发布清单并上传 ZIP、SHA256SUMS、依赖/冒烟/质量 JSON 与对应源码 ZIP，保留 14 天。单独实验运行不创建 Release。源码包保留固定上游归档、MXE 构建配方/补丁、pngquant 和 librsvg 的 Cargo 依赖；运行包保留第三方许可与来源。不得拆掉对应源码或许可单独分发二进制。
+只有检查全部成功才生成发布清单，并把程序 ZIP（附清单及依赖/冒烟/质量 JSON）与对应源码 ZIP 分别上传，保留 14 天。单独实验运行不创建 Release。源码包保留固定上游归档、MXE 构建配方/补丁、pngquant 和 librsvg 的 Cargo 依赖；运行包保留第三方许可与来源。用户运行程序只需下载程序 ZIP；分发方须同时提供对应源码和许可。
 
 含引擎的 Windows 构建已在 [Actions 45321363937](https://github.com/freemantc9527/yali/actions/runs/45321363937) 成功，下载回读确认二进制、对应源码和 SHA-256 匹配。Windows 11 新账户/VM 的 GUI、选择/拖入、预设重启、结果打开/定位、视觉对比、控制台闪窗、WebView2 缺失及 SmartScreen 表现须另行记录。GUI 使用用户已安装的 WebView2 Evergreen，不静默修改系统组件。
 

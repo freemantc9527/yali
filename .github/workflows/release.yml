@@ -111,7 +111,7 @@ jobs:
           python3 scripts/release.py package --arch "$RELEASE_ARCH" --output "target/release-assets"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: macos-${{ matrix.arch }}
+          name: desktop-macos-${{ matrix.arch }}
           path: target/release-assets/*
           if-no-files-found: error
           compression-level: 0
@@ -137,27 +137,14 @@ jobs:
           python-version: '3.13'
       - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
-          pattern: macos-*
+          pattern: desktop-macos-*
           path: release-assets
           merge-multiple: true
       - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
-          name: windows-portable-experiment
-          path: windows-assets
-      - name: Select attested Windows release set
-        env:
-          VERSION: ${{ needs.prepare.outputs.version }}
-        run: |
-          python3 - <<'PYTHON'
-          import os
-          from pathlib import Path
-          import shutil
-          import sys
-          sys.path.insert(0, "scripts")
-          import windows_release
-          for name in windows_release.names(os.environ["VERSION"]).values():
-              shutil.copy2(Path("windows-assets") / name, Path("release-assets") / name)
-          PYTHON
+          pattern: desktop-windows-*
+          path: release-assets
+          merge-multiple: true
       - name: Require all platforms from the same candidate and run
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
@@ -165,8 +152,10 @@ jobs:
         run: python3 scripts/release.py assemble --directory release-assets --version "$VERSION" --commit "$COMMIT"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: desktop-release-verified
-          path: release-assets/*
+          name: desktop-release-metadata
+          path: |
+            release-assets/SHA256SUMS
+            release-assets/RELEASE_NOTES.md
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
@@ -188,8 +177,9 @@ jobs:
           python-version: '3.13'
       - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
-          name: desktop-release-verified
+          pattern: desktop-*
           path: release-assets
+          merge-multiple: true
       - name: Create draft, verify uploaded assets and publish
         env:
           GH_TOKEN: ${{ github.token }}
@@ -198,6 +188,9 @@ jobs:
           COMMIT: ${{ needs.prepare.outputs.commit }}
           PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
         run: |
+          cd release-assets
+          shasum -a 256 --check SHA256SUMS
+          cd "$GITHUB_WORKSPACE"
           test "$(gh api "repos/$GH_REPO/commits/$RELEASE_TAG" --jq .sha)" = "$COMMIT"
           gh api --paginate --slurp "repos/$GH_REPO/releases" > "$RUNNER_TEMP/existing-releases.json"
           jq -e --arg tag "$RELEASE_TAG" 'all(.[][]; .tag_name != $tag)' "$RUNNER_TEMP/existing-releases.json"

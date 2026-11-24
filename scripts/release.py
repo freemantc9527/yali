@@ -180,7 +180,8 @@ def assemble(directory, version, commit):
                 or plist["CFBundleVersion"] != data["bundleVersion"]
                 or plist["LSMinimumSystemVersion"] != minimum):
             raise ValueError(f"Archive metadata mismatch: {archive.name}")
-        rows.append(f"| {arch} | {minimum} | `{archive.name}` |")
+        platform = "macOS Apple Silicon" if arch == "arm64" else "macOS Intel"
+        rows.append(f"| {platform} | {arch} | macOS {minimum} | `{archive.name}` |")
         for path in (archive, manifest):
             checksums.append(f"{digest(path)}  {path.name}\n")
     for path in windows_release.validate(directory, version, commit, provenance):
@@ -190,9 +191,10 @@ def assemble(directory, version, commit):
 
 源码提交：`{commit}`
 
-| 架构 | 最低 macOS | 下载文件 |
-|---|---|---|
+| 平台 | 架构 | 系统 | 程序下载 |
+|---|---|---|---|
 {chr(10).join(rows)}
+| Windows（实验） | x86_64 | Windows 11，桌面待验 | `{win["archive"]}` |
 
 下载对应架构的 DMG，打开后将 Yali.app 拖入应用程序文件夹。
 设置中的自动化页面可安装 Finder 操作。CLI 与图片引擎已内嵌，无需 Homebrew。
@@ -201,9 +203,10 @@ App 不再内置 FFmpeg；没有它仍可处理图片和视觉对比，SSIM 分�
 在“应用设置 → 通用 → 质量检测”查看外部 FFmpeg 路径与 SSIM 支持，并可重新检查。
 设置分为通用、自动化和关于；窄屏导航只显示图标与标题。
 
-Windows 11 x64 实验包：`{win["archive"]}`。解压后运行 Yali-workbench.exe，CLI 使用 yali.exe。
-图片引擎已内嵌，支持 JPEG、PNG、GIF、WebP、BMP、TIFF 输入；GUI 需要已安装 Microsoft Edge WebView2。
-对应源码：`{win["sources"]}`；Windows 11 GUI、WebView2 缺失与 SmartScreen 仍待人工验收。
+Windows 实验包解压后运行 Yali-workbench.exe，CLI 使用 yali.exe。图片引擎已内嵌，支持 JPEG、PNG、GIF、WebP、BMP、TIFF 输入；GUI 需要已安装 Microsoft Edge WebView2。
+Windows 11 GUI、WebView2 缺失与 SmartScreen 仍待人工验收。
+
+Windows 第三方组件的对应源码单独提供：`{win["sources"]}`。安装和运行只需上表的程序 ZIP。
 
 本版本采用 ad-hoc 签名，未进行 Developer ID 签名或 Apple 公证。
 首次打开按 macOS 的隐私与安全性提示处理；不要关闭 Gatekeeper。
