@@ -95,7 +95,11 @@ jobs:
             $directory | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           }
       - name: Execute Rust tests
+        id: rust-tests
         run: cargo test --locked -p yali-core -p yali-cli -p yali-app -- --test-threads=1
+      - name: Diagnose failed Windows test loader
+        if: failure() && steps.rust-tests.outcome == 'failure'
+        run: python scripts/diagnose-windows-loader.py --build-dir target
       - name: Test UI
         run: pnpm --dir ui test
       - name: Build release CLI
