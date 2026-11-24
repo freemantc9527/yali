@@ -25,7 +25,7 @@
 
 macOS 是当前主平台。当前本机验证的引擎最低部署目标为 macOS 27.2，低版本系统未验证。Windows x64 含图片引擎的实验 ZIP 已通过云端构建与自动处理验收，可从 Actions artifact 下载；尚未公开发布 Windows Release。
 
-当前版本为 `0.1.0-alpha`，已通过 GitHub Actions 双架构构建并[公开预发布](https://github.com/freemantc9527/yali/releases/tag/v0.1.0-alpha)。两个 DMG 已下载回读并校验 SHA-256；原生交互待验项目保持不变。
+当前源码版本为 `0.2.0-alpha`，正在准备 macOS / Windows 联合预发布，尚未公开。已公开版本仍为 [`0.1.0-alpha`](https://github.com/freemantc9527/yali/releases/tag/v0.1.0-alpha)，其两个 DMG 已下载回读并校验 SHA-256；原生交互待验项目保持不变。
 
 Windows 在 [Actions 45321363937](https://github.com/freemantc9527/yali/actions/runs/45321363937) 通过：实际执行 Rust 与 79 项 UI 测试、App / CLI release 编译、专用图片引擎构建、79 个 PE 文件及 DLL 依赖检查。最终 ZIP 在中文空格路径、无 HOME、受限 PATH 下完成六类输入处理、透明图片白底转换、PNG 无损、动画/多页保护、配置保存、撤销、缺 EXE/DLL 负例和独立 FFmpeg 质量对照。下载回读确认二进制/对应源码 ZIP、锁文件、来源和 SHA-256 匹配。
 

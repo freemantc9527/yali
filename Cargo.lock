@@ -5148,7 +5148,7 @@ dependencies = [
 
 [[package]]
 name = "yali-app"
-version = "0.1.0-alpha"
+version = "0.2.0-alpha"
 dependencies = [
  "anyhow",
  "block2",
@@ -5169,7 +5169,7 @@ dependencies = [
 
 [[package]]
 name = "yali-cli"
-version = "0.1.0-alpha"
+version = "0.2.0-alpha"
 dependencies = [
  "anyhow",
  "clap",
@@ -5180,7 +5180,7 @@ dependencies = [
 
 [[package]]
 name = "yali-core"
-version = "0.1.0-alpha"
+version = "0.2.0-alpha"
 dependencies = [
  "anyhow",
  "dirs",
