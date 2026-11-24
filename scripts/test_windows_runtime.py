@@ -2,6 +2,7 @@ import importlib.util
 import json
 from pathlib import Path
 import struct
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -179,6 +180,32 @@ class WindowsRuntimeTests(unittest.TestCase):
             expected, name = line.split("  ")
             self.assertEqual(runtime.digest(output / name), expected)
         self.assertTrue((output / "Yali_windows_corresponding-sources.zip").is_file())
+
+    def test_upstream_cargo_workspace_is_independent_of_parent_and_submodule(self):
+        (self.root / "Cargo.toml").write_text('[workspace]\nmembers=["app"]\n', encoding="utf-8")
+        for folder, name in [("app", "app"), ("upstream", "pngquant"),
+                             ("upstream/lib", "imagequant"), ("upstream/lib/imagequant-sys", "imagequant-sys")]:
+            path = self.root / folder
+            (path / "src").mkdir(parents=True)
+            text = f'[package]\nname="{name}"\nversion="0.1.0"\nedition="2021"\n'
+            if name == "pngquant":
+                text += '[dependencies]\nimagequant-sys={path="lib/imagequant-sys"}\n'
+            elif name == "imagequant":
+                text += '[workspace]\nmembers=["imagequant-sys"]\n'
+            elif name == "imagequant-sys":
+                text += '[dependencies]\nimagequant={path=".."}\n'
+            (path / "Cargo.toml").write_text(text, encoding="utf-8")
+            (path / "src/lib.rs").write_text("", encoding="utf-8")
+        source = self.root / "upstream"
+        args = ["cargo", "metadata", "--offline", "--no-deps", "--format-version", "1",
+                "--manifest-path", str(source / "Cargo.toml")]
+        before = subprocess.run(args, capture_output=True, text=True)
+        self.assertNotEqual(before.returncode, 0)
+        self.assertIn("workspace", before.stderr)
+        runtime.isolate_pngquant(source)
+        after = subprocess.run(args, capture_output=True, text=True)
+        self.assertEqual(after.returncode, 0, after.stderr)
+        self.assertEqual(Path(json.loads(after.stdout)["workspace_root"]), source)
 
     def test_lock_has_fixed_digests_and_cargo_lock(self):
         lock = json.loads(runtime.LOCK.read_text(encoding="utf-8"))

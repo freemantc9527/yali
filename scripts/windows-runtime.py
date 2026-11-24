@@ -225,6 +225,13 @@ def licenses_from(archive, output):
     return saved
 
 
+def isolate_pngquant(source):
+    # Upstream libimagequant has its own workspace. Keep both out of Yali's workspace.
+    manifest = source / "Cargo.toml"
+    with manifest.open("a", encoding="utf-8") as stream:
+        stream.write('\n[workspace]\nexclude = ["lib", "lib/imagequant-sys"]\n')
+
+
 def prepare(build_dir):
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
     if lock["schemaVersion"] != 1 or lock["target"] != TARGET:
@@ -250,6 +257,7 @@ def prepare(build_dir):
             paths[item["name"]] = str(extract(downloads / item["archive"], sources / item["name"]))
     shutil.copytree(paths["imagequant"], Path(paths["pngquant"]) / "lib", dirs_exist_ok=True)
     shutil.copy2(cargo_lock, Path(paths["pngquant"]) / "Cargo.lock")
+    isolate_pngquant(Path(paths["pngquant"]))
     write_json(work / "source-paths.json", paths)
     if os.name != "nt":
         raise RuntimeError(f"Sources verified in {work}; building requires Windows x64 MSVC")
