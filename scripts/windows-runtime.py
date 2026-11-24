@@ -269,7 +269,7 @@ def prepare(build_dir):
 
 
 def zip_directory(source, destination):
-    with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as z:
+    with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6, strict_timestamps=False) as z:
         for path in sorted(source.rglob("*")):
             if path.is_file():
                 if path.is_symlink():

@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import os
 from pathlib import Path
 import struct
 import subprocess
@@ -180,6 +181,18 @@ class WindowsRuntimeTests(unittest.TestCase):
             expected, name = line.split("  ")
             self.assertEqual(runtime.digest(output / name), expected)
         self.assertTrue((output / "Yali_windows_corresponding-sources.zip").is_file())
+
+    def test_zip_normalizes_unrepresentable_upstream_timestamp(self):
+        source = self.root / "old-source"
+        source.mkdir()
+        path = source / "COPYING"
+        path.write_bytes(b"original upstream notice")
+        os.utime(path, (1, 1))
+        archive = self.root / "old-source.zip"
+        runtime.zip_directory(source, archive)
+        with zipfile.ZipFile(archive) as z:
+            self.assertEqual(z.read("COPYING"), path.read_bytes())
+            self.assertEqual(z.getinfo("COPYING").date_time[:3], (1980, 1, 1))
 
     def test_upstream_cargo_workspace_is_independent_of_parent_and_submodule(self):
         (self.root / "Cargo.toml").write_text('[workspace]\nmembers=["app"]\n', encoding="utf-8")
