@@ -22,17 +22,17 @@ def run(*args, cwd=ROOT):
 
 
 def product_version(root=ROOT):
-    workspace = tomllib.loads((root / "Cargo.toml").read_text())["workspace"]["package"]["version"]
+    workspace = tomllib.loads((root / "Cargo.toml").read_text(encoding="utf-8"))["workspace"]["package"]["version"]
     if not VERSION.fullmatch(workspace):
         raise ValueError(f"Unsupported release version: {workspace}")
     versions = [workspace]
     for name in ("src-tauri/tauri.conf.json", "ui/package.json"):
-        versions.append(json.loads((root / name).read_text())["version"])
-    packages = {p["name"]: p["version"] for p in tomllib.loads((root / "Cargo.lock").read_text())["package"]}
+        versions.append(json.loads((root / name).read_text(encoding="utf-8"))["version"])
+    packages = {p["name"]: p["version"] for p in tomllib.loads((root / "Cargo.lock").read_text(encoding="utf-8"))["package"]}
     for name, manifest in (("yali-core", "crates/yali-core/Cargo.toml"),
                            ("yali-cli", "crates/yali-cli/Cargo.toml"),
                            ("yali-app", "src-tauri/Cargo.toml")):
-        if tomllib.loads((root / manifest).read_text())["package"]["version"] != {"workspace": True}:
+        if tomllib.loads((root / manifest).read_text(encoding="utf-8"))["package"]["version"] != {"workspace": True}:
             raise ValueError(f"{name} must inherit the workspace version")
         versions.append(packages[name])
     if set(versions) != {workspace}:
@@ -90,7 +90,7 @@ def inspect_archive(path):
             if not (app / "Contents/MacOS" / name).is_file():
                 raise ValueError(f"Disk image missing {name}")
         plist = plistlib.loads((app / "Contents/Info.plist").read_bytes())
-        runtime = json.loads((app / "Contents/Resources/yali-runtime.json").read_text())
+        runtime = json.loads((app / "Contents/Resources/yali-runtime.json").read_text(encoding="utf-8"))
     return plist, runtime
 
 
@@ -100,7 +100,7 @@ def package(app, output, arch):
     app = app.resolve()
     if app.name != "Yali.app":
         raise ValueError("Expected the final Yali.app")
-    runtime = json.loads((app / "Contents/Resources/yali-runtime.json").read_text())
+    runtime = json.loads((app / "Contents/Resources/yali-runtime.json").read_text(encoding="utf-8"))
     if runtime["target"] != TARGETS[arch]:
         raise ValueError(f"Runtime target does not match {arch}")
     for binary in ("yali-app", "yali"):
@@ -159,7 +159,7 @@ def assemble(directory, version, commit):
         archive = directory / f"{stem}.dmg"
         if any(path.is_symlink() or not path.is_file() for path in (manifest, archive)):
             raise ValueError("Release inputs must be regular files")
-        data = json.loads(manifest.read_text())
+        data = json.loads(manifest.read_text(encoding="utf-8"))
         if (data["version"], data["commit"], data["arch"], data["archive"]) != (version, commit, arch, archive.name):
             raise ValueError(f"Manifest does not match candidate: {manifest.name}")
         if data["sourceDirty"] is not False:

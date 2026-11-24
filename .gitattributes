@@ -1,0 +1,2 @@
+# Byte-pinned build inputs must keep identical newlines on every runner.
+*.lock text eol=lf

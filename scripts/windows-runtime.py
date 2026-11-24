@@ -226,7 +226,7 @@ def licenses_from(archive, output):
 
 
 def prepare(build_dir):
-    lock = json.loads(LOCK.read_text())
+    lock = json.loads(LOCK.read_text(encoding="utf-8"))
     if lock["schemaVersion"] != 1 or lock["target"] != TARGET:
         raise ValueError("invalid engine lock")
     cargo_lock = ROOT / "scripts/windows-pngquant.Cargo.lock"
@@ -270,8 +270,8 @@ def zip_directory(source, destination):
 
 
 def package(build_dir, output):
-    lock = json.loads(LOCK.read_text())
-    prepared = json.loads((build_dir / "windows-prepared.json").read_text())
+    lock = json.loads(LOCK.read_text(encoding="utf-8"))
+    prepared = json.loads((build_dir / "windows-prepared.json").read_text(encoding="utf-8"))
     if prepared["lockSha256"] != digest(LOCK):
         raise ValueError("prepared engines use another lock")
     work = Path(prepared["work"])
@@ -351,7 +351,7 @@ def package(build_dir, output):
         "无 FFmpeg 仍可处理和视觉对比，仅 SSIM 不可用。\n"
         "GUI、WebView2 缺失及 SmartScreen 表现需 Windows 11 实机人工验收；无签名。\n"
         "第三方许可见 licenses，同一 artifact 提供对应源码 ZIP；不要遗漏源码资产。\n", encoding="utf-8")
-    version = json.loads((ROOT / "src-tauri/tauri.conf.json").read_text())["version"]
+    version = json.loads((ROOT / "src-tauri/tauri.conf.json").read_text(encoding="utf-8"))["version"]
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     dirty = bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True).strip())
     info = dict(version=version, commit=commit, target=TARGET, sourceDirty=dirty,

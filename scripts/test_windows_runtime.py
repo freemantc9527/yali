@@ -175,13 +175,13 @@ class WindowsRuntimeTests(unittest.TestCase):
             runtime.package(build, output)
         unpacked = output / "解压 验证 [Yali]"
         self.assertEqual(runtime.check(unpacked)["result"], "passed")
-        for line in (output / "SHA256SUMS").read_text().splitlines():
+        for line in (output / "SHA256SUMS").read_text(encoding="utf-8").splitlines():
             expected, name = line.split("  ")
             self.assertEqual(runtime.digest(output / name), expected)
         self.assertTrue((output / "Yali_windows_corresponding-sources.zip").is_file())
 
     def test_lock_has_fixed_digests_and_cargo_lock(self):
-        lock = json.loads(runtime.LOCK.read_text())
+        lock = json.loads(runtime.LOCK.read_text(encoding="utf-8"))
         self.assertEqual(lock["target"], runtime.TARGET)
         names = set()
         self.assertFalse(lock["qualityTool"]["distributed"])

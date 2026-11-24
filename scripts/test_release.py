@@ -93,12 +93,12 @@ class ReleaseTests(unittest.TestCase):
     def test_both_architectures_generate_four_checksums(self):
         self.pair()
         self.assemble()
-        lines = (self.root / "SHA256SUMS").read_text().splitlines()
+        lines = (self.root / "SHA256SUMS").read_text(encoding="utf-8").splitlines()
         self.assertEqual(len(lines), 4)
         for line in lines:
             checksum, filename = line.split("  ")
             self.assertEqual(release.digest(self.root / filename), checksum)
-        notes = (self.root / "RELEASE_NOTES.md").read_text()
+        notes = (self.root / "RELEASE_NOTES.md").read_text(encoding="utf-8")
         self.assertIn("| arm64 | 15.0 |", notes)
         self.assertIn("| x86_64 | 15.0 |", notes)
         self.assertIn("App 不再内置 FFmpeg", notes)
@@ -115,7 +115,7 @@ class ReleaseTests(unittest.TestCase):
     def test_mixed_commits_and_runtime_targets_block_release(self):
         pairs = self.pair()
         manifest = pairs[1][1]
-        original = json.loads(manifest.read_text())
+        original = json.loads(manifest.read_text(encoding="utf-8"))
         for key, value in (("commit", "b" * 40), ("sourceDirty", True),
                            ("runtime", {"target": release.TARGETS["arm64"], "minimumSystemVersion": "15.0"}),
                            ("archive", "../outside.dmg")):
@@ -135,7 +135,7 @@ class ReleaseTests(unittest.TestCase):
     def test_local_packages_are_rejected_even_with_clean_sources(self):
         pairs = self.pair()
         manifest = pairs[0][1]
-        data = json.loads(manifest.read_text())
+        data = json.loads(manifest.read_text(encoding="utf-8"))
         data["buildOrigin"] = "local-validation"
         manifest.write_text(json.dumps(data))
         with self.assertRaisesRegex(ValueError, "this GitHub Actions run"):
@@ -144,7 +144,7 @@ class ReleaseTests(unittest.TestCase):
     def test_artifacts_from_another_run_or_repository_are_rejected(self):
         pairs = self.pair()
         manifest = pairs[1][1]
-        original = json.loads(manifest.read_text())
+        original = json.loads(manifest.read_text(encoding="utf-8"))
         for key, value in (("runId", "987654"), ("repository", "another/project")):
             manifest.write_text(json.dumps({**original, key: value}))
             with self.subTest(key=key), self.assertRaisesRegex(ValueError, "this GitHub Actions run"):
@@ -185,7 +185,7 @@ class ReleaseTests(unittest.TestCase):
         path.write_text("existing release")
         with self.assertRaises(ValueError):
             self.assemble()
-        self.assertEqual(path.read_text(), "existing release")
+        self.assertEqual(path.read_text(encoding="utf-8"), "existing release")
 
 
 if __name__ == "__main__":
