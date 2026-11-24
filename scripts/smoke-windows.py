@@ -226,7 +226,9 @@ def main():
             raw_path = work / raw_name
             engine("vips", "rawsave", path, raw_path)
             bands = int(engine("vipsheader", "-f", "bands", path).stdout.strip())
-            sample_format = engine("vipsheader", "-f", "format", path).stdout.strip()
+            header = engine("vipsheader", "-a", path).stdout
+            sample_format = next((line.removeprefix("format:").strip()
+                                  for line in header.splitlines() if line.startswith("format:")), None)
             raw = raw_path.read_bytes()
             assert bands in (3, 4) and sample_format in ("uchar", "ushort")
             samples = raw if sample_format == "uchar" else [value[0] for value in struct.iter_unpack("=H", raw)]
