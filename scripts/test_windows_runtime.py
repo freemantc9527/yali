@@ -220,6 +220,12 @@ class WindowsRuntimeTests(unittest.TestCase):
         self.assertEqual(after.returncode, 0, after.stderr)
         self.assertEqual(Path(json.loads(after.stdout)["workspace_root"]), source)
 
+    def test_windows_com_runtime_is_system_but_vc_runtime_is_not(self):
+        for name in ["combase.dll", "ole32.dll", "kernel32.dll", "api-ms-win-core-synch-l1-2-0.dll"]:
+            self.assertTrue(runtime.system_dll(name), name)
+        for name in ["vcruntime140.dll", "msvcp140.dll", "libvips-42.dll", "libc++.dll"]:
+            self.assertFalse(runtime.system_dll(name), name)
+
     def test_lock_has_fixed_digests_and_cargo_lock(self):
         lock = json.loads(runtime.LOCK.read_text(encoding="utf-8"))
         self.assertEqual(lock["target"], runtime.TARGET)

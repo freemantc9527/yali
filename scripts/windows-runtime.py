@@ -31,7 +31,7 @@ TOOLS = {
 }
 # OS API contracts and inbox DLLs only. VC++/MinGW runtimes must resolve inside ZIP.
 SYSTEM_DLLS = set("""
-advapi32 avrt bcrypt bcryptprimitives cabinet cfgmgr32 clbcatq comctl32 comdlg32
+advapi32 avrt bcrypt bcryptprimitives cabinet cfgmgr32 clbcatq combase comctl32 comdlg32
 crypt32 cryptbase cryptnet cryptsp d2d1 d3d11 d3d12 dcomp dinput8 dnsapi dwmapi
 dwrite dxgi dxguid gdi32 gdiplus glu32 imm32 iphlpapi kernel32 kernelbase
 mf mfplat mfreadwrite mfuuid mmdevapi mpr msvcrt mswsock msimg32 ncrypt netapi32
