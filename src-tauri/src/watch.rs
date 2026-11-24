@@ -240,9 +240,10 @@ mod tests {
 
     #[test]
     fn candidate_filters_hidden_and_pipeline_files() {
-        for good in ["photo.jpg", "截图 2026.PNG", "a.heic"] {
+        for good in ["photo.jpg", "截图 2026.PNG", "a.gif", "a.webp", "a.bmp", "a.tiff"] {
             assert!(is_candidate(Path::new(good)), "{good} 应被监视");
         }
+        assert_eq!(is_candidate(Path::new("a.heic")), !cfg!(windows), "HEIC follows platform input support");
         for bad in [".DS_Store", ".yali-undo.json", "a.yali-123.tmp.png", "notes.txt", "noext"] {
             assert!(!is_candidate(Path::new(bad)), "{bad} 不应被监视");
         }

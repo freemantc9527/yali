@@ -243,10 +243,10 @@ mod tests {
     #[tokio::test]
     async fn inspection_is_per_item_and_preview_preserves_source() {
         let app = tauri::test::mock_app();
-        let config: tauri::Config =
-            serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        // Start closed so this test measures per-file grants on both Unix and Windows.
+        let test_scope = tauri::utils::config::FsScope::AllowedPaths(Vec::new());
         let scope =
-            tauri::scope::fs::Scope::new(&app, &config.app.security.asset_protocol.scope).unwrap();
+            tauri::scope::fs::Scope::new(&app, &test_scope).unwrap();
         let sample = Path::new(env!("CARGO_MANIFEST_DIR")).join("../benchkit/samples/photo.jpg");
         let source = sample.to_string_lossy().into_owned();
         let info = inspect_images(vec![source.clone(), "/missing.png".into()]).await;
@@ -270,7 +270,7 @@ mod tests {
             );
             // A fresh application scope must also grant an existing cache hit.
             let fresh =
-                tauri::scope::fs::Scope::new(&app, &config.app.security.asset_protocol.scope)
+                tauri::scope::fs::Scope::new(&app, &test_scope)
                     .unwrap();
             assert!(!fresh.is_allowed(&preview));
             assert_eq!(
