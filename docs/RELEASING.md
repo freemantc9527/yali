@@ -59,7 +59,7 @@ python3 scripts/release.py check
 
 每个新版本必须包含 11 份公开资产：Apple Silicon 和 Intel 两份 DMG、两份 macOS 构建记录，Windows x64 实验 ZIP、对应源码 ZIP、Windows 发布清单及三份依赖/无 FFmpeg 冒烟/质量报告，以及 `SHA256SUMS`。DMG 内含自包含 App 和应用程序目录快捷方式。构建记录保存仓库、运行链接、版本、提交 SHA、架构、引擎目标和校验和；Windows 清单还绑定所有配套报告与对应源码的摘要。
 
-当前 macOS App 使用 ad-hoc 签名，不包含 Developer ID、公证或 updater。公开下载后的首次运行可能需要用户在 macOS“隐私与安全性”中允许。Windows 保留实验标记和 GUI 待验声明，不以 Server runner 的自动化代替 Windows 11 桌面验收。`v0.2.0-alpha` 已在[标签运行 45354515710](https://github.com/freemantc9527/yali/actions/runs/45354515710) 完成三架构验证并公开 11 份资产，程序按平台独立下载；旧版 `v0.1.0-alpha` 保留。Intel 首次 artifact 上传服务超时，同运行重跑失败任务后成功，候选提交和标签保持不变。
+当前 macOS App 使用 ad-hoc 签名，不包含 Developer ID、公证或 updater。公开下载后的首次运行可能需要用户在 macOS“隐私与安全性”中允许。Windows 保留实验标记和 GUI 待验声明，不以 Server runner 的自动化代替 Windows 11 桌面验收。`v0.3.0-alpha` 已在[标签运行 45782095121](https://github.com/freemantc9527/yali/actions/runs/45782095121) 完成三架构验证并公开 11 份资产；本地公开下载回读的 10 条 SHA-256、两份 DMG 与 Windows ZIP/对应源码/报告均通过。程序按平台独立下载，旧版 `v0.2.0-alpha` 与 `v0.1.0-alpha` 保留。该版本候选首次检查遇到上游复用版本标签，固定上一版相同源码的不可变提交后通过；正式标签保持不变。
 
 ## 失败处理
 

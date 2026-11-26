@@ -26,11 +26,13 @@
 
 ## 平台与发布限制
 
-当前源码版本为 `0.3.0-alpha`，包含窗口状态恢复，尚未发布。
+当前源码与公开预发布版本均为 [`0.3.0-alpha`](https://github.com/freemantc9527/yali/releases/tag/v0.3.0-alpha)，发布源码为 `cc2f73f8cf5a07b2983c11f8032546e01b872b02`，新增主窗口大小与位置恢复。
 
-macOS 是当前主平台。本机验证的引擎最低部署目标为 macOS 27.2；公开云端构建的两份 DMG 最低系统为 macOS 15.0，低版本真实交互未验证。Windows x64 含图片引擎的实验 ZIP 已通过云端构建与自动处理验收，现与两份 macOS DMG 在同一 Release 分别下载。
+macOS 是当前主平台。本机验证的引擎最低部署目标为 macOS 27.2；公开云端构建的两份 DMG 最低系统为 macOS 15.0，低版本真实交互未验证。Windows x64 含图片引擎的实验 ZIP 与两份 macOS DMG 在同一 Release 分别下载。
 
-当前版本 [`0.2.0-alpha`](https://github.com/freemantc9527/yali/releases/tag/v0.2.0-alpha) 已公开预发布，提交为 `cd535bb5b998f3a6e7de5050ef3c93c4cbcac987`。[标签发布运行 45354515710](https://github.com/freemantc9527/yali/actions/runs/45354515710) 的三架构构建、隔离图片处理、质量检查、联合汇总和公开资产回读全部通过。本地再次下载全部 11 份公开资产，10 条 SHA-256、两份 DMG 与 Windows ZIP/对应源码/报告回读通过。Intel 首次上传因 GitHub artifact 服务超时失败，同运行重跑后成功，未移动标签。三个架构的程序分别下载，Windows 程序约 27.6 MiB，对应源码单独提供；旧版 `0.1.0-alpha` 保留。原生交互待验项目保持不变。
+[标签发布运行 45782095121](https://github.com/freemantc9527/yali/actions/runs/45782095121) 的三架构测试、构建、隔离处理、质量检查、联合汇总及公开资产回读全部通过。本地再次下载全部 11 份公开资产，10 条 SHA-256、两份 DMG 的版本/架构/最低系统/构建来源，以及 Windows ZIP、对应源码和报告回读均通过。Windows 程序约 27.6 MiB，对应源码单独提供；旧版 `0.2.0-alpha`、`0.1.0-alpha` 保留。运行中拔屏与其他原生交互待验项目保持不变。
+
+发布候选首次 Windows 检查因上游 libimagequant 复用 `v2.4.1` 标签而发生源码哈希不匹配；已从上一版公开源码恢复原提交并固定下载，33 个条目内容、类型、权限和链接一致。没有升级第三方源码；修正后的候选运行与正式三架构发布均通过。
 
 Windows 在 [Actions 45321363937](https://github.com/freemantc9527/yali/actions/runs/45321363937) 通过：实际执行 Rust 与 79 项 UI 测试、App / CLI release 编译、专用图片引擎构建、79 个 PE 文件及 DLL 依赖检查。最终 ZIP 在中文空格路径、无 HOME、受限 PATH 下完成六类输入处理、透明图片白底转换、PNG 无损、动画/多页保护、配置保存、撤销、缺 EXE/DLL 负例和独立 FFmpeg 质量对照。下载回读确认二进制/对应源码 ZIP、锁文件、来源和 SHA-256 匹配。
 

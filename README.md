@@ -15,17 +15,17 @@
 
 鸭梨（Yali）是一个面向 macOS 的本地图片压缩与转换工具。它把常用操作放进 Finder 右键菜单、桌面工作台和 CLI，处理图片时不必打开终端，也不必记住一长串参数。
 
-> 当前公开版本是 `0.2.0-alpha`，提供 macOS 与 Windows 程序包。它适合尝鲜和反馈，原生交互仍有待人工验收项目。
+> 当前公开版本是 `0.3.0-alpha`，提供 macOS 与 Windows 程序包。它适合尝鲜和反馈，原生交互仍有待人工验收项目。
 
 ## 下载
 
-从 [GitHub Releases](https://github.com/freemantc9527/yali/releases/tag/v0.2.0-alpha) 按系统和处理器下载对应程序包：
+从 [GitHub Releases](https://github.com/freemantc9527/yali/releases/tag/v0.3.0-alpha) 按系统和处理器下载对应程序包：
 
 | 平台 | 下载 | 架构 |
 | --- | --- | --- |
-| Apple Silicon Mac，macOS 15.0+ | [macOS DMG](https://github.com/freemantc9527/yali/releases/download/v0.2.0-alpha/Yali_0.2.0-alpha_macos_arm64.dmg) | arm64 |
-| Intel Mac，macOS 15.0+ | [macOS DMG](https://github.com/freemantc9527/yali/releases/download/v0.2.0-alpha/Yali_0.2.0-alpha_macos_x86_64.dmg) | x86_64 |
-| Windows 11（实验） | [Windows 程序 ZIP](https://github.com/freemantc9527/yali/releases/download/v0.2.0-alpha/Yali_0.2.0-alpha_windows_x86_64-experiment.zip) | x86_64 |
+| Apple Silicon Mac，macOS 15.0+ | [macOS DMG](https://github.com/freemantc9527/yali/releases/download/v0.3.0-alpha/Yali_0.3.0-alpha_macos_arm64.dmg) | arm64 |
+| Intel Mac，macOS 15.0+ | [macOS DMG](https://github.com/freemantc9527/yali/releases/download/v0.3.0-alpha/Yali_0.3.0-alpha_macos_x86_64.dmg) | x86_64 |
+| Windows 11（实验） | [Windows 程序 ZIP](https://github.com/freemantc9527/yali/releases/download/v0.3.0-alpha/Yali_0.3.0-alpha_windows_x86_64-experiment.zip) | x86_64 |
 
 不知道自己的架构时，在“ → 关于本机”查看芯片信息。也可以在终端运行 `uname -m`，输出 `arm64` 表示 Apple Silicon，输出 `x86_64` 表示 Intel。
 
