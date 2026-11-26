@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
 import os
+import re
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import shutil
 import struct
@@ -12,6 +13,7 @@ import subprocess
 import tarfile
 import tempfile
 import urllib.request
+from urllib.parse import urlsplit
 import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -173,15 +175,37 @@ def check(directory):
     return {"target": TARGET, "peFiles": len(binaries), "trackedFiles": len(tracked), "result": "passed"}
 
 
+def validate_archive(item):
+    name = item["archive"]
+    if not name or Path(name).name != name or "/" in name or "\\" in name or ":" in name or name in (".", ".."):
+        raise ValueError(f"invalid archive filename: {name}")
+    if not re.fullmatch(r"[0-9a-f]{64}", item["sha256"]):
+        raise ValueError(f"invalid SHA-256: {item['name']}")
+    url = urlsplit(item["url"])
+    if url.scheme != "https" or not url.hostname or url.username or url.password or url.fragment:
+        raise ValueError(f"invalid archive URL: {item['name']}")
+    if url.hostname in ("github.com", "codeload.github.com"):
+        # Release 资产有独立归档与固定哈希；自动归档还必须固定到完整提交。
+        release_asset = (url.hostname == "github.com"
+                         and re.fullmatch(r"/[^/]+/[^/]+/releases/download/[^/]+/[^/]+", url.path))
+        commit_archive = (url.hostname == "codeload.github.com"
+                          and re.fullmatch(r"/[^/]+/[^/]+/tar\.gz/[0-9a-f]{40}", url.path))
+        if not (release_asset or commit_archive) or url.query:
+            raise ValueError(f"GitHub source requires an immutable full commit: {item['name']}")
+
+
 def download(item, downloads):
+    validate_archive(item)
     path = downloads / item["archive"]
     if not path.exists():
         staged = path.with_suffix(path.suffix + ".partial")
         request = urllib.request.Request(item["url"], headers={"User-Agent": "Yali-Windows-runtime-builder"})
         with urllib.request.urlopen(request, timeout=180) as response, staged.open("wb") as output:
             shutil.copyfileobj(response, output)
-        if digest(staged) != item["sha256"]:
-            raise ValueError(f"upstream digest mismatch: {item['name']}")
+        actual = digest(staged)
+        if actual != item["sha256"]:
+            raise ValueError(f"upstream digest mismatch: {item['name']}; expected {item['sha256']}, "
+                             f"got {actual}; stop and compare the original source, do not auto-update the hash")
         staged.replace(path)
     if digest(path) != item["sha256"]:
         raise ValueError(f"cached digest mismatch: {item['name']}")
@@ -232,7 +256,7 @@ def isolate_pngquant(source):
         stream.write('\n[workspace]\nexclude = ["lib", "lib/imagequant-sys"]\n')
 
 
-def prepare(build_dir):
+def verify_sources(build_dir):
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
     if lock["schemaVersion"] != 1 or lock["target"] != TARGET:
         raise ValueError("invalid engine lock")
@@ -241,8 +265,20 @@ def prepare(build_dir):
         raise ValueError("pngquant Cargo.lock does not match engine lock")
     downloads = build_dir / "windows-downloads"
     downloads.mkdir(parents=True, exist_ok=True)
+    items = [*lock["archives"], lock["qualityTool"]]
+    for item in items:
+        validate_archive(item)
+    if len({item["archive"] for item in items}) != len(items):
+        raise ValueError("duplicate archive filenames")
     with ThreadPoolExecutor(max_workers=6) as pool:
-        list(pool.map(lambda item: download(item, downloads), [*lock["archives"], lock["qualityTool"]]))
+        list(pool.map(lambda item: download(item, downloads), items))
+    print(f"Verified {len(items)} pinned archives and SHA-256 digests")
+    return lock, downloads
+
+
+def prepare(build_dir):
+    lock, downloads = verify_sources(build_dir)
+    cargo_lock = ROOT / "scripts/windows-pngquant.Cargo.lock"
     # An interrupted build is never reused as a prepared runtime.
     work = Path(tempfile.mkdtemp(prefix="windows-runtime-", dir=build_dir))
     quality = extract(downloads / lock["qualityTool"]["archive"], work / "quality-tool")
@@ -391,7 +427,7 @@ def package(build_dir, output):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
-    for command in ["prepare", "package"]:
+    for command in ["verify-sources", "prepare", "package"]:
         p = sub.add_parser(command)
         p.add_argument("--build-dir", type=Path, default=ROOT / "target")
         if command == "package":
@@ -403,6 +439,8 @@ def main():
         print(json.dumps(check(args.directory), indent=2))
     elif args.command == "prepare":
         prepare(args.build_dir.resolve())
+    elif args.command == "verify-sources":
+        verify_sources(args.build_dir.resolve())
     else:
         package(args.build_dir.resolve(), args.output.resolve())
 

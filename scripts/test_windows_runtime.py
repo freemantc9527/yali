@@ -243,6 +243,61 @@ class WindowsRuntimeTests(unittest.TestCase):
         self.assertRegex(source["url"],
                          r"^https://codeload\.github\.com/lovell/libimagequant/tar\.gz/[0-9a-f]{40}$")
 
+    def test_archive_policy_accepts_commits_and_assets_rejects_floating_refs(self):
+        base = dict(name="probe", archive="probe.tar.gz", sha256="a" * 64)
+        for url in [
+            "https://codeload.github.com/org/repo/tar.gz/" + "b" * 40,
+            "https://github.com/org/repo/releases/download/v1.0/tool.zip",
+            "https://example.org/releases/tool.tar.gz",
+        ]:
+            runtime.validate_archive(dict(base, url=url))
+        for url in [
+            "https://github.com/org/repo/archive/v1.0.tar.gz",
+            "https://github.com/org/repo/tarball/abcdef0/name.tar.gz",
+            "https://codeload.github.com/org/repo/tar.gz/refs/tags/v1.0",
+            "https://codeload.github.com/org/repo/tar.gz/main",
+            "https://codeload.github.com/org/repo/tar.gz/abcdef0",
+        ]:
+            with self.subTest(url=url), self.assertRaisesRegex(ValueError, "full commit"):
+                runtime.validate_archive(dict(base, url=url))
+
+    def test_download_checks_actual_bytes_and_does_not_publish_a_bad_hash(self):
+        import io
+        import hashlib
+        content = b"verified original archive"
+        item = dict(name="probe", archive="probe.tar.gz", url="https://example.org/probe.tar.gz",
+                    sha256=hashlib.sha256(content).hexdigest())
+        with patch.object(runtime.urllib.request, "urlopen", return_value=io.BytesIO(b"changed upstream")):
+            with self.assertRaisesRegex(ValueError, "upstream digest mismatch"):
+                runtime.download(item, self.root)
+        self.assertFalse((self.root / item["archive"]).exists())
+        with patch.object(runtime.urllib.request, "urlopen", return_value=io.BytesIO(content)):
+            path = runtime.download(item, self.root)
+        self.assertEqual(path.read_bytes(), content)
+        path.write_bytes(b"corrupt cached archive")
+        with self.assertRaisesRegex(ValueError, "cached digest mismatch"):
+            runtime.download(item, self.root)
+
+    def test_source_preflight_verifies_every_archive_before_building(self):
+        lock = json.loads(runtime.LOCK.read_text())
+        seen = []
+        with patch.object(runtime, "download", side_effect=lambda item, directory: seen.append(item["name"])):
+            loaded, downloads = runtime.verify_sources(self.root)
+        self.assertEqual(loaded, lock)
+        self.assertTrue(downloads.is_dir())
+        self.assertEqual(set(seen), {item["name"] for item in [*lock["archives"], lock["qualityTool"]]})
+        self.assertGreater(len(seen), 1)
+
+    def test_floating_archive_stops_preflight_before_any_download(self):
+        lock = json.loads(runtime.LOCK.read_text())
+        lock["archives"][0]["url"] = "https://github.com/org/repo/archive/v1.0.tar.gz"
+        manifest = self.root / "lock.json"
+        manifest.write_text(json.dumps(lock))
+        with patch.object(runtime, "LOCK", manifest), patch.object(runtime, "download") as fetch:
+            with self.assertRaisesRegex(ValueError, "full commit"):
+                runtime.verify_sources(self.root)
+            fetch.assert_not_called()
+
     def test_lock_has_fixed_digests_and_cargo_lock(self):
         lock = json.loads(runtime.LOCK.read_text(encoding="utf-8"))
         self.assertEqual(lock["target"], runtime.TARGET)
@@ -250,6 +305,7 @@ class WindowsRuntimeTests(unittest.TestCase):
         self.assertFalse(lock["qualityTool"]["distributed"])
         self.assertNotIn(lock["qualityTool"]["name"], {item["name"] for item in lock["archives"]})
         for item in [*lock["archives"], lock["qualityTool"]]:
+            runtime.validate_archive(item)
             self.assertRegex(item["sha256"], "^[0-9a-f]{64}$")
             self.assertTrue(item["url"].startswith("https://"))
             self.assertNotIn(item["name"], names)

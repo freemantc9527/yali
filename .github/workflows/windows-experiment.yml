@@ -1,26 +1,6 @@
-name: Windows portable experiment
+name: Windows release build
 
-on:
-  workflow_dispatch:
-  workflow_call:
-    inputs:
-      ref:
-        type: string
-        required: false
-  push:
-    branches: [dev]
-    paths:
-      - '.github/workflows/windows-experiment.yml'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - '.gitattributes'
-      - 'crates/**'
-      - 'src-tauri/**'
-      - 'ui/**'
-      - 'scripts/**'
-      - 'fixtures/**'
-      - 'schema/**'
-      - 'benchkit/**'
+on: {"workflow_call": {"inputs": {"ref": {"type": "string", "required": true}}}}
 
 permissions:
   contents: read
@@ -31,6 +11,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     name: Build and exercise Windows portable ZIP
     runs-on: windows-2025
     timeout-minutes: 120
@@ -45,8 +26,17 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ inputs.ref || github.sha }}
+          ref: ${{ inputs.ref }}
           persist-credentials: false
+      - name: Require the tagged candidate commit
+        env:
+          CANDIDATE: ${{ inputs.ref }}
+        run: |
+          if ($env:CANDIDATE -notmatch '^[0-9a-f]{40}$') { throw 'Expected a full candidate SHA' }
+          $actual = git rev-parse HEAD
+          if ($LASTEXITCODE -ne 0 -or $actual -ne $env:GITHUB_SHA -or $actual -ne $env:CANDIDATE) {
+            throw 'Windows candidate differs from the release tag'
+          }
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'

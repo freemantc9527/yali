@@ -5,14 +5,14 @@
 ## 发布流程
 
 1. 在开发分支完成范围确认、测试、完整 App 构建和人工验收记录。
-2. 按 [VERSIONING](VERSIONING.md) 同步版本，运行 `python3 scripts/release.py check`。
+2. 按 [VERSIONING](VERSIONING.md) 同步版本，运行 `python3 scripts/release.py check` 和 `python3 scripts/windows-runtime.py verify-sources --build-dir target`，预检全部依赖归档与 SHA-256。
 3. 合入 `main` 后，先检查目标提交、工作区和远端状态。
 4. 在获准后创建并推送匹配版本的标签。标签推送会触发发布工作流。
-5. GitHub Actions 在 Apple Silicon、Intel 和 Windows x64 runner 上分别运行测试、构建、隔离冒烟和质量检查。Windows 复用实验工作流，并生成包、对应源码及报告的发布清单。
+5. 标签准备任务先检查版本、标签位于 main、固定源码提交和全部下载哈希，再启动 Apple Silicon、Intel 和 Windows x64 测试、构建、隔离冒烟与质量检查。Windows 只接受同次发布传入的固定候选提交。
 6. 汇总任务强制三种架构来自同一仓库、提交和 Actions 运行，回读两个 DMG、Windows ZIP 与对应源码，校验依赖/冒烟/质量报告，生成 10 行 SHA256SUMS。
 7. 仅标签触发的发布任务创建草稿，上传 11 份资产并下载回读 SHA-256；核对标签未移动后公开。任一前置检查失败都阻止公开。
 
-当前工作流位于 `.github/workflows/release.yml`。可用 `gh workflow run release.yml --ref dev` 手动演练，只生成 Actions artifacts，不创建标签或公开 Release。运行页底部按平台下载：
+当前发布入口为 `.github/workflows/release.yml`，只监听 `push.tags`；dev/main 普通推送不创建运行，不提供 `workflow_dispatch`。Windows 工作流仅保留 `workflow_call`，由同一次标签发布调用。运行页底部按平台下载：
 
 | 用途 | Artifact |
 | --- | --- |
@@ -22,23 +22,23 @@
 | Windows 第三方对应源码 | `desktop-windows-corresponding-sources` |
 | 校验和与发布说明 | `desktop-release-metadata` |
 
-各平台的程序单独下载。汇总任务验证资产后只上传校验和与发布说明，发布任务从同次运行读取原始分平台资产并核对校验和。公开发布仍须分别确认 main 合入、标签推送和发布范围，不得覆盖已有版本。
+各平台的程序单独下载。汇总任务验证资产后只上传校验和与发布说明，发布任务从同次运行读取原始分平台资产并核对校验和。公开发布仍须确认 main 合入、标签推送和发布范围，不得覆盖已有版本。不再执行 dev 构建或手动演练来准备发布；本地预检通过后，只从 main 上的版本标签启动完整流水线。
 
-2026-11-24 [三架构手动演练](https://github.com/freemantc9527/yali/actions/runs/45339644244)已通过，生成 `desktop-release-verified` artifact，公开任务按设计跳过。期间 Windows 上游下载连接超时，原运行重跑失败任务后成功；两个 macOS 构建结果保留，来源仍绑定同一提交和 run。依赖安装与首次编译较慢，耗时只用于估算。排查时按阶段或每隔数分钟读取一次结构化状态，发现失败后再读取日志。
+历史分支构建和手动演练记录只代表当时的验证方式；当前流程不再使用这些入口。
 
 ## Windows ZIP 实验
 
-`.github/workflows/windows-experiment.yml` 在 `dev` 分支修改相关 Rust、UI、脚本、schema 或样本时触发，保留 `workflow_dispatch` 手动入口，并通过 `workflow_call` 接收 Release 的固定候选提交。手动入口在工作流进入默认分支后可从 GitHub 页面使用。
+`.github/workflows/windows-experiment.yml` 只保留 `workflow_call`，候选 `ref` 必填。构建任务检查调用事件是版本标签 push，且传入提交与标签解析出的提交一致，不接受 dev/main 或手动运行。
 
 此流程使用 windows-2025 x64，先按 scripts/windows-engines.lock.json 下载校验上游归档，再通过 scripts/build-windows.ps1 构建 mozjpeg、pngquant、gifsicle、libwebp，保留 libvips 官方运行目录和 oxipng 官方程序。工具使用静态 CRT；官方 oxipng 所需的可再分发 CRT 从 runner 的 Visual Studio Redist 目录收集并附许可，禁止依赖系统已安装的 VC++ 掩盖缺件。mozjpeg 使用上游支持的非 SIMD 构建，参数与质量门槛保持一致，耗时只作观察。
 
 准备完成后实际执行 Rust 和 UI 测试，构建 release CLI、真实前端与 GUI，再用 scripts/windows-runtime.py package 检查每个 EXE/DLL 的 x64 PE、普通/延迟导入依赖、包内路径和文件摘要。ZIP 解压到中文空格目录后，scripts/smoke-windows.py 使用独立临时用户目录和受限 PATH，验证六类输入、缺件负例、动画策略、原图安全、撤销及相同引擎版本/参数的 SSIM/体积比门槛。FFmpeg 只作为 runner 的质量工具，既不放进 ZIP，也不用于无 FFmpeg 的基本处理步骤。
 
-只有检查全部成功才生成发布清单，并把程序 ZIP（附清单及依赖/冒烟/质量 JSON）与对应源码 ZIP 分别上传，保留 14 天。单独实验运行不创建 Release。源码包保留固定上游归档、MXE 构建配方/补丁、pngquant 和 librsvg 的 Cargo 依赖；运行包保留第三方许可与来源。用户运行程序只需下载程序 ZIP；分发方须同时提供对应源码和许可。
+只有检查全部成功才生成发布清单，并把程序 ZIP（附清单及依赖/冒烟/质量 JSON）与对应源码 ZIP 分别上传，保留 14 天。不提供单独实验运行入口。源码包保留固定上游归档、MXE 构建配方/补丁、pngquant 和 librsvg 的 Cargo 依赖；运行包保留第三方许可与来源。用户运行程序只需下载程序 ZIP；分发方须同时提供对应源码和许可。
 
 含引擎的 Windows 构建已在 [Actions 45321363937](https://github.com/freemantc9527/yali/actions/runs/45321363937) 成功，下载回读确认二进制、对应源码和 SHA-256 匹配。Windows 11 新账户/VM 的 GUI、选择/拖入、预设重启、结果打开/定位、视觉对比、控制台闪窗、WebView2 缺失及 SmartScreen 表现须另行记录。GUI 使用用户已安装的 WebView2 Evergreen，不静默修改系统组件。
 
-本地完成后，先确认具体 diff/提交内容，再单独确认推送 dev 及其会触发的 Windows Actions 运行；main 合入、标签和公开 Release/增补已有资产均须分别授权。旧 macOS alpha 资产不因本任务自动改变。
+本地完成后按授权推送源码并合入 main；普通分支推送不会运行 Actions。确认版本标签后推送标签，三架构检查与公开 Release 在同次运行完成；不修改旧标签和旧资产。
 
 ## 构建检查
 
@@ -63,6 +63,6 @@ python3 scripts/release.py check
 
 ## 失败处理
 
-上游复用或移动版本标签时，对应源码下载必须固定到构建时的不可变提交。校验失败后先与已验证的原归档比较文件内容、类型、权限和链接，再记录新归档 SHA-256 与来源证据；不得只替换哈希来接受标签下的新源码。
+GitHub archive/codeload/tarball 自动生成的源码归档统一固定到完整 40 位提交 SHA；禁止分支、标签或短 SHA，下载后仍核对 SHA-256。正式 Release 下载资产使用固定 URL 与 SHA-256。校验失败后先与已验证的原归档比较文件内容、类型、权限和链接，再记录新归档 SHA-256 与来源证据；不得只替换哈希来接受标签下的新源码。
 
 任一架构失败都不会创建 Release。修复后从新的候选提交重跑，不覆盖已分发版本。上传或网络失败后先读取远端草稿、资产和校验和，再决定重试或准备新版本，不盲目重复创建。

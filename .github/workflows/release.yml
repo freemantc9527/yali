@@ -1,10 +1,6 @@
 name: Desktop release
 
-on:
-  workflow_dispatch:
-  push:
-    tags:
-      - 'v*'
+on: {"push": {"tags": ["v*"]}}
 
 permissions:
   contents: read
@@ -15,6 +11,7 @@ concurrency:
 
 jobs:
   prepare:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
@@ -34,8 +31,10 @@ jobs:
       - name: Validate candidate and version tag
         id: candidate
         env:
-          RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || '' }}
+          RELEASE_TAG: ${{ github.ref_name }}
         run: python3 scripts/release.py check --tag "$RELEASE_TAG" --output "$GITHUB_OUTPUT"
+      - name: Verify pinned source archives before platform builds
+        run: python3 scripts/windows-runtime.py verify-sources --build-dir "$RUNNER_TEMP/yali-source-preflight"
 
   build:
     needs: prepare

@@ -30,6 +30,8 @@ python3 scripts/release.py check
 
 由 GitHub Actions 从固定提交重建 App，核对包内 CLI、Info.plist、架构和实际最低系统。不要直接修改已经签名的包来伪造版本或系统要求。
 
+Actions 只由匹配源码版本的标签推送触发；dev/main 普通推送不触发构建，不提供手动发布入口。Windows 作为同一次标签运行中的复用任务执行，不能单独从分支启动。
+
 ## 提交与分支
 
 提交信息使用 `type(scope): 中文结果说明`，类型限定为 `feat`、`fix`、`refactor`、`perf`、`test`、`docs`、`build`、`ci`、`chore`、`revert`。一个提交只解决一个可描述的问题。
