@@ -301,11 +301,11 @@
     {
       "name": "vips-source-libimagequant",
       "version": "2.4.1",
-      "sha256": "47d2a84b7b1052975c9d50a3d4e3cacbf57b43d84a4c3131210848ead9964dfb",
-      "url": "https://github.com/lovell/libimagequant/archive/v2.4.1.tar.gz",
+      "sha256": "99dfd59981afc9af17a3c300ff528b6ca8b1fadd092ab55bd1aafc01bbbd7f78",
+      "url": "https://codeload.github.com/lovell/libimagequant/tar.gz/ce5fdeb1ccd9db288950faa21fd09c42c0a59bbb",
       "archive": "vips-source-libimagequant-libimagequant-2.4.1.tar.gz",
       "kind": "corresponding-source",
-      "digestEvidence": "Pinned official MXE/build-win64-mxe recipe SHA-256"
+      "digestEvidence": "Immutable commit recovered from v0.2.0-alpha source archive (original SHA-256 47d2a84b7b1052975c9d50a3d4e3cacbf57b43d84a4c3131210848ead9964dfb); all 33 entries match in content, type, mode and links"
     },
     {
       "name": "vips-source-libjxl",

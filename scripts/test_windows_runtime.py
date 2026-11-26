@@ -236,6 +236,13 @@ class WindowsRuntimeTests(unittest.TestCase):
         self.assertIn(smoke.windows_path_text(expected), smoke.windows_path_text(actual))
         self.assertNotIn(smoke.windows_path_text(r"C:\other\cwebp.exe"), smoke.windows_path_text(actual))
 
+    def test_samever_corresponding_source_uses_immutable_commit(self):
+        lock = json.loads(runtime.LOCK.read_text(encoding="utf-8"))
+        source = next(item for item in lock["archives"] if item["name"] == "vips-source-libimagequant")
+        # 上游反复移动 v2.4.1 标签；对应源码必须保持与包内二进制构建时一致。
+        self.assertRegex(source["url"],
+                         r"^https://codeload\.github\.com/lovell/libimagequant/tar\.gz/[0-9a-f]{40}$")
+
     def test_lock_has_fixed_digests_and_cargo_lock(self):
         lock = json.loads(runtime.LOCK.read_text(encoding="utf-8"))
         self.assertEqual(lock["target"], runtime.TARGET)
