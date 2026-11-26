@@ -5148,10 +5148,11 @@ dependencies = [
 
 [[package]]
 name = "yali-app"
-version = "0.2.0-alpha"
+version = "0.3.0-alpha"
 dependencies = [
  "anyhow",
  "block2",
+ "dispatch2",
  "notify",
  "objc2",
  "objc2-app-kit",
@@ -5169,7 +5170,7 @@ dependencies = [
 
 [[package]]
 name = "yali-cli"
-version = "0.2.0-alpha"
+version = "0.3.0-alpha"
 dependencies = [
  "anyhow",
  "clap",
@@ -5180,7 +5181,7 @@ dependencies = [
 
 [[package]]
 name = "yali-core"
-version = "0.2.0-alpha"
+version = "0.3.0-alpha"
 dependencies = [
  "anyhow",
  "dirs",

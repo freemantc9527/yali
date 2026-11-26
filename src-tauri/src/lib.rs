@@ -16,6 +16,7 @@ mod preview;
 mod supported;
 mod tray;
 mod watch;
+mod window_state;
 
 fn err(e: anyhow::Error) -> String {
     format!("{e:#}")
@@ -389,6 +390,7 @@ pub fn run() {
         .manage(PendingOpenFiles::default())
         .manage(preview::PreviewLeases::default())
         .setup(|app| {
+            window_state::setup(app)?;
             #[cfg(target_os = "macos")]
             if let Err(e) = yali_core::services::repair_existing_link() {
                 eprintln!("CLI 入口修复失败: {e:#}");
@@ -416,6 +418,7 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            window_state::on_window_event(window, event);
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 #[cfg(not(windows))]
                 let enabled = window
@@ -457,6 +460,11 @@ pub fn run() {
         .expect("error while building yali");
 
     app.run(|handle, event| {
+        match &event {
+            tauri::RunEvent::ExitRequested { .. } => window_state::capture_main(handle),
+            tauri::RunEvent::Exit => window_state::save(handle),
+            _ => {}
+        }
         #[cfg(target_os = "macos")]
         if let tauri::RunEvent::Opened { urls } = event {
             use tauri::{Emitter, Manager};
